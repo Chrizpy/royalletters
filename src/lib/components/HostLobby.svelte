@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import QRCode from 'qrcode';
   import { PeerManager } from '../network/peer';
-  import { peerId, connectionState, connectedPlayers } from '../stores/network';
+  import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
   import { v4 as uuidv4 } from 'uuid';
 
   let qrCodeDataUrl = '';
@@ -73,7 +73,7 @@
     if (peerManager) {
       peerManager.disconnect();
     }
-    window.location.reload();
+    isHost.set(null);
   }
 </script>
 

@@ -1,45 +1,35 @@
 <script lang="ts">
   import { isHost } from '../stores/network';
 
-  let showMenu = true;
-
   function handleHost() {
     isHost.set(true);
-    showMenu = false;
   }
 
   function handleJoin() {
     isHost.set(false);
-    showMenu = false;
-  }
-
-  export function showLobby() {
-    showMenu = true;
   }
 </script>
 
-{#if showMenu}
-  <div class="lobby-screen">
-    <div class="lobby-container">
-      <h1>Royal Letters</h1>
-      <p class="subtitle">A Game of Risk, Deduction, and Luck</p>
+<div class="lobby-screen">
+  <div class="lobby-container">
+    <h1>Royal Letters</h1>
+    <p class="subtitle">A Game of Risk, Deduction, and Luck</p>
+    
+    <div class="menu-buttons">
+      <button class="menu-btn host-btn" on:click={handleHost}>
+        <span class="btn-icon">👑</span>
+        <span class="btn-text">Host Game</span>
+        <span class="btn-description">Create a new game and share QR code</span>
+      </button>
       
-      <div class="menu-buttons">
-        <button class="menu-btn host-btn" on:click={handleHost}>
-          <span class="btn-icon">👑</span>
-          <span class="btn-text">Host Game</span>
-          <span class="btn-description">Create a new game and share QR code</span>
-        </button>
-        
-        <button class="menu-btn join-btn" on:click={handleJoin}>
-          <span class="btn-icon">📱</span>
-          <span class="btn-text">Join Game</span>
-          <span class="btn-description">Scan QR code to join</span>
-        </button>
-      </div>
+      <button class="menu-btn join-btn" on:click={handleJoin}>
+        <span class="btn-icon">📱</span>
+        <span class="btn-text">Join Game</span>
+        <span class="btn-description">Scan QR code to join</span>
+      </button>
     </div>
   </div>
-{/if}
+</div>
 
 <style>
   .lobby-screen {

@@ -11,10 +11,13 @@
 
   // Subscribe to network stores to determine routing
   $: {
-    if ($isHost === true && currentScreen === 'lobby') {
+    if ($isHost === true) {
       currentScreen = 'host';
-    } else if ($isHost === false && currentScreen === 'lobby') {
+    } else if ($isHost === false) {
       currentScreen = 'join';
+    } else {
+      // isHost is null, show lobby
+      currentScreen = 'lobby';
     }
   }
 </script>

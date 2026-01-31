@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { Html5Qrcode } from 'html5-qrcode';
   import { PeerManager } from '../network/peer';
-  import { peerId, remotePeerId, connectionState } from '../stores/network';
+  import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
   import { v4 as uuidv4 } from 'uuid';
 
   let manualPeerId = '';
@@ -134,7 +134,7 @@
     if (peerManager) {
       peerManager.disconnect();
     }
-    window.location.reload();
+    isHost.set(null);
   }
 </script>
 

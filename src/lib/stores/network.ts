@@ -11,5 +11,5 @@ export interface ConnectedPlayer {
 export const connectionState = writable<ConnectionState>('disconnected');
 export const peerId = writable<string>('');
 export const remotePeerId = writable<string>('');
-export const isHost = writable<boolean>(false);
+export const isHost = writable<boolean | null>(null); // null = not chosen yet
 export const connectedPlayers = writable<ConnectedPlayer[]>([]);
