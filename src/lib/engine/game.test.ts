@@ -241,10 +241,17 @@ describe('Validation Tests', () => {
   });
 
   it('should reject card not in hand', () => {
+    const state = game.getState();
+    const aliceHand = state.players[0].hand;
+    
+    // Find a card that Alice definitely doesn't have
+    const cardsNotInHand = ['guard', 'priest', 'baron', 'handmaid', 'prince', 'king', 'countess', 'princess']
+      .filter(card => !aliceHand.includes(card));
+    
     const action: GameAction = {
       type: 'PLAY_CARD',
       playerId: 'p1',
-      cardId: 'princess', // Assuming Alice doesn't have princess
+      cardId: cardsNotInHand[0], // Use a card Alice doesn't have
     };
 
     const validation = game.validateMove('p1', action);
