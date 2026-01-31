@@ -1,47 +1,57 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import viteLogo from '/vite.svg'
-  import Counter from './lib/Counter.svelte'
+  import LobbyScreen from './lib/components/LobbyScreen.svelte';
+  import HostLobby from './lib/components/HostLobby.svelte';
+  import JoinGame from './lib/components/JoinGame.svelte';
+  import ConnectionStatus from './lib/components/ConnectionStatus.svelte';
+  import { isHost, connectionState } from './lib/stores/network';
+
+  // Routing state
+  type Screen = 'lobby' | 'host' | 'join' | 'game';
+  let currentScreen: Screen = 'lobby';
+
+  // Subscribe to network stores to determine routing
+  $: {
+    if ($isHost === true) {
+      currentScreen = 'host';
+    } else if ($isHost === false) {
+      currentScreen = 'join';
+    } else {
+      // isHost is null, show lobby
+      currentScreen = 'lobby';
+    }
+  }
 </script>
 
 <main>
-  <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
+  <ConnectionStatus />
 
-  <div class="card">
-    <Counter />
-  </div>
-
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
+  {#if currentScreen === 'lobby'}
+    <LobbyScreen />
+  {:else if currentScreen === 'host'}
+    <HostLobby />
+  {:else if currentScreen === 'join'}
+    <JoinGame />
+  {:else if currentScreen === 'game'}
+    <div class="game-screen">
+      <h1>Game Screen</h1>
+      <p>Game will be displayed here when host starts the game</p>
+    </div>
+  {/if}
 </main>
 
 <style>
-  .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-    transition: filter 300ms;
+  main {
+    width: 100%;
+    min-height: 100vh;
   }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
+
+  .game-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
   }
 </style>
