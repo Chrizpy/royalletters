@@ -15,8 +15,8 @@
   onMount(async () => {
     try {
       // Generate unique peer ID
-      const randomId = Math.random().toString(36).substring(2, 6);
-      generatedPeerId = `royal-${randomId}`;
+      const randomSuffix = Math.random().toString(36).substring(2, 6);
+      generatedPeerId = `royal-${randomSuffix}`;
       
       // Create peer manager
       peerManager = new PeerManager();

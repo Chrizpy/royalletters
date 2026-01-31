@@ -81,8 +81,8 @@
       error = '';
       
       // Generate guest peer ID
-      const randomId = Math.random().toString(36).substring(2, 6);
-      const guestPeerId = `guest-${randomId}`;
+      const randomSuffix = Math.random().toString(36).substring(2, 6);
+      const guestPeerId = `guest-${randomSuffix}`;
       
       // Create peer manager
       peerManager = new PeerManager();

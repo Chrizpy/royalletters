@@ -139,12 +139,18 @@ export class PeerManager {
     this.reconnectAttempts++;
     console.log(`Reconnecting to ${peerId} (attempt ${this.reconnectAttempts})`);
 
+    // Exponential backoff with cap at 30 seconds
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      30000
+    );
+
     setTimeout(() => {
       if (this.peer && !this.connections.has(peerId)) {
         const conn = this.peer.connect(peerId);
         this.setupConnection(conn);
       }
-    }, this.reconnectDelay * this.reconnectAttempts);
+    }, delay);
   }
 
   /**
