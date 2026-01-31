@@ -14,17 +14,8 @@
     <div class="target-list">
       {#each validTargets as target}
         <button class="target-btn" on:click={() => onSelect(target.id)}>
-          <span class="target-icon">
-            {#if target.status === 'PROTECTED'}
-              🛡️
-            {:else}
-              👤
-            {/if}
-          </span>
+          <span class="target-icon">👤</span>
           <span class="target-name">{target.name}</span>
-          {#if target.status === 'PROTECTED'}
-            <span class="target-status">(Protected)</span>
-          {/if}
         </button>
       {/each}
 
@@ -110,11 +101,6 @@
   .target-name {
     flex: 1;
     font-weight: 500;
-  }
-
-  .target-status {
-    font-size: 0.8rem;
-    color: #00cec9;
   }
 
   .no-targets {
