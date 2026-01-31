@@ -474,8 +474,7 @@
   .player-hand-area {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 20px 20px 0 0;
-    padding: 1.5rem;
-    padding-bottom: 180px; /* Space for game log */
+    padding: 1rem;
     margin: 0 -1rem -1rem -1rem;
     backdrop-filter: blur(10px);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -562,5 +561,119 @@
     background: rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     font-size: 0.8rem;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 480px) {
+    .game-screen {
+      padding: 0.5rem;
+    }
+
+    .status-bar {
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .round-info {
+      font-size: 0.8rem;
+    }
+
+    .turn-indicator {
+      font-size: 0.85rem;
+      padding: 0.4rem 0.75rem;
+    }
+
+    .opponents-area {
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .deck-card {
+      width: 60px;
+      height: 90px;
+    }
+
+    .deck-icon {
+      font-size: 1.5rem;
+    }
+
+    .deck-count {
+      font-size: 1rem;
+    }
+
+    .draw-prompt {
+      font-size: 0.8rem;
+      bottom: -25px;
+    }
+
+    .start-round-btn {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+    }
+
+    .winner-banner {
+      padding: 1.5rem 2rem;
+    }
+
+    .winner-icon {
+      font-size: 3rem;
+    }
+
+    .winner-text {
+      font-size: 1.2rem;
+    }
+
+    .player-hand-area {
+      padding: 0.75rem;
+      padding-bottom: 5rem; /* Space for FAB button */
+    }
+
+    .player-info {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .player-name {
+      font-size: 1rem;
+    }
+
+    .token {
+      font-size: 1rem;
+    }
+
+    .hand {
+      gap: 0.5rem;
+      min-height: 120px;
+    }
+
+    .discard-pile {
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+    }
+
+    .discard-label {
+      font-size: 0.8rem;
+      width: 100%;
+    }
+
+    .discarded-card {
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Tablet responsive styles */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .game-screen {
+      padding: 0.75rem;
+    }
+
+    .player-hand-area {
+      padding-bottom: 4.5rem; /* Space for FAB button */
+    }
   }
 </style>

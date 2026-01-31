@@ -3,20 +3,22 @@
 
   export let logs: LogEntry[] = [];
   
-  let isExpanded = false;
+  let isOpen = false;
   let logsContainer: HTMLDivElement;
 
-  $: displayLogs = isExpanded ? logs : logs.slice(-3);
-  
-  $: if (logsContainer && logs.length) {
+  $: if (logsContainer && logs.length && isOpen) {
     // Auto-scroll to bottom when new logs appear
     setTimeout(() => {
       logsContainer.scrollTop = logsContainer.scrollHeight;
     }, 100);
   }
 
-  function toggleExpand() {
-    isExpanded = !isExpanded;
+  function toggleOpen() {
+    isOpen = !isOpen;
+  }
+
+  function close() {
+    isOpen = false;
   }
 
   function formatTime(timestamp: number): string {
@@ -25,112 +27,192 @@
   }
 </script>
 
-<div class="game-log" class:expanded={isExpanded}>
-  <button class="log-header" on:click={toggleExpand}>
-    <span class="log-title">📜 Game Log</span>
-    <span class="log-toggle">{isExpanded ? '▼' : '▲'}</span>
-  </button>
-  
-  <div class="log-content" bind:this={logsContainer}>
-    {#each displayLogs as log}
-      <div class="log-entry">
-        <span class="log-time">{formatTime(log.timestamp)}</span>
-        <span class="log-message">{log.message}</span>
+<!-- Floating log button -->
+<button class="log-fab" on:click={toggleOpen} aria-label="View game log">
+  <span class="fab-icon">📜</span>
+  {#if logs.length > 0}
+    <span class="log-badge">{logs.length}</span>
+  {/if}
+</button>
+
+<!-- Log modal overlay -->
+{#if isOpen}
+  <div class="log-overlay" on:click={close} on:keydown={(e) => e.key === 'Escape' && close()} role="dialog" aria-modal="true" tabindex="0">
+    <div class="log-modal" on:click|stopPropagation>
+      <div class="log-header">
+        <span class="log-title">📜 Game Log</span>
+        <button class="close-btn" on:click={close} aria-label="Close log">✕</button>
       </div>
-    {/each}
-    
-    {#if logs.length === 0}
-      <div class="log-empty">No game events yet...</div>
-    {/if}
+      
+      <div class="log-content" bind:this={logsContainer}>
+        {#each logs as log}
+          <div class="log-entry">
+            <span class="log-time">{formatTime(log.timestamp)}</span>
+            <span class="log-message">{log.message}</span>
+          </div>
+        {/each}
+        
+        {#if logs.length === 0}
+          <div class="log-empty">No game events yet...</div>
+        {/if}
+      </div>
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
-  .game-log {
+  /* Floating action button */
+  .log-fab {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 50;
+    bottom: 1rem;
+    right: 1rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    z-index: 40;
     transition: all 0.3s ease;
-    max-height: 150px;
   }
 
-  .game-log.expanded {
-    max-height: 50vh;
+  .log-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+  }
+
+  .fab-icon {
+    font-size: 1.5rem;
+  }
+
+  .log-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+  }
+
+  /* Modal overlay */
+  .log-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    animation: overlay-fade 0.2s ease-out;
+  }
+
+  @keyframes overlay-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Modal content */
+  .log-modal {
+    width: 100%;
+    max-width: 500px;
+    max-height: 70vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 20px 20px 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: modal-slide-up 0.3s ease-out;
+    overflow: hidden;
+  }
+
+  @keyframes modal-slide-up {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
 
   .log-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.9rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .log-header:hover {
+    padding: 1rem 1.25rem;
     background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .log-title {
     font-weight: 600;
+    font-size: 1.1rem;
+    color: white;
   }
 
-  .log-toggle {
-    font-size: 0.8rem;
-    opacity: 0.7;
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+  }
+
+  .close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 
   .log-content {
-    padding: 0.5rem 1rem;
-    max-height: calc(150px - 45px);
+    flex: 1;
+    padding: 1rem 1.25rem;
     overflow-y: auto;
     scroll-behavior: smooth;
-  }
-
-  .game-log.expanded .log-content {
-    max-height: calc(50vh - 45px);
   }
 
   .log-entry {
     display: flex;
     gap: 0.75rem;
-    padding: 0.25rem 0;
-    font-size: 0.85rem;
-    animation: log-fade-in 0.3s ease-out;
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  @keyframes log-fade-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  .log-entry:last-child {
+    border-bottom: none;
   }
 
   .log-time {
     color: rgba(255, 255, 255, 0.4);
     font-family: monospace;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     white-space: nowrap;
   }
 
   .log-message {
     color: rgba(255, 255, 255, 0.9);
+    flex: 1;
   }
 
   .log-empty {
     color: rgba(255, 255, 255, 0.4);
     font-style: italic;
     text-align: center;
-    padding: 0.5rem;
+    padding: 2rem;
   }
 
   /* Scrollbar styling */
@@ -140,10 +222,29 @@
 
   .log-content::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
   }
 
   .log-content::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
     border-radius: 3px;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 480px) {
+    .log-fab {
+      bottom: 0.75rem;
+      right: 0.75rem;
+      width: 48px;
+      height: 48px;
+    }
+
+    .fab-icon {
+      font-size: 1.25rem;
+    }
+
+    .log-modal {
+      max-height: 80vh;
+    }
   }
 </style>

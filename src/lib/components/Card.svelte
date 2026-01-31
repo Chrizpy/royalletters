@@ -180,4 +180,50 @@
     align-items: flex-end;
     padding-bottom: 0.25rem;
   }
+
+  /* Mobile responsive styles */
+  @media (max-width: 480px) {
+    .card {
+      width: 90px;
+      height: 135px;
+    }
+
+    .card:not(:disabled):hover {
+      transform: translateY(-10px) scale(1.03);
+    }
+
+    .card.selected {
+      transform: translateY(-15px) scale(1.05);
+    }
+
+    .card-inner {
+      padding: 0.5rem;
+      border-radius: 10px;
+    }
+
+    .card-value {
+      font-size: 1.1rem;
+      top: 5px;
+      left: 7px;
+    }
+
+    .card-emoji {
+      font-size: 2rem;
+      margin-top: 0.5rem;
+    }
+
+    .card-name {
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .card-description {
+      font-size: 0.55rem;
+    }
+
+    .playable-glow {
+      inset: -2px;
+      border-radius: 12px;
+    }
+  }
 </style>

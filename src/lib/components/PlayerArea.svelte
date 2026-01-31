@@ -245,4 +245,62 @@
     font-weight: 600;
     font-size: 0.9rem;
   }
+
+  /* Mobile responsive styles */
+  @media (max-width: 480px) {
+    .player-area {
+      padding: 0.5rem 0.75rem;
+      min-width: 140px;
+      gap: 0.5rem;
+      border-radius: 12px;
+    }
+
+    .player-avatar {
+      font-size: 1.5rem;
+      width: 36px;
+      height: 36px;
+    }
+
+    .player-name {
+      font-size: 0.85rem;
+    }
+
+    .token {
+      font-size: 0.75rem;
+    }
+
+    .no-tokens {
+      font-size: 0.65rem;
+    }
+
+    .mini-card {
+      width: 30px;
+      height: 42px;
+    }
+
+    .card-icon {
+      font-size: 0.8rem;
+    }
+
+    .count {
+      font-size: 0.6rem;
+    }
+
+    .discarded-mini {
+      width: 16px;
+      height: 22px;
+      font-size: 0.6rem;
+    }
+
+    .active-indicator {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      top: -8px;
+    }
+
+    .target-text {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+    }
+  }
 </style>
