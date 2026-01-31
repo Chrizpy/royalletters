@@ -245,7 +245,24 @@
       <div class="chancellor-modal">
         <div class="chancellor-content">
           <h3>📜 Chancellor Effect</h3>
-          <p>Select 2 cards from your hand to return to the bottom of the deck.</p>
+          <p>Select 2 cards to return to the deck bottom.</p>
+          <p class="chancellor-order-hint">
+            First selected → very bottom | Second selected → above it
+          </p>
+          <div class="chancellor-selected-list">
+            {#if chancellorSelectedCards.length > 0}
+              <div class="selected-card-item">
+                <span class="position-badge">⬇️ Bottom</span>
+                <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[0])?.name}</span>
+              </div>
+            {/if}
+            {#if chancellorSelectedCards.length > 1}
+              <div class="selected-card-item">
+                <span class="position-badge">⬆️ 2nd</span>
+                <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[1])?.name}</span>
+              </div>
+            {/if}
+          </div>
           <p class="selected-count">Selected: {chancellorSelectedCards.length}/2</p>
           {#if chancellorSelectedCards.length === 2}
             <button class="confirm-chancellor-btn" on:click={confirmChancellorReturn}>
@@ -578,6 +595,43 @@
   .selected-count {
     font-weight: 600;
     color: #8e44ad !important;
+  }
+
+  .chancellor-order-hint {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.6) !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  .chancellor-selected-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    min-height: 70px;
+  }
+
+  .selected-card-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(142, 68, 173, 0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(142, 68, 173, 0.5);
+  }
+
+  .position-badge {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .selected-card-name {
+    font-weight: 500;
   }
 
   .confirm-chancellor-btn {

@@ -237,14 +237,9 @@ export class GameEngine {
       }
     }
 
-    // Guard-specific validation: cannot guess Guard or Spy (value 0 or 1 cards that can't be guessed)
-    if (action.cardId === 'guard') {
-      if (action.targetCardGuess === 'guard') {
-        return { valid: false, error: 'Cannot guess Guard' };
-      }
-      if (action.targetCardGuess === 'spy') {
-        return { valid: false, error: 'Cannot guess Spy' };
-      }
+    // Guard-specific validation: cannot guess Guard (but CAN guess Spy in 2019 rules)
+    if (action.cardId === 'guard' && action.targetCardGuess === 'guard') {
+      return { valid: false, error: 'Cannot guess Guard' };
     }
 
     // Check if targetCardGuess is required

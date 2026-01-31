@@ -1313,8 +1313,8 @@ describe('2019 Ruleset Tests', () => {
     });
   });
 
-  describe('Guard Cannot Guess Spy', () => {
-    it('should reject Guard guess of Spy', () => {
+  describe('Guard Can Guess Spy', () => {
+    it('should allow Guard guess of Spy and eliminate on correct guess', () => {
       const game = new GameEngine();
       game.init({
         players: [
@@ -1340,8 +1340,12 @@ describe('2019 Ruleset Tests', () => {
       };
 
       const validation = game.validateMove('p1', action);
-      expect(validation.valid).toBe(false);
-      expect(validation.error).toContain('Spy');
+      expect(validation.valid).toBe(true);
+      
+      // Actually play the card
+      const result = game.applyMove(action);
+      expect(result.success).toBe(true);
+      expect(result.eliminatedPlayerId).toBe('p2');
     });
   });
 });

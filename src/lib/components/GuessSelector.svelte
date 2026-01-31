@@ -18,11 +18,11 @@
   // Get current ruleset from game state
   $: ruleset = $gameState?.ruleset || 'classic';
   
-  // Get cards available in current deck, excluding Guard and Spy (can't guess them)
+  // Get cards available in current deck, excluding Guard (can't guess Guard, but CAN guess Spy)
   $: guessableCards = Object.values(registry.cards)
     .filter(card => {
-      // Can't guess Guard or Spy
-      if (card.id === 'guard' || card.id === 'spy') return false;
+      // Can't guess Guard
+      if (card.id === 'guard') return false;
       // Only include cards that are in the current deck
       const deckDef = registry.decks[ruleset];
       return deckDef && deckDef[card.id] !== undefined;
