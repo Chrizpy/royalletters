@@ -544,6 +544,58 @@ describe('Card Effect Tests', () => {
       expect(newState.players[0].discardPile).toContain('handmaid');
     });
 
+    it('should protect player through other players turns until their next turn', () => {
+      // Set up 3-player game
+      const game3 = new GameEngine();
+      game3.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+      });
+      game3.startRound();
+      game3.drawPhase();
+
+      let state = game3.getState();
+      // Alice plays Handmaid
+      state.players[0].hand = ['handmaid', 'guard'];
+      state.players[1].hand = ['guard'];
+      state.players[2].hand = ['baron'];
+      game3.setState(state);
+
+      // Alice plays Handmaid
+      game3.applyMove({
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'handmaid',
+      });
+
+      state = game3.getState();
+      // After Alice plays Handmaid, she should be PROTECTED
+      expect(state.players[0].status).toBe('PROTECTED');
+      
+      // Bob's turn - try to target Alice with Guard
+      game3.drawPhase();
+      state = game3.getState();
+      state.players[1].hand = ['guard', 'priest'];
+      game3.setState(state);
+
+      // Bob should NOT be able to target Alice (she's protected)
+      const validation = game3.validateMove('p2', {
+        type: 'PLAY_CARD',
+        playerId: 'p2',
+        cardId: 'guard',
+        targetPlayerId: 'p1',
+        targetCardGuess: 'guard',
+      });
+      expect(validation.valid).toBe(false);
+      expect(validation.error).toContain('protected');
+      
+      // Alice should still be protected after Bob's turn ends
+      expect(state.players[0].status).toBe('PROTECTED');
+    });
+
     it('should allow playing cards with no effect when all other players are protected', () => {
       const state = game.getState();
       state.players[0].hand = ['guard', 'priest'];
@@ -972,17 +1024,22 @@ describe('Advance Turn Tests', () => {
     expect(newState.activePlayerIndex).toBe(2);
   });
 
-  it('should reset PROTECTED status when turn advances', () => {
+  it('should reset PROTECTED status when protected player becomes active again', () => {
+    // In a 3-player game: Player 0 (Alice) is protected, currently it's Player 2 (Charlie)'s turn
     const state = game.getState();
     state.players[0].status = 'PROTECTED';
-    state.players[0].hand = ['handmaid'];
-    state.activePlayerIndex = 0;
+    state.players[0].hand = ['guard'];
+    state.players[1].hand = ['priest'];
+    state.players[2].hand = ['baron'];
+    state.activePlayerIndex = 2;  // Charlie's turn
     game.setState(state);
 
+    // Advance from Charlie (index 2) to Alice (index 0) - protected player's turn now begins
     game.advanceTurn();
     const newState = game.getState();
 
-    // Protection should be reset
+    // Protection should be reset when it becomes their turn again
+    expect(newState.activePlayerIndex).toBe(0);
     expect(newState.players[0].status).toBe('PLAYING');
   });
 });

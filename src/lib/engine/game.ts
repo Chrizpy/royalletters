@@ -478,12 +478,6 @@ export class GameEngine {
    * Advance to next player's turn
    */
   advanceTurn(): void {
-    // Reset protection status for the current player (it only lasts until their next turn)
-    const currentPlayer = this.getActivePlayer();
-    if (currentPlayer && currentPlayer.status === 'PROTECTED') {
-      currentPlayer.status = 'PLAYING';
-    }
-
     // Check if round should end
     if (this.checkRoundEnd()) {
       return;
@@ -498,6 +492,11 @@ export class GameEngine {
       if (player.status !== 'ELIMINATED') {
         this.state.activePlayerIndex = nextIndex;
         this.state.phase = 'TURN_START';
+        
+        // Reset protection status for the NEW active player (protection lasts until their next turn)
+        if (player.status === 'PROTECTED') {
+          player.status = 'PLAYING';
+        }
         return;
       }
       nextIndex = (nextIndex + 1) % this.state.players.length;
