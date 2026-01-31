@@ -59,7 +59,7 @@ export class GameEngine {
       phase: 'LOBBY',
     };
 
-    this.addLog('Game initialized', undefined, undefined);
+    this.addLog('Game initialized');
   }
 
   /**
