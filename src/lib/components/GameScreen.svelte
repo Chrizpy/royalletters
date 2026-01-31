@@ -1,40 +1,34 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import Card from './Card.svelte';
   import PlayerArea from './PlayerArea.svelte';
   import TargetSelector from './TargetSelector.svelte';
   import GuessSelector from './GuessSelector.svelte';
   import GameLog from './GameLog.svelte';
-  import { GameEngine } from '../engine/game';
   import { getCardDefinition } from '../engine/deck';
-  import type { GameState, PlayerState, CardDefinition } from '../types';
-  import cardsData from '../data/cards.json';
+  import { gameState as gameStateStore, drawCard } from '../stores/game';
+  import type { PlayerState } from '../types';
 
   // Props
-  export let engine: GameEngine;
   export let localPlayerId: string;
   export let onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
   export let onStartRound: () => void;
   export let isHost: boolean = false;
 
   // Local state
-  let gameState: GameState;
   let selectedCard: string | null = null;
   let selectingTarget: boolean = false;
   let selectingGuess: boolean = false;
   let pendingCardId: string | null = null;
   let pendingTargetId: string | null = null;
-  let revealedCard: string | null = null;
-  let showReveal: boolean = false;
 
-  // Reactive
-  $: gameState = engine.getState();
-  $: localPlayer = gameState.players.find(p => p.id === localPlayerId);
-  $: isMyTurn = gameState.players[gameState.activePlayerIndex]?.id === localPlayerId;
-  $: activePlayer = gameState.players[gameState.activePlayerIndex];
-  $: opponents = gameState.players.filter(p => p.id !== localPlayerId);
-  $: canPlay = isMyTurn && gameState.phase === 'WAITING_FOR_ACTION';
-  $: tokensToWin = getTokensToWin(gameState.players.length);
+  // Get state from store for reactivity
+  $: gameState = $gameStateStore;
+  $: localPlayer = gameState?.players.find(p => p.id === localPlayerId);
+  $: isMyTurn = gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId;
+  $: activePlayer = gameState?.players[gameState?.activePlayerIndex];
+  $: opponents = gameState?.players.filter(p => p.id !== localPlayerId) || [];
+  $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
+  $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 7, 3: 5, 4: 4 };
@@ -95,19 +89,17 @@
   }
 
   function handleDraw() {
-    if (gameState.phase === 'TURN_START' && isMyTurn) {
-      engine.drawPhase();
-      gameState = engine.getState();
+    if (gameState?.phase === 'TURN_START' && isMyTurn) {
+      drawCard();
     }
   }
 
   function handleStartRound() {
     onStartRound();
-    gameState = engine.getState();
   }
 
   function getValidTargets(): PlayerState[] {
-    if (!pendingCardId) return [];
+    if (!pendingCardId || !gameState) return [];
     const card = getCardDefinition(pendingCardId);
     if (!card) return [];
     
@@ -118,16 +110,9 @@
       return true;
     });
   }
-
-  // Refresh state periodically (for multiplayer)
-  onMount(() => {
-    const interval = setInterval(() => {
-      gameState = engine.getState();
-    }, 100);
-    return () => clearInterval(interval);
-  });
 </script>
 
+{#if gameState}
 <div class="game-screen">
   <!-- Status bar -->
   <div class="status-bar">
@@ -264,8 +249,22 @@
   <!-- Game log -->
   <GameLog logs={gameState.logs} />
 </div>
+{:else}
+  <div class="loading-screen">
+    <p>Loading game...</p>
+  </div>
+{/if}
 
 <style>
+  .loading-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: white;
+  }
+
   .game-screen {
     min-height: 100vh;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -458,6 +457,7 @@
     background: rgba(255, 255, 255, 0.05);
     border-radius: 20px 20px 0 0;
     padding: 1.5rem;
+    padding-bottom: 180px; /* Space for game log */
     margin: 0 -1rem -1rem -1rem;
     backdrop-filter: blur(10px);
     border-top: 1px solid rgba(255, 255, 255, 0.1);

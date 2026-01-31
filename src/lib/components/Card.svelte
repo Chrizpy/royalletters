@@ -97,12 +97,12 @@
   }
 
   .card.playable:not(.selected) {
-    animation: card-enter 0.5s ease-out var(--delay) both, playable-bounce 2s ease-in-out infinite;
+    animation: card-enter 0.5s ease-out var(--delay) both;
   }
 
-  @keyframes playable-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+  .card.playable:not(.selected):hover {
+    transform: translateY(-15px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(255, 255, 255, 0.2);
   }
 
   .card-inner {

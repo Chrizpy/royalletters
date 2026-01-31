@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import QRCode from 'qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
-  import { v4 as uuidv4 } from 'uuid';
+  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine } from '../stores/game';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload } from '../network/messages';
+  import GameScreen from './GameScreen.svelte';
 
   let qrCodeDataUrl = '';
   let generatedPeerId = '';
@@ -11,6 +13,10 @@
   let error = '';
   let localConnectionState: string = 'disconnected';
   let players: Array<{ id: string; name: string }> = [];
+  let hostName = 'Host';
+
+  // Subscribe to game started state
+  $: inGame = $gameStarted;
 
   onMount(async () => {
     try {
@@ -30,13 +36,19 @@
       // Set up connection listener
       peerManager.onConnection((newPeerId) => {
         console.log('New player connected:', newPeerId);
-        players = [...players, { id: newPeerId, name: 'Guest Player' }];
+        const playerName = `Player ${players.length + 2}`;
+        players = [...players, { id: newPeerId, name: playerName }];
         connectedPlayers.update(p => [...p, { 
           id: newPeerId, 
-          name: 'Guest Player',
+          name: playerName,
           avatarId: 'default',
           isHost: false
         }]);
+      });
+
+      // Set up message handler for player actions
+      peerManager.onMessage((message, conn) => {
+        handleMessage(message, conn.peer);
       });
       
       // Create host
@@ -64,9 +76,75 @@
     }
   });
 
+  onDestroy(() => {
+    if (peerManager) {
+      peerManager.disconnect();
+    }
+  });
+
+  function handleMessage(message: NetworkMessage, fromPeerId: string) {
+    console.log('Host received message:', message.type, 'from:', fromPeerId);
+    
+    if (message.type === 'PLAYER_ACTION') {
+      const payload = message.payload as PlayerActionPayload;
+      const result = applyAction({
+        type: 'PLAY_CARD',
+        playerId: message.senderId,
+        cardId: payload.cardId,
+        targetPlayerId: payload.targetPlayerId,
+        targetCardGuess: payload.targetCardGuess
+      });
+      
+      // Broadcast updated state to all clients
+      broadcastGameState();
+    }
+  }
+
   function handleStartGame() {
-    // TODO: Start game logic
     console.log('Starting game...');
+    
+    // Build player list with host first
+    const allPlayers = [
+      { id: generatedPeerId, name: hostName, isHost: true },
+      ...players.map(p => ({ id: p.id, name: p.name, isHost: false }))
+    ];
+    
+    // Initialize and start the game
+    initGame(allPlayers);
+    startRound();
+    
+    // Broadcast state to all connected players
+    broadcastGameState();
+  }
+
+  function broadcastGameState() {
+    const engine = getEngine();
+    if (!engine || !peerManager) return;
+    
+    const state = engine.getState();
+    const payload: GameStateSyncPayload = { state };
+    const message = createMessage('GAME_STATE_SYNC', generatedPeerId, payload);
+    
+    peerManager.broadcast(message);
+  }
+
+  function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
+    // Host applies actions directly
+    const result = applyAction({
+      type: 'PLAY_CARD',
+      playerId: generatedPeerId,
+      cardId,
+      targetPlayerId,
+      targetCardGuess
+    });
+    
+    // Broadcast updated state to all clients
+    broadcastGameState();
+  }
+
+  function handleStartRound() {
+    startRound();
+    broadcastGameState();
   }
 
   function handleBack() {
@@ -77,65 +155,85 @@
   }
 </script>
 
-<div class="host-lobby">
-  <div class="host-container">
-    <h2>Host Game</h2>
-    
-    {#if error}
-      <div class="error">{error}</div>
-    {/if}
-    
-    {#if localConnectionState === 'connected' && qrCodeDataUrl}
-      <div class="qr-section">
-        <p class="instruction">Scan this QR code to join:</p>
-        <div class="qr-code">
-          <img src={qrCodeDataUrl} alt="QR Code" />
-        </div>
-        
-        <div class="peer-id-section">
-          <p class="peer-id-label">Or enter this code manually:</p>
-          <div class="peer-id-display">{generatedPeerId}</div>
-        </div>
-      </div>
+{#if inGame && $gameState}
+  <GameScreen 
+    localPlayerId={generatedPeerId}
+    onPlayCard={handlePlayCard}
+    onStartRound={handleStartRound}
+    isHost={true}
+  />
+{:else}
+  <div class="host-lobby">
+    <div class="host-container">
+      <h2>Host Game</h2>
       
-      <div class="players-section">
-        <h3>Players ({players.length + 1}/4)</h3>
-        <div class="player-list">
-          <div class="player-item host">
-            <span class="player-icon">👑</span>
-            <span class="player-name">You (Host)</span>
+      {#if error}
+        <div class="error">{error}</div>
+      {/if}
+      
+      {#if localConnectionState === 'connected' && qrCodeDataUrl}
+        <div class="name-section">
+          <label for="host-name">Your Name:</label>
+          <input 
+            id="host-name" 
+            type="text" 
+            bind:value={hostName} 
+            placeholder="Enter your name"
+            class="name-input"
+          />
+        </div>
+
+        <div class="qr-section">
+          <p class="instruction">Scan this QR code to join:</p>
+          <div class="qr-code">
+            <img src={qrCodeDataUrl} alt="QR Code" />
           </div>
-          {#each players as player}
-            <div class="player-item">
-              <span class="player-icon">👤</span>
-              <span class="player-name">{player.name}</span>
-            </div>
-          {/each}
+          
+          <div class="peer-id-section">
+            <p class="peer-id-label">Or enter this code manually:</p>
+            <div class="peer-id-display">{generatedPeerId}</div>
+          </div>
         </div>
         
-        {#if players.length === 0}
-          <p class="waiting">Waiting for players to join...</p>
-        {/if}
-      </div>
-      
-      <div class="button-group">
-        <button 
-          class="start-btn" 
-          on:click={handleStartGame}
-          disabled={players.length === 0}
-        >
-          Start Game
-        </button>
-        <button class="back-btn" on:click={handleBack}>Cancel</button>
-      </div>
-    {:else}
-      <div class="loading">
-        <div class="spinner"></div>
-        <p>Setting up host...</p>
-      </div>
-    {/if}
+        <div class="players-section">
+          <h3>Players ({players.length + 1}/4)</h3>
+          <div class="player-list">
+            <div class="player-item host">
+              <span class="player-icon">👑</span>
+              <span class="player-name">{hostName} (You)</span>
+            </div>
+            {#each players as player}
+              <div class="player-item">
+                <span class="player-icon">👤</span>
+                <span class="player-name">{player.name}</span>
+              </div>
+            {/each}
+          </div>
+          
+          {#if players.length === 0}
+            <p class="waiting">Waiting for players to join...</p>
+          {/if}
+        </div>
+        
+        <div class="button-group">
+          <button 
+            class="start-btn" 
+            on:click={handleStartGame}
+            disabled={players.length === 0}
+          >
+            Start Game
+          </button>
+          <button class="back-btn" on:click={handleBack}>Cancel</button>
+        </div>
+      {:else}
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Setting up host...</p>
+        </div>
+      {/if}
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .host-lobby {
@@ -168,6 +266,33 @@
     padding: 1rem;
     border-radius: 8px;
     margin-bottom: 1rem;
+  }
+
+  .name-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .name-section label {
+    display: block;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .name-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+  }
+
+  .name-input:focus {
+    outline: none;
+    border-color: #667eea;
   }
 
   .qr-section {

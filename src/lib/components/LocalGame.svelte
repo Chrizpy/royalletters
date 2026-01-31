@@ -1,16 +1,17 @@
 <script lang="ts">
   import GameScreen from './GameScreen.svelte';
-  import { GameEngine } from '../engine/game';
-  import type { GameState } from '../types';
+  import { 
+    gameState as gameStateStore, 
+    gameStarted as gameStartedStore,
+    initGame, 
+    startRound, 
+    applyAction, 
+    resetGame 
+  } from '../stores/game';
 
   // Props
   export let onBack: () => void;
 
-  // Setup
-  let engine = new GameEngine();
-  let currentPlayerIndex = 0;
-  let gameStarted = false;
-  
   // Player setup
   let player1Name = 'Player 1';
   let player2Name = 'Player 2';
@@ -18,7 +19,9 @@
   let player3Name = 'Player 3';
   let player4Name = 'Player 4';
 
-  $: players = getPlayers();
+  // Subscribe to game started store
+  $: inGame = $gameStartedStore;
+  $: currentGameState = $gameStateStore;
 
   function getPlayers() {
     const result = [
@@ -31,58 +34,39 @@
   }
 
   function startGame() {
-    engine = new GameEngine();
-    engine.init({ 
-      players: getPlayers().map((p, i) => ({ ...p, isHost: i === 0 }))
-    });
-    engine.startRound();
-    engine.drawPhase();
-    currentPlayerIndex = 0;
-    gameStarted = true;
+    initGame(getPlayers().map((p, i) => ({ ...p, isHost: i === 0 })));
+    startRound();
   }
 
   function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
-    const state = engine.getState();
-    const activePlayer = state.players[state.activePlayerIndex];
+    if (!currentGameState) return;
     
-    const result = engine.applyMove({
+    const activePlayer = currentGameState.players[currentGameState.activePlayerIndex];
+    
+    applyAction({
       type: 'PLAY_CARD',
       playerId: activePlayer.id,
       cardId,
       targetPlayerId,
       targetCardGuess
     });
-
-    // Check game state after move
-    const newState = engine.getState();
-    
-    if (newState.phase === 'TURN_START') {
-      // Auto-draw for next player
-      engine.drawPhase();
-    }
-    
-    // Force refresh
-    engine = engine;
   }
 
   function handleStartRound() {
-    engine.startRound();
-    engine.drawPhase();
-    engine = engine;
+    startRound();
   }
 
   function getCurrentPlayerId(): string {
-    const state = engine.getState();
-    return state.players[state.activePlayerIndex]?.id || 'p1';
+    if (!currentGameState) return 'p1';
+    return currentGameState.players[currentGameState.activePlayerIndex]?.id || 'p1';
   }
 
   function handleBackToSetup() {
-    gameStarted = false;
-    engine = new GameEngine();
+    resetGame();
   }
 </script>
 
-{#if !gameStarted}
+{#if !inGame}
   <div class="local-setup">
     <div class="setup-container">
       <h2>🎮 Local Game Setup</h2>
@@ -136,10 +120,9 @@
   <div class="local-game-wrapper">
     <button class="exit-btn" on:click={handleBackToSetup}>← Exit Game</button>
     <div class="current-player-banner">
-      📱 {engine.getState().players[engine.getState().activePlayerIndex]?.name}'s turn - pass the device!
+      📱 {currentGameState?.players[currentGameState?.activePlayerIndex]?.name}'s turn - pass the device!
     </div>
     <GameScreen 
-      {engine}
       localPlayerId={getCurrentPlayerId()}
       onPlayCard={handlePlayCard}
       onStartRound={handleStartRound}
