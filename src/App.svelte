@@ -2,22 +2,16 @@
   import LobbyScreen from './lib/components/LobbyScreen.svelte';
   import HostLobby from './lib/components/HostLobby.svelte';
   import JoinGame from './lib/components/JoinGame.svelte';
-  import LocalGame from './lib/components/LocalGame.svelte';
   import ConnectionStatus from './lib/components/ConnectionStatus.svelte';
   import { isHost, connectionState } from './lib/stores/network';
 
   // Routing state
-  type Screen = 'lobby' | 'host' | 'join' | 'game' | 'local';
+  type Screen = 'lobby' | 'host' | 'join' | 'game';
   let currentScreen: Screen = 'lobby';
-
-  // Track if we're in local game mode
-  let isLocalGame = false;
 
   // Subscribe to network stores to determine routing
   $: {
-    if (isLocalGame) {
-      currentScreen = 'local';
-    } else if ($isHost === true) {
+    if ($isHost === true) {
       currentScreen = 'host';
     } else if ($isHost === false) {
       currentScreen = 'join';
@@ -26,29 +20,17 @@
       currentScreen = 'lobby';
     }
   }
-
-  function handleLocalPlay() {
-    isLocalGame = true;
-  }
-
-  function handleBackFromLocal() {
-    isLocalGame = false;
-  }
 </script>
 
 <main>
-  {#if !isLocalGame}
-    <ConnectionStatus />
-  {/if}
+  <ConnectionStatus />
 
   {#if currentScreen === 'lobby'}
-    <LobbyScreen onLocalPlay={handleLocalPlay} />
+    <LobbyScreen />
   {:else if currentScreen === 'host'}
     <HostLobby />
   {:else if currentScreen === 'join'}
     <JoinGame />
-  {:else if currentScreen === 'local'}
-    <LocalGame onBack={handleBackFromLocal} />
   {:else if currentScreen === 'game'}
     <div class="game-screen">
       <h1>Game Screen</h1>
