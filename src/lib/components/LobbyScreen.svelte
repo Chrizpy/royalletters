@@ -1,6 +1,8 @@
 <script lang="ts">
   import { isHost } from '../stores/network';
 
+  export let onLocalPlay: () => void = () => {};
+
   function handleHost() {
     isHost.set(true);
   }
@@ -16,6 +18,12 @@
     <p class="subtitle">A Game of Risk, Deduction, and Luck</p>
     
     <div class="menu-buttons">
+      <button class="menu-btn local-btn" on:click={onLocalPlay}>
+        <span class="btn-icon">🎮</span>
+        <span class="btn-text">Local Play</span>
+        <span class="btn-description">Play on one device, pass between players</span>
+      </button>
+
       <button class="menu-btn host-btn" on:click={handleHost}>
         <span class="btn-icon">👑</span>
         <span class="btn-text">Host Game</span>
@@ -116,6 +124,15 @@
 
   .join-btn:hover .btn-text,
   .join-btn:hover .btn-description {
+    color: white;
+  }
+
+  .local-btn:hover {
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+  }
+
+  .local-btn:hover .btn-text,
+  .local-btn:hover .btn-description {
     color: white;
   }
 </style>
