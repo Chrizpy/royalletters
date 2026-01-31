@@ -6,6 +6,7 @@
   import { gameState, gameStarted, initGame, startRound, applyAction, getEngine } from '../stores/game';
   import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
+  import type { Ruleset } from '../types';
 
   let qrCodeDataUrl = '';
   let generatedPeerId = '';
@@ -14,6 +15,7 @@
   let localConnectionState: string = 'disconnected';
   let players: Array<{ id: string; name: string }> = [];
   let hostName = 'Host';
+  let selectedRuleset: Ruleset = 'classic';
 
   // Subscribe to game started state
   $: inGame = $gameStarted;
@@ -95,24 +97,34 @@
       }
     } else if (message.type === 'PLAYER_ACTION') {
       const payload = message.payload as PlayerActionPayload;
-      const result = applyAction({
-        type: 'PLAY_CARD',
-        playerId: message.senderId,
-        cardId: payload.cardId,
-        targetPlayerId: payload.targetPlayerId,
-        targetCardGuess: payload.targetCardGuess
-      });
       
-      // If a Priest reveal happened, send it privately to the player who played Priest
-      if (result?.revealedCard && peerManager) {
-        const engine = getEngine();
-        const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
-        const priestRevealPayload: PriestRevealPayload = {
-          cardId: result.revealedCard,
-          targetPlayerName: targetPlayer?.name || 'Unknown'
-        };
-        const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
-        peerManager.sendTo(fromPeerId, priestRevealMessage);
+      // Check if this is a Chancellor return action
+      if (payload.cardsToReturn) {
+        applyAction({
+          type: 'CHANCELLOR_RETURN',
+          playerId: message.senderId,
+          cardsToReturn: payload.cardsToReturn
+        });
+      } else {
+        const result = applyAction({
+          type: 'PLAY_CARD',
+          playerId: message.senderId,
+          cardId: payload.cardId,
+          targetPlayerId: payload.targetPlayerId,
+          targetCardGuess: payload.targetCardGuess
+        });
+        
+        // If a Priest reveal happened, send it privately to the player who played Priest
+        if (result?.revealedCard && peerManager) {
+          const engine = getEngine();
+          const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
+          const priestRevealPayload: PriestRevealPayload = {
+            cardId: result.revealedCard,
+            targetPlayerName: targetPlayer?.name || 'Unknown'
+          };
+          const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
+          peerManager.sendTo(fromPeerId, priestRevealMessage);
+        }
       }
       
       // Broadcast updated state to all clients
@@ -129,8 +141,8 @@
       ...players.map(p => ({ id: p.id, name: p.name, isHost: false }))
     ];
     
-    // Initialize and start the game
-    initGame(allPlayers);
+    // Initialize and start the game with selected ruleset
+    initGame(allPlayers, selectedRuleset);
     startRound();
     
     // Broadcast state to all connected players
@@ -161,6 +173,18 @@
     // Broadcast updated state to all clients
     broadcastGameState();
   }
+  
+  function handleChancellorReturn(cardsToReturn: string[]) {
+    // Host applies Chancellor return action directly
+    const result = applyAction({
+      type: 'CHANCELLOR_RETURN',
+      playerId: generatedPeerId,
+      cardsToReturn
+    });
+    
+    // Broadcast updated state to all clients
+    broadcastGameState();
+  }
 
   function handleStartRound() {
     startRound();
@@ -168,13 +192,13 @@
   }
 
   function handlePlayAgain() {
-    // Re-initialize the game with the same players
+    // Re-initialize the game with the same players and ruleset
     const allPlayers = [
       { id: generatedPeerId, name: hostName, isHost: true },
       ...players.map(p => ({ id: p.id, name: p.name, isHost: false }))
     ];
     
-    initGame(allPlayers);
+    initGame(allPlayers, selectedRuleset);
     startRound();
     broadcastGameState();
   }
@@ -191,6 +215,7 @@
   <GameScreen 
     localPlayerId={generatedPeerId}
     onPlayCard={handlePlayCard}
+    onChancellorReturn={handleChancellorReturn}
     onStartRound={handleStartRound}
     onPlayAgain={handlePlayAgain}
     isHost={true}
@@ -214,6 +239,25 @@
             placeholder="Enter your name"
             class="name-input"
           />
+        </div>
+        
+        <div class="ruleset-section">
+          <label for="ruleset">Game Edition:</label>
+          <select 
+            id="ruleset" 
+            bind:value={selectedRuleset}
+            class="ruleset-select"
+          >
+            <option value="classic">Classic (16 cards)</option>
+            <option value="2019">2019 Edition (21 cards)</option>
+          </select>
+          <p class="ruleset-hint">
+            {#if selectedRuleset === '2019'}
+              Includes Spy and Chancellor cards with new mechanics!
+            {:else}
+              The original Love Letter experience.
+            {/if}
+          </p>
         </div>
 
         <div class="qr-section">
@@ -330,6 +374,42 @@
   .name-input:focus {
     outline: none;
     border-color: #667eea;
+  }
+
+  .ruleset-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .ruleset-section label {
+    display: block;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .ruleset-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+    background: white;
+    cursor: pointer;
+  }
+
+  .ruleset-select:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  .ruleset-hint {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
   }
 
   .qr-section {

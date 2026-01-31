@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { GameEngine } from '../engine/game';
-import type { GameState, GameAction, ActionResult } from '../types';
+import type { GameState, GameAction, ActionResult, Ruleset } from '../types';
 
 // Game engine instance (singleton for the session)
 let engine: GameEngine | null = null;
@@ -17,9 +17,9 @@ export const revealedCard = writable<{ cardId: string; playerName: string; viewe
 /**
  * Initialize the game engine with players
  */
-export function initGame(players: Array<{ id: string; name: string; isHost?: boolean }>) {
+export function initGame(players: Array<{ id: string; name: string; isHost?: boolean }>, ruleset: Ruleset = 'classic') {
   engine = new GameEngine();
-  engine.init({ players });
+  engine.init({ players, ruleset });
   gameState.set(engine.getState());
 }
 

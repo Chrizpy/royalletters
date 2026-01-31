@@ -159,6 +159,19 @@
     const message = createMessage('PLAYER_ACTION', guestPeerId, payload);
     peerManager.broadcast(message);
   }
+  
+  function handleChancellorReturn(cardsToReturn: string[]) {
+    // Guest sends Chancellor return action to host
+    if (!peerManager) return;
+    
+    const payload: PlayerActionPayload = {
+      cardId: undefined,
+      cardsToReturn
+    };
+    
+    const message = createMessage('PLAYER_ACTION', guestPeerId, payload);
+    peerManager.broadcast(message);
+  }
 
   function handleStartRound() {
     // Guest can't start rounds - only host can
@@ -200,6 +213,7 @@
   <GameScreen 
     localPlayerId={guestPeerId}
     onPlayCard={handlePlayCard}
+    onChancellorReturn={handleChancellorReturn}
     onStartRound={handleStartRound}
     isHost={false}
   />

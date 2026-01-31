@@ -1,18 +1,49 @@
 <script lang="ts">
   import cardsData from '../data/cards.json';
+  import type { CardDefinition, Ruleset } from '../types';
+  import { gameState } from '../stores/game';
 
   export let onSelect: (cardGuess: string) => void;
   export let onCancel: () => void;
-
-  // Filter out Guard (can't guess Guard)
-  $: guessableCards = cardsData.filter(card => card.id !== 'guard');
+  
+  // Type for the new card data structure
+  interface CardRegistry {
+    cards: Record<string, CardDefinition>;
+    decks: Record<string, Record<string, number>>;
+    classicCardValues: Record<string, number>;
+  }
+  
+  const registry = cardsData as unknown as CardRegistry;
+  
+  // Get current ruleset from game state
+  $: ruleset = $gameState?.ruleset || 'classic';
+  
+  // Get cards available in current deck, excluding Guard and Spy (can't guess them)
+  $: guessableCards = Object.values(registry.cards)
+    .filter(card => {
+      // Can't guess Guard or Spy
+      if (card.id === 'guard' || card.id === 'spy') return false;
+      // Only include cards that are in the current deck
+      const deckDef = registry.decks[ruleset];
+      return deckDef && deckDef[card.id] !== undefined;
+    })
+    .map(card => ({
+      ...card,
+      // Use classic values for classic ruleset
+      value: ruleset === 'classic' && registry.classicCardValues[card.id] !== undefined 
+        ? registry.classicCardValues[card.id] 
+        : card.value
+    }))
+    .sort((a, b) => a.value - b.value);
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
+      'spy': '🕵️',
       'priest': '🙏',
       'baron': '⚖️',
       'handmaid': '🛡️',
       'prince': '👑',
+      'chancellor': '📜',
       'king': '👔',
       'countess': '💃',
       'princess': '👸'
@@ -22,10 +53,12 @@
 
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
+      'spy': '#2c3e50',
       'priest': '#9b59b6',
       'baron': '#3498db',
       'handmaid': '#1abc9c',
       'prince': '#f39c12',
+      'chancellor': '#8e44ad',
       'king': '#e67e22',
       'countess': '#e91e63',
       'princess': '#ff69b4'

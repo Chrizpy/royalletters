@@ -12,6 +12,7 @@
   // Props
   export let localPlayerId: string;
   export let onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
+  export let onChancellorReturn: ((cardsToReturn: string[]) => void) | undefined = undefined;
   export let onStartRound: () => void;
   export let onPlayAgain: (() => void) | undefined = undefined;
   export let isHost: boolean = false;
@@ -22,6 +23,7 @@
   let selectingGuess: boolean = false;
   let pendingCardId: string | null = null;
   let pendingTargetId: string | null = null;
+  let chancellorSelectedCards: string[] = [];
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -31,11 +33,32 @@
   $: activePlayer = gameState?.players[gameState?.activePlayerIndex];
   $: opponents = gameState?.players.filter(p => p.id !== localPlayerId) || [];
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
+  $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 7, 3: 5, 4: 4 };
     return map[playerCount] || 4;
+  }
+  
+  function toggleChancellorCard(cardId: string) {
+    if (!isChancellorPhase) return;
+    
+    const index = chancellorSelectedCards.indexOf(cardId);
+    if (index === -1) {
+      // Only allow selecting 2 cards
+      if (chancellorSelectedCards.length < 2) {
+        chancellorSelectedCards = [...chancellorSelectedCards, cardId];
+      }
+    } else {
+      chancellorSelectedCards = chancellorSelectedCards.filter(c => c !== cardId);
+    }
+  }
+  
+  function confirmChancellorReturn() {
+    if (chancellorSelectedCards.length !== 2 || !onChancellorReturn) return;
+    onChancellorReturn(chancellorSelectedCards);
+    chancellorSelectedCards = [];
   }
 
   function selectCard(cardId: string) {
@@ -134,6 +157,12 @@
         🎉 Game Over!
       {:else if gameState.phase === 'ROUND_END'}
         Round Complete
+      {:else if gameState.phase === 'CHANCELLOR_RESOLVING'}
+        {#if isMyTurn}
+          📜 Select 2 cards to return
+        {:else}
+          {activePlayer?.name} is using Chancellor
+        {/if}
       {:else if isMyTurn}
         Your Turn
       {:else}
@@ -211,6 +240,21 @@
         onCancel={cancelSelection}
       />
     {/if}
+    
+    {#if isChancellorPhase}
+      <div class="chancellor-modal">
+        <div class="chancellor-content">
+          <h3>📜 Chancellor Effect</h3>
+          <p>Select 2 cards from your hand to return to the bottom of the deck.</p>
+          <p class="selected-count">Selected: {chancellorSelectedCards.length}/2</p>
+          {#if chancellorSelectedCards.length === 2}
+            <button class="confirm-chancellor-btn" on:click={confirmChancellorReturn}>
+              Confirm Return
+            </button>
+          {/if}
+        </div>
+      </div>
+    {/if}
   </div>
 
   <!-- Local player hand -->
@@ -232,13 +276,13 @@
       {/if}
     </div>
 
-    <div class="hand">
+    <div class="hand" class:chancellor-mode={isChancellorPhase}>
       {#each localPlayer?.hand || [] as cardId, index}
         <Card 
           {cardId}
-          isSelected={selectedCard === cardId}
-          isPlayable={canPlay}
-          onClick={() => selectCard(cardId)}
+          isSelected={isChancellorPhase ? chancellorSelectedCards.includes(cardId) : selectedCard === cardId}
+          isPlayable={canPlay || isChancellorPhase}
+          onClick={() => isChancellorPhase ? toggleChancellorCard(cardId) : selectCard(cardId)}
           delay={index * 100}
         />
       {/each}
@@ -506,6 +550,54 @@
     font-style: italic;
   }
 
+  /* Chancellor modal */
+  .chancellor-modal {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1.5rem;
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(142, 68, 173, 0.5);
+    animation: modal-pop 0.3s ease-out;
+  }
+
+  .chancellor-content {
+    text-align: center;
+    color: white;
+  }
+
+  .chancellor-content h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.3rem;
+  }
+
+  .chancellor-content p {
+    margin: 0 0 1rem 0;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .selected-count {
+    font-weight: 600;
+    color: #8e44ad !important;
+  }
+
+  .confirm-chancellor-btn {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 0.5rem;
+  }
+
+  .confirm-chancellor-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);
+  }
+
   /* Player hand area */
   .player-hand-area {
     background: rgba(255, 255, 255, 0.05);
@@ -568,6 +660,13 @@
     justify-content: center;
     gap: 1rem;
     min-height: 160px;
+  }
+
+  .hand.chancellor-mode {
+    border: 2px dashed rgba(142, 68, 173, 0.5);
+    border-radius: 12px;
+    padding: 0.5rem;
+    background: rgba(142, 68, 173, 0.1);
   }
 
   .empty-hand {
