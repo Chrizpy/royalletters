@@ -7,7 +7,7 @@
   export let cardName: string = '';
 </script>
 
-<div class="target-selector-overlay" role="dialog" aria-modal="true" tabindex="-1" on:click={onCancel} on:keydown={(e) => e.key === 'Escape' && onCancel()}>
+<div class="target-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={onCancel} on:keydown={(e) => e.key === 'Escape' && onCancel()}>
   <div class="target-selector" on:click|stopPropagation>
     <h3>Select a target for {cardName}</h3>
     

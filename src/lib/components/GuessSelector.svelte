@@ -34,7 +34,7 @@
   }
 </script>
 
-<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="-1" on:click={onCancel} on:keydown={(e) => e.key === 'Escape' && onCancel()}>
+<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={onCancel} on:keydown={(e) => e.key === 'Escape' && onCancel()}>
   <div class="guess-selector" on:click|stopPropagation>
     <h3>Guess their card!</h3>
     <p class="subtitle">Which card do you think they have?</p>
