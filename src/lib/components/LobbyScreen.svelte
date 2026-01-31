@@ -36,10 +36,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100dvh;
+    height: 100dvh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 1rem;
     box-sizing: border-box;
+    overflow: hidden;
   }
 
   .lobby-container {

@@ -4,6 +4,7 @@
   import JoinGame from './lib/components/JoinGame.svelte';
   import ConnectionStatus from './lib/components/ConnectionStatus.svelte';
   import { isHost, connectionState } from './lib/stores/network';
+  import { gameStarted } from './lib/stores/game';
 
   // Routing state
   type Screen = 'lobby' | 'host' | 'join' | 'game';
@@ -20,10 +21,15 @@
       currentScreen = 'lobby';
     }
   }
+
+  // Only show connection status when not in game
+  $: showConnectionStatus = !$gameStarted;
 </script>
 
 <main>
-  <ConnectionStatus />
+  {#if showConnectionStatus}
+    <ConnectionStatus />
+  {/if}
 
   {#if currentScreen === 'lobby'}
     <LobbyScreen />

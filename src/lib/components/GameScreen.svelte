@@ -283,7 +283,7 @@
 
 <style>
   .loading-screen {
-    min-height: 100dvh;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -293,7 +293,7 @@
   }
 
   .game-screen {
-    min-height: 100dvh;
+    height: 100dvh;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     display: flex;
     flex-direction: column;
@@ -301,6 +301,7 @@
     padding-bottom: env(safe-area-inset-bottom, 1rem);
     color: white;
     box-sizing: border-box;
+    overflow: hidden;
   }
 
   /* Status bar */

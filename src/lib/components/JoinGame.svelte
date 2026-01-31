@@ -268,10 +268,11 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    min-height: 100dvh;
+    height: 100dvh;
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     padding: 1rem;
     box-sizing: border-box;
+    overflow-y: auto;
   }
 
   .join-container {
