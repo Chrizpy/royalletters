@@ -221,8 +221,11 @@ export class GameEngine {
     const activePlayer = this.getActivePlayer()!;
     const cardDef = getCardDefinition(action.cardId)!;
 
-    // Remove card from hand and add to discard pile
-    activePlayer.hand = activePlayer.hand.filter(c => c !== action.cardId);
+    // Remove only ONE instance of the card from hand and add to discard pile
+    const cardIndex = activePlayer.hand.indexOf(action.cardId);
+    if (cardIndex !== -1) {
+      activePlayer.hand.splice(cardIndex, 1);
+    }
     activePlayer.discardPile.push(action.cardId);
 
     let result: ActionResult = {

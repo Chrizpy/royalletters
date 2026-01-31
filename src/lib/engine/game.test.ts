@@ -514,6 +514,29 @@ describe('Card Effect Tests', () => {
       // So we need to check differently
       expect(result.success).toBe(true);
     });
+
+    it('should only remove one copy of a card when playing it', () => {
+      const state = game.getState();
+      // Player has two Handmaids
+      state.players[0].hand = ['handmaid', 'handmaid'];
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'handmaid',
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      // Player should still have one Handmaid left
+      expect(newState.players[0].hand).toHaveLength(1);
+      expect(newState.players[0].hand[0]).toBe('handmaid');
+      // And one Handmaid in the discard pile
+      expect(newState.players[0].discardPile).toContain('handmaid');
+    });
   });
 
   describe('Prince Tests', () => {
