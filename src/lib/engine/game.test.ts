@@ -179,6 +179,27 @@ describe('Round Start Tests', () => {
     state = game.getState();
     expect(state.roundCount).toBe(2);
   });
+
+  it('should reset eliminated players to PLAYING status on new round', () => {
+    game.startRound();
+    let state = game.getState();
+    
+    // Simulate player being eliminated
+    state.players[1].status = 'ELIMINATED';
+    game.setState(state);
+    
+    // Verify player is eliminated
+    expect(game.getState().players[1].status).toBe('ELIMINATED');
+    
+    // Start a new round
+    game.startRound();
+    state = game.getState();
+    
+    // All players should be PLAYING in the new round
+    expect(state.players[0].status).toBe('PLAYING');
+    expect(state.players[1].status).toBe('PLAYING');
+    expect(state.players[2].status).toBe('PLAYING');
+  });
 });
 
 describe('Draw Phase Tests', () => {

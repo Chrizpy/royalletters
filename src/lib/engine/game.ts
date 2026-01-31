@@ -76,7 +76,7 @@ export class GameEngine {
       ...p,
       hand: [],
       discardPile: [],
-      status: p.status === 'WON_ROUND' ? 'PLAYING' : p.status,
+      status: 'PLAYING',  // Reset ALL players to PLAYING for new round
     }));
 
     // Create and shuffle deck
