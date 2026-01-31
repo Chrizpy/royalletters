@@ -250,16 +250,16 @@
             First selected → very bottom | Second selected → above it
           </p>
           <div class="chancellor-selected-list">
-            {#if chancellorSelectedCards.length > 0}
-              <div class="selected-card-item">
-                <span class="position-badge">⬇️ Bottom</span>
-                <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[0])?.name}</span>
-              </div>
-            {/if}
             {#if chancellorSelectedCards.length > 1}
               <div class="selected-card-item">
                 <span class="position-badge">⬆️ 2nd</span>
                 <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[1])?.name}</span>
+              </div>
+            {/if}
+            {#if chancellorSelectedCards.length > 0}
+              <div class="selected-card-item bottom-card">
+                <span class="position-badge">⬇️ Bottom</span>
+                <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[0])?.name}</span>
               </div>
             {/if}
           </div>
