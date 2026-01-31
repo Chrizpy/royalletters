@@ -177,6 +177,17 @@ export class PeerManager {
   }
 
   /**
+   * Broadcast a message to all connected peers except one
+   */
+  broadcastExcept(message: NetworkMessage, excludePeerId: string): void {
+    this.connections.forEach((conn, peerId) => {
+      if (conn.open && peerId !== excludePeerId) {
+        conn.send(message);
+      }
+    });
+  }
+
+  /**
    * Set the message handler
    */
   onMessage(handler: MessageHandler): void {

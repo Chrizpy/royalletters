@@ -132,7 +132,7 @@
       // Broadcast updated state to all clients
       broadcastGameState();
     } else if (message.type === 'CHAT_MESSAGE') {
-      // Received chat message from a guest - add to local store and broadcast to all
+      // Received chat message from a guest - add to local store and broadcast to all except sender
       const payload = message.payload as ChatMessagePayload;
       const chatMsg = {
         id: uuidv4(),
@@ -143,8 +143,8 @@
       };
       addChatMessage(chatMsg);
       
-      // Broadcast to all other clients
-      peerManager.broadcast(message);
+      // Broadcast to all other clients except the original sender
+      peerManager.broadcastExcept(message, fromPeerId);
     }
   }
 
