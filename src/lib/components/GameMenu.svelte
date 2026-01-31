@@ -3,6 +3,8 @@
   import type { ChatMessage } from '../stores/chat';
   import { chatMessages } from '../stores/chat';
 
+  const SCROLL_DELAY_MS = 100;
+
   export let logs: LogEntry[] = [];
   export let onSendChat: ((text: string) => void) | undefined = undefined;
   
@@ -13,17 +15,18 @@
   let chatInput = '';
 
   $: messages = $chatMessages;
+  $: isChatInputEmpty = !chatInput.trim();
 
   $: if (logsContainer && logs.length && activeModal === 'log') {
     setTimeout(() => {
       logsContainer.scrollTop = logsContainer.scrollHeight;
-    }, 100);
+    }, SCROLL_DELAY_MS);
   }
 
   $: if (chatContainer && messages.length && activeModal === 'chat') {
     setTimeout(() => {
       chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 100);
+    }, SCROLL_DELAY_MS);
   }
 
   function toggleMenu() {
@@ -45,7 +48,7 @@
   }
 
   function handleSendChat() {
-    if (!chatInput.trim() || !onSendChat) return;
+    if (isChatInputEmpty || !onSendChat) return;
     onSendChat(chatInput.trim());
     chatInput = '';
   }
@@ -142,7 +145,7 @@
           bind:value={chatInput}
           on:keydown={handleKeydown}
         />
-        <button class="send-btn" on:click={handleSendChat} aria-label="Send message" disabled={!chatInput.trim()}>
+        <button class="send-btn" on:click={handleSendChat} aria-label="Send message" disabled={isChatInputEmpty}>
           ➤
         </button>
       </div>
