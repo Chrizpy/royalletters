@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { GameEngine } from '../engine/game';
-import type { GameState, GameAction } from '../types';
+import type { GameState, GameAction, ActionResult } from '../types';
 
 // Game engine instance (singleton for the session)
 let engine: GameEngine | null = null;
@@ -10,6 +10,9 @@ export const gameState = writable<GameState | null>(null);
 
 // Whether the game has started
 export const gameStarted = writable<boolean>(false);
+
+// Revealed card (for Priest effect)
+export const revealedCard = writable<{ cardId: string; playerName: string } | null>(null);
 
 /**
  * Initialize the game engine with players
@@ -53,11 +56,20 @@ export function drawCard() {
 /**
  * Apply a player action (play card)
  */
-export function applyAction(action: GameAction) {
+export function applyAction(action: GameAction): ActionResult | undefined {
   if (!engine) return;
   
   const result = engine.applyMove(action);
   const newState = engine.getState();
+  
+  // Handle Priest reveal - store the revealed card info
+  if (result.revealedCard) {
+    const targetPlayer = newState.players.find(p => p.id === action.targetPlayerId);
+    revealedCard.set({
+      cardId: result.revealedCard,
+      playerName: targetPlayer?.name || 'Unknown'
+    });
+  }
   
   // Auto-draw for next player if needed
   if (newState.phase === 'TURN_START') {
@@ -66,6 +78,13 @@ export function applyAction(action: GameAction) {
   
   gameState.set(engine.getState());
   return result;
+}
+
+/**
+ * Clear the revealed card (after user acknowledges)
+ */
+export function clearRevealedCard() {
+  revealedCard.set(null);
 }
 
 /**

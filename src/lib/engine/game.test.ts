@@ -451,6 +451,9 @@ describe('Card Effect Tests', () => {
 
       expect(result.success).toBe(true);
       expect(newState.players[1].status).toBe('ELIMINATED');
+      // Eliminated player's card should be in discard pile (visible to all)
+      expect(newState.players[1].hand).toHaveLength(0);
+      expect(newState.players[1].discardPile).toContain('guard');
     });
 
     it('should eliminate self if target has higher card', () => {
@@ -471,6 +474,9 @@ describe('Card Effect Tests', () => {
 
       expect(result.success).toBe(true);
       expect(newState.players[0].status).toBe('ELIMINATED');
+      // Eliminated player's card should be in discard pile (visible to all)
+      expect(newState.players[0].hand).toHaveLength(0);
+      expect(newState.players[0].discardPile).toContain('guard'); // The remaining card
     });
 
     it('should not eliminate anyone on tie', () => {
@@ -536,6 +542,29 @@ describe('Card Effect Tests', () => {
       expect(newState.players[0].hand[0]).toBe('handmaid');
       // And one Handmaid in the discard pile
       expect(newState.players[0].discardPile).toContain('handmaid');
+    });
+
+    it('should allow playing cards with no effect when all other players are protected', () => {
+      const state = game.getState();
+      state.players[0].hand = ['guard', 'priest'];
+      state.players[1].hand = ['baron'];
+      state.players[1].status = 'PROTECTED';
+      game.setState(state);
+
+      // Guard should be playable without target when all others are protected
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'guard',
+        // No targetPlayerId - all others are protected
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('no effect');
+      // Protected player should still be OK
+      expect(result.newState.players[1].status).not.toBe('ELIMINATED');
     });
   });
 

@@ -4,8 +4,9 @@
   import TargetSelector from './TargetSelector.svelte';
   import GuessSelector from './GuessSelector.svelte';
   import GameLog from './GameLog.svelte';
+  import CardReveal from './CardReveal.svelte';
   import { getCardDefinition } from '../engine/deck';
-  import { gameState as gameStateStore, drawCard } from '../stores/game';
+  import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
 
   // Props
@@ -23,6 +24,7 @@
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
+  $: revealed = $revealedCard;
   $: localPlayer = gameState?.players.find(p => p.id === localPlayerId);
   $: isMyTurn = gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId;
   $: activePlayer = gameState?.players[gameState?.activePlayerIndex];
@@ -46,7 +48,14 @@
 
     // Check if card needs a target
     if (card.effect.requiresTargetPlayer) {
-      selectingTarget = true;
+      // Check if there are valid targets available
+      const validTargets = getValidTargets();
+      if (validTargets.length === 0) {
+        // No valid targets - play card with no effect
+        playCardWithSelection(cardId);
+      } else {
+        selectingTarget = true;
+      }
     } else {
       // Play card immediately
       playCardWithSelection(cardId);
@@ -248,6 +257,15 @@
 
   <!-- Game log -->
   <GameLog logs={gameState.logs} />
+  
+  <!-- Card reveal modal (for Priest) -->
+  {#if revealed}
+    <CardReveal 
+      cardId={revealed.cardId}
+      playerName={revealed.playerName}
+      onDismiss={clearRevealedCard}
+    />
+  {/if}
 </div>
 {:else}
   <div class="loading-screen">
