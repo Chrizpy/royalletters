@@ -4,7 +4,7 @@
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
   import { gameState, gameStarted, initGame, startRound, applyAction, getEngine } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
 
   let qrCodeDataUrl = '';
@@ -33,17 +33,10 @@
         connectionState.set(state);
       });
       
-      // Set up connection listener
+      // Set up connection listener - just log the connection, player info comes via PLAYER_JOINED message
       peerManager.onConnection((newPeerId) => {
         console.log('New player connected:', newPeerId);
-        const playerName = `Player ${players.length + 2}`;
-        players = [...players, { id: newPeerId, name: playerName }];
-        connectedPlayers.update(p => [...p, { 
-          id: newPeerId, 
-          name: playerName,
-          avatarId: 'default',
-          isHost: false
-        }]);
+        // Player will be added when we receive their PLAYER_JOINED message with nickname
       });
 
       // Set up message handler for player actions
@@ -85,7 +78,22 @@
   function handleMessage(message: NetworkMessage, fromPeerId: string) {
     console.log('Host received message:', message.type, 'from:', fromPeerId);
     
-    if (message.type === 'PLAYER_ACTION') {
+    if (message.type === 'PLAYER_JOINED') {
+      const payload = message.payload as PlayerJoinedPayload;
+      // Use guest's chosen nickname, or fallback to "Player N" where N = host (1) + existing players + 1
+      const playerName = payload.playerName || `Player ${players.length + 2}`;
+      
+      // Check if player is already in the list (avoid duplicates)
+      if (!players.some(p => p.id === fromPeerId)) {
+        players = [...players, { id: fromPeerId, name: playerName }];
+        connectedPlayers.update(p => [...p, { 
+          id: fromPeerId, 
+          name: playerName,
+          avatarId: 'default',
+          isHost: false
+        }]);
+      }
+    } else if (message.type === 'PLAYER_ACTION') {
       const payload = message.payload as PlayerActionPayload;
       const result = applyAction({
         type: 'PLAY_CARD',

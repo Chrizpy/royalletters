@@ -4,7 +4,7 @@
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
   import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
 
   let manualPeerId = '';
@@ -17,6 +17,7 @@
   let cameraPermissionDenied = false;
   let guestPeerId = '';
   let hostPeerId = '';
+  let nickname = '';
 
   // Subscribe to game started state
   $: inGame = $gameStarted;
@@ -120,6 +121,14 @@
         if (state === 'connected') {
           remotePeerId.set(hostPeerId);
           peerId.set(guestPeerId);
+          
+          // Send player joined message with nickname
+          const playerJoinedPayload: PlayerJoinedPayload = {
+            playerId: guestPeerId,
+            playerName: nickname.trim()
+          };
+          const joinMessage = createMessage('PLAYER_JOINED', guestPeerId, playerJoinedPayload);
+          peerManager.broadcast(joinMessage);
         }
       });
 
@@ -215,6 +224,17 @@
           <p>Connecting to host...</p>
         </div>
       {:else}
+        <div class="name-section">
+          <label for="nickname">Your Nickname:</label>
+          <input
+            id="nickname"
+            type="text"
+            bind:value={nickname}
+            placeholder="Enter your nickname"
+            class="name-input"
+          />
+        </div>
+
         {#if !showManualInput && !cameraPermissionDenied}
           <div class="scanner-section">
             <p class="instruction">Point your camera at the host's QR code</p>
@@ -312,6 +332,33 @@
   .info-detail {
     font-size: 0.9rem;
     margin-top: 0.5rem;
+  }
+
+  .name-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .name-section label {
+    display: block;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.5rem;
+  }
+
+  .name-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+  }
+
+  .name-input:focus {
+    outline: none;
+    border-color: #f5576c;
   }
 
   .scanner-section {
