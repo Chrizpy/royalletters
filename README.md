@@ -1,47 +1,114 @@
-# Svelte + TS + Vite
+# Royal Letters
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+A mobile-web, P2P version of the card game *Love Letter*.
+
+## Phase 1: Core Engine (Current)
+
+This phase implements the headless game logic layer - a pure TypeScript engine with no UI, designed for P2P synchronization via deterministic RNG and serializable state.
+
+## Prerequisites
+
+- **Node.js** (v18 or higher recommended)
+- **npm** (comes with Node.js)
+
+## Getting Started
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Run Tests
+
+```bash
+npm test
+```
+
+The test suite includes 48 tests covering:
+- RNG determinism
+- Deck creation and shuffling
+- Game initialization and round management
+- All 8 card effects (Guard, Priest, Baron, Handmaid, Prince, King, Countess, Princess)
+- Win conditions and state serialization
+
+### 3. Development Server (UI Preview)
+
+```bash
+npm run dev
+```
+
+This starts the Vite development server. Note: Phase 1 only includes the core game engine - the UI is placeholder content from the Svelte template.
+
+### 4. Build for Production
+
+```bash
+npm run build
+```
+
+### 5. TypeScript Type Checking
+
+```bash
+npm run check
+```
+
+## Project Structure
+
+```
+src/lib/
+├── data/
+│   └── cards.json          # Card definitions (8 card types)
+├── engine/
+│   ├── rng.ts              # Deterministic random number generator
+│   ├── deck.ts             # Deck creation and shuffling
+│   ├── game.ts             # Core game engine (583 LOC)
+│   └── game.test.ts        # Comprehensive test suite (48 tests)
+└── types.ts                # TypeScript type definitions
+```
+
+## Using the Game Engine
+
+```typescript
+import { GameEngine } from './src/lib/engine/game';
+
+// Initialize game
+const game = new GameEngine();
+game.init({
+  players: [
+    { id: 'p1', name: 'Alice' },
+    { id: 'p2', name: 'Bob' }
+  ]
+});
+
+// Start a round
+game.startRound();  // Generates seed, shuffles deck, deals cards
+
+// Player draws
+game.drawPhase();
+
+// Player plays a card
+const result = game.applyMove({
+  type: 'PLAY_CARD',
+  playerId: 'p1',
+  cardId: 'guard',
+  targetPlayerId: 'p2',
+  targetCardGuess: 'baron'
+});
+
+// Get current state (for P2P sync)
+const state = game.getState();
+
+// Restore state (from P2P sync)
+game.setState(state);
+```
+
+## Key Features
+
+- **Deterministic**: Same seed always produces same game sequence
+- **Serializable**: Full state can be converted to/from JSON for P2P sync
+- **Type-safe**: Complete TypeScript type definitions
+- **Well-tested**: 48 passing tests with full coverage of game logic
 
 ## Recommended IDE Setup
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
-
-## Need an official Svelte framework?
-
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
-
-## Technical considerations
-
-**Why use this over SvelteKit?**
-
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
-
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
-
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
-
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode)
