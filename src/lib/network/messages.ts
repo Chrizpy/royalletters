@@ -7,7 +7,8 @@ export type MessageType =
   | 'PLAYER_ACTION'      // A player plays a card
   | 'ROUND_START'        // Host starts a new round (includes RNG seed)
   | 'CONNECTION_ACK'     // Acknowledge connection established
-  | 'PRIEST_REVEAL';     // Private reveal for Priest card effect
+  | 'PRIEST_REVEAL'      // Private reveal for Priest card effect
+  | 'CHAT_MESSAGE';      // In-game chat message
 
 export interface NetworkMessage {
   type: MessageType;
@@ -54,6 +55,12 @@ export interface ConnectionAckPayload {
 export interface PriestRevealPayload {
   cardId: string;
   targetPlayerName: string;
+}
+
+export interface ChatMessagePayload {
+  text: string;
+  senderName: string;
+  timestamp: number;
 }
 
 export function createMessage(
