@@ -42,7 +42,7 @@
 <style>
   main {
     width: 100%;
-    min-height: 100vh;
+    height: 100dvh;
   }
 
   .game-screen {
@@ -50,7 +50,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 100vh;
+    height: 100%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
   }
