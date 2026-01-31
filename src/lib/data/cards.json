@@ -1,0 +1,10 @@
+[
+  { "id": "guard", "name": "Guard", "value": 1, "count": 5, "description": "Guess a player's card.", "assetPath": "guard.webp", "effect": { "type": "GUESS_CARD", "requiresTargetPlayer": true, "requiresTargetCardType": true } },
+  { "id": "priest", "name": "Priest", "value": 2, "count": 2, "description": "Look at another hand.", "assetPath": "priest.webp", "effect": { "type": "SEE_HAND", "requiresTargetPlayer": true } },
+  { "id": "baron", "name": "Baron", "value": 3, "count": 2, "description": "Compare hands; lower value is out.", "assetPath": "baron.webp", "effect": { "type": "COMPARE_HANDS", "requiresTargetPlayer": true } },
+  { "id": "handmaid", "name": "Handmaid", "value": 4, "count": 2, "description": "Immune until next turn.", "assetPath": "handmaid.webp", "effect": { "type": "PROTECTION", "requiresTargetPlayer": false } },
+  { "id": "prince", "name": "Prince", "value": 5, "count": 2, "description": "Force discard.", "assetPath": "prince.webp", "effect": { "type": "FORCE_DISCARD", "requiresTargetPlayer": true, "canTargetSelf": true } },
+  { "id": "king", "name": "King", "value": 6, "count": 1, "description": "Trade hands.", "assetPath": "king.webp", "effect": { "type": "TRADE_HANDS", "requiresTargetPlayer": true } },
+  { "id": "countess", "name": "Countess", "value": 7, "count": 1, "description": "Discard if holding King/Prince.", "assetPath": "countess.webp", "effect": { "type": "CONDITIONAL_DISCARD", "condition": ["king", "prince"] } },
+  { "id": "princess", "name": "Princess", "value": 8, "count": 1, "description": "Lose if discarded.", "assetPath": "princess.webp", "effect": { "type": "LOSE_IF_DISCARDED" } }
+]
