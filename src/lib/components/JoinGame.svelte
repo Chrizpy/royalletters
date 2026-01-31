@@ -4,8 +4,10 @@
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
   import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
+  import { addChatMessage } from '../stores/chat';
+  import { v4 as uuidv4 } from 'uuid';
 
   let manualPeerId = '';
   let error = '';
@@ -98,6 +100,17 @@
         playerName: payload.targetPlayerName,
         viewerPlayerId: guestPeerId  // This guest is the viewer
       });
+    } else if (message.type === 'CHAT_MESSAGE') {
+      // Received chat message - add to local store
+      const payload = message.payload as ChatMessagePayload;
+      const chatMsg = {
+        id: uuidv4(),
+        senderId: message.senderId,
+        senderName: payload.senderName,
+        text: payload.text,
+        timestamp: payload.timestamp
+      };
+      addChatMessage(chatMsg);
     }
   }
 
@@ -178,6 +191,29 @@
     console.log('Only host can start rounds');
   }
 
+  function handleSendChat(text: string) {
+    // Create chat message
+    const chatMsg = {
+      id: uuidv4(),
+      senderId: guestPeerId,
+      senderName: nickname || 'Guest',
+      text,
+      timestamp: Date.now()
+    };
+    
+    // Add to local store
+    addChatMessage(chatMsg);
+    
+    // Send to host (who will broadcast to others)
+    const payload: ChatMessagePayload = {
+      text,
+      senderName: nickname || 'Guest',
+      timestamp: chatMsg.timestamp
+    };
+    const message = createMessage('CHAT_MESSAGE', guestPeerId, payload);
+    peerManager.broadcast(message);
+  }
+
   function handleManualConnect() {
     if (manualPeerId.trim()) {
       connectToHost(manualPeerId.trim());
@@ -215,6 +251,7 @@
     onPlayCard={handlePlayCard}
     onChancellorReturn={handleChancellorReturn}
     onStartRound={handleStartRound}
+    onSendChat={handleSendChat}
     isHost={false}
   />
 {:else}
