@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { getCardDefinition } from '../engine/deck';
+  import { getCardDefinition, getCardValue } from '../engine/deck';
+  import { gameState } from '../stores/game';
   
   export let cardId: string;
   export let isSelected: boolean = false;
@@ -8,15 +9,19 @@
   export let delay: number = 0;
 
   $: card = getCardDefinition(cardId);
+  $: ruleset = $gameState?.ruleset || 'classic';
+  $: cardValue = getCardValue(cardId, ruleset);
   $: cardColor = getCardColor(cardId);
 
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
+      'spy': '#2c3e50',
       'guard': '#e74c3c',
       'priest': '#9b59b6',
       'baron': '#3498db',
       'handmaid': '#1abc9c',
       'prince': '#f39c12',
+      'chancellor': '#8e44ad',
       'king': '#e67e22',
       'countess': '#e91e63',
       'princess': '#ff69b4'
@@ -26,11 +31,13 @@
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
+      'spy': '🕵️',
       'guard': '⚔️',
       'priest': '🙏',
       'baron': '⚖️',
       'handmaid': '🛡️',
       'prince': '👑',
+      'chancellor': '📜',
       'king': '👔',
       'countess': '💃',
       'princess': '👸'
@@ -48,7 +55,7 @@
   disabled={!isPlayable}
 >
   <div class="card-inner">
-    <div class="card-value">{card?.value || '?'}</div>
+    <div class="card-value">{cardValue}</div>
     <div class="card-emoji">{getCardEmoji(cardId)}</div>
     <div class="card-name">{card?.name || 'Unknown'}</div>
     <div class="card-description">{card?.description || ''}</div>

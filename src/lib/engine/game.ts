@@ -7,8 +7,9 @@ import type {
   ActionResult,
   LogEntry,
   TOKENS_TO_WIN,
+  Ruleset,
 } from '../types';
-import { createDeck, shuffle, getCardDefinition } from './deck';
+import { createDeck, shuffle, getCardDefinition, getCardValue } from './deck';
 
 const TOKENS_TO_WIN_MAP: Record<number, number> = {
   2: 7,
@@ -28,6 +29,7 @@ export class GameEngine {
       players: [],
       deck: [],
       burnedCard: null,
+      burnedCardsFaceUp: [],
       activePlayerIndex: 0,
       phase: 'LOBBY',
       pendingAction: null,
@@ -35,6 +37,7 @@ export class GameEngine {
       logs: [],
       rngSeed: '',
       roundCount: 0,
+      ruleset: 'classic',
     };
   }
 
@@ -57,6 +60,7 @@ export class GameEngine {
       ...this.createEmptyState(),
       players,
       phase: 'LOBBY',
+      ruleset: config.ruleset || 'classic',
     };
 
     this.addLog('Game initialized');
@@ -79,12 +83,26 @@ export class GameEngine {
       status: 'PLAYING',  // Reset ALL players to PLAYING for new round
     }));
 
-    // Create and shuffle deck
-    const deck = shuffle(createDeck(), rngSeed);
+    // Create and shuffle deck using the configured ruleset
+    const deck = shuffle(createDeck(this.state.ruleset), rngSeed);
     this.state.deck = deck;
 
-    // Burn one card
+    // Burn one card face-down
     this.state.burnedCard = this.state.deck.shift() || null;
+    
+    // For 2-player games, burn 3 additional cards face-up
+    this.state.burnedCardsFaceUp = [];
+    if (this.state.players.length === 2) {
+      for (let i = 0; i < 3; i++) {
+        const card = this.state.deck.shift();
+        if (card) {
+          this.state.burnedCardsFaceUp.push(card);
+        }
+      }
+      if (this.state.burnedCardsFaceUp.length > 0) {
+        this.addLog(`Burned face-up: ${this.state.burnedCardsFaceUp.map(c => getCardDefinition(c)?.name).join(', ')}`);
+      }
+    }
 
     // Deal one card to each player
     for (const player of this.state.players) {
@@ -99,6 +117,9 @@ export class GameEngine {
     // Set first active player
     this.state.activePlayerIndex = 0;
     this.state.phase = 'TURN_START';
+    
+    // Clear any chancellor state from previous round
+    this.state.chancellorCards = undefined;
 
     this.addLog(`Round ${this.state.roundCount} started`);
   }
@@ -131,6 +152,11 @@ export class GameEngine {
    * Validate if a move is legal
    */
   validateMove(playerId: string, action: GameAction): { valid: boolean; error?: string } {
+    // Handle Chancellor return action
+    if (action.type === 'CHANCELLOR_RETURN') {
+      return this.validateChancellorReturn(playerId, action);
+    }
+    
     // Check if it's the player's turn
     const activePlayer = this.getActivePlayer();
     if (!activePlayer || activePlayer.id !== playerId) {
@@ -140,6 +166,11 @@ export class GameEngine {
     // Check if phase is correct
     if (this.state.phase !== 'WAITING_FOR_ACTION') {
       return { valid: false, error: 'Not in action phase' };
+    }
+    
+    // Check if cardId is provided for PLAY_CARD action
+    if (!action.cardId) {
+      return { valid: false, error: 'Card ID required' };
     }
 
     // Check if player has the card
@@ -206,7 +237,7 @@ export class GameEngine {
       }
     }
 
-    // Guard-specific validation: cannot guess Guard
+    // Guard-specific validation: cannot guess Guard (but CAN guess Spy in 2019 rules)
     if (action.cardId === 'guard' && action.targetCardGuess === 'guard') {
       return { valid: false, error: 'Cannot guess Guard' };
     }
@@ -218,11 +249,46 @@ export class GameEngine {
 
     return { valid: true };
   }
+  
+  /**
+   * Validate Chancellor return action
+   */
+  private validateChancellorReturn(playerId: string, action: GameAction): { valid: boolean; error?: string } {
+    const activePlayer = this.getActivePlayer();
+    if (!activePlayer || activePlayer.id !== playerId) {
+      return { valid: false, error: 'Not your turn' };
+    }
+    
+    if (this.state.phase !== 'CHANCELLOR_RESOLVING') {
+      return { valid: false, error: 'Not in Chancellor resolving phase' };
+    }
+    
+    if (!action.cardsToReturn || action.cardsToReturn.length !== 2) {
+      return { valid: false, error: 'Must return exactly 2 cards' };
+    }
+    
+    // Verify all cards to return are in player's hand
+    const handCopy = [...activePlayer.hand];
+    for (const cardId of action.cardsToReturn) {
+      const index = handCopy.indexOf(cardId);
+      if (index === -1) {
+        return { valid: false, error: 'Card not in hand' };
+      }
+      handCopy.splice(index, 1);
+    }
+    
+    return { valid: true };
+  }
 
   /**
    * Apply a card play action
    */
   applyMove(action: GameAction): ActionResult {
+    // Handle Chancellor return action
+    if (action.type === 'CHANCELLOR_RETURN') {
+      return this.applyChancellorReturn(action);
+    }
+    
     const validation = this.validateMove(action.playerId, action);
     if (!validation.valid) {
       return {
@@ -233,14 +299,14 @@ export class GameEngine {
     }
 
     const activePlayer = this.getActivePlayer()!;
-    const cardDef = getCardDefinition(action.cardId)!;
+    const cardDef = getCardDefinition(action.cardId!)!;
 
     // Remove only ONE instance of the card from hand and add to discard pile
-    const cardIndex = activePlayer.hand.indexOf(action.cardId);
+    const cardIndex = activePlayer.hand.indexOf(action.cardId!);
     if (cardIndex !== -1) {
       activePlayer.hand.splice(cardIndex, 1);
     }
-    activePlayer.discardPile.push(action.cardId);
+    activePlayer.discardPile.push(action.cardId!);
 
     let result: ActionResult = {
       success: true,
@@ -286,6 +352,13 @@ export class GameEngine {
         case 'LOSE_IF_DISCARDED':
           result = this.applyLoseIfDiscarded(activePlayer);
           break;
+        case 'SPY_BONUS':
+          result = this.applySpyBonus(activePlayer);
+          break;
+        case 'CHANCELLOR_DRAW':
+          result = this.applyChancellorDraw(activePlayer);
+          // Don't advance turn yet - waiting for player to return cards
+          return result;
       }
     }
 
@@ -351,8 +424,8 @@ export class GameEngine {
       };
     }
 
-    const activeValue = getCardDefinition(activeCard)?.value || 0;
-    const targetValue = getCardDefinition(targetCard)?.value || 0;
+    const activeValue = getCardValue(activeCard, this.state.ruleset);
+    const targetValue = getCardValue(targetCard, this.state.ruleset);
 
     if (activeValue < targetValue) {
       // Move the eliminated player's card(s) to their discard pile
@@ -473,6 +546,88 @@ export class GameEngine {
       newState: this.state,
     };
   }
+  
+  private applySpyBonus(activePlayer: PlayerState): ActionResult {
+    // Spy has no immediate effect when played - bonus is checked at round end
+    this.addLog(`${activePlayer.name} played Spy`, activePlayer.id);
+    return {
+      success: true,
+      message: 'Spy played - you may gain a token at round end if you are the only one with a Spy in your discard pile',
+      newState: this.state,
+    };
+  }
+  
+  private applyChancellorDraw(activePlayer: PlayerState): ActionResult {
+    // Draw up to 2 cards from the deck
+    const drawnCards: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const card = this.state.deck.shift();
+      if (card) {
+        activePlayer.hand.push(card);
+        drawnCards.push(card);
+      }
+    }
+    
+    if (drawnCards.length === 0) {
+      // No cards to draw - Chancellor has no effect
+      this.addLog(`Chancellor had no effect (deck empty)`, activePlayer.id);
+      this.advanceTurn();
+      return {
+        success: true,
+        message: 'Chancellor had no effect - deck is empty',
+        newState: this.state,
+      };
+    }
+    
+    // Store drawn cards info and change phase
+    this.state.chancellorCards = drawnCards;
+    this.state.phase = 'CHANCELLOR_RESOLVING';
+    
+    this.addLog(`${activePlayer.name} drew ${drawnCards.length} cards with Chancellor`, activePlayer.id);
+    
+    return {
+      success: true,
+      message: `Drew ${drawnCards.length} cards. Select 2 cards to return to the bottom of the deck.`,
+      newState: this.state,
+    };
+  }
+  
+  private applyChancellorReturn(action: GameAction): ActionResult {
+    const validation = this.validateChancellorReturn(action.playerId, action);
+    if (!validation.valid) {
+      return {
+        success: false,
+        message: validation.error || 'Invalid action',
+        newState: this.state,
+      };
+    }
+    
+    const activePlayer = this.getActivePlayer()!;
+    const cardsToReturn = action.cardsToReturn!;
+    
+    // Remove cards from hand and add to bottom of deck
+    for (const cardId of cardsToReturn) {
+      const index = activePlayer.hand.indexOf(cardId);
+      if (index !== -1) {
+        activePlayer.hand.splice(index, 1);
+        this.state.deck.push(cardId);  // Add to bottom of deck
+      }
+    }
+    
+    // Clear chancellor state
+    this.state.chancellorCards = undefined;
+    
+    this.addLog(`${activePlayer.name} returned 2 cards to the deck`, activePlayer.id);
+    
+    // Now advance turn
+    this.advanceTurn();
+    
+    return {
+      success: true,
+      message: 'Cards returned to deck',
+      newState: this.state,
+    };
+  }
 
   /**
    * Advance to next player's turn
@@ -538,6 +693,8 @@ export class GameEngine {
 
     if (activePlayers.length === 0) {
       this.addLog('No winner this round');
+      // Still check for Spy bonus even if no winner
+      this.checkSpyBonus();
       return;
     }
 
@@ -548,7 +705,7 @@ export class GameEngine {
     for (const player of activePlayers) {
       const card = player.hand[0];
       if (card) {
-        const value = getCardDefinition(card)?.value || 0;
+        const value = getCardValue(card, this.state.ruleset);
         if (value > highestValue) {
           highestValue = value;
           winners = [player];
@@ -564,11 +721,37 @@ export class GameEngine {
       winner.tokens++;
       winner.status = 'WON_ROUND';
       this.addLog(`${winner.name} won the round!`, winner.id);
-
-      // Check if game is over
-      this.checkGameEnd();
     } else {
       this.addLog('Round ended in a tie');
+    }
+    
+    // Check for Spy bonus (only in 2019 ruleset)
+    this.checkSpyBonus();
+    
+    // Check if game is over
+    this.checkGameEnd();
+  }
+  
+  /**
+   * Check for Spy bonus at end of round
+   * If exactly one player has a Spy in their discard pile, they gain a token
+   */
+  private checkSpyBonus(): void {
+    // Only applies to 2019 ruleset
+    if (this.state.ruleset !== '2019') {
+      return;
+    }
+    
+    // Find all players who have Spy in their discard pile
+    const playersWithSpy = this.state.players.filter(p => 
+      p.discardPile.includes('spy')
+    );
+    
+    // If exactly one player has a Spy, they get a bonus token
+    if (playersWithSpy.length === 1) {
+      const spyPlayer = playersWithSpy[0];
+      spyPlayer.tokens++;
+      this.addLog(`${spyPlayer.name} gained a token from Spy bonus!`, spyPlayer.id);
     }
   }
 

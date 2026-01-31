@@ -1043,3 +1043,309 @@ describe('Advance Turn Tests', () => {
     expect(newState.players[0].status).toBe('PLAYING');
   });
 });
+
+describe('2019 Ruleset Tests', () => {
+  describe('Deck Creation', () => {
+    it('should create classic deck with 16 cards', () => {
+      const deck = createDeck('classic');
+      expect(deck).toHaveLength(16);
+    });
+
+    it('should create 2019 deck with 21 cards', () => {
+      const deck = createDeck('2019');
+      expect(deck).toHaveLength(21);
+    });
+
+    it('should have Spy and Chancellor in 2019 deck', () => {
+      const deck = createDeck('2019');
+      expect(deck.filter(c => c === 'spy').length).toBe(2);
+      expect(deck.filter(c => c === 'chancellor').length).toBe(2);
+    });
+
+    it('should have 6 Guards in 2019 deck', () => {
+      const deck = createDeck('2019');
+      expect(deck.filter(c => c === 'guard').length).toBe(6);
+    });
+
+    it('should NOT have Spy or Chancellor in classic deck', () => {
+      const deck = createDeck('classic');
+      expect(deck.filter(c => c === 'spy').length).toBe(0);
+      expect(deck.filter(c => c === 'chancellor').length).toBe(0);
+    });
+  });
+
+  describe('2-Player Burn Rule', () => {
+    it('should burn 3 additional face-up cards for 2-player game', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: 'classic'
+      });
+      game.startRound();
+      const state = game.getState();
+
+      expect(state.burnedCard).toBeTruthy();
+      expect(state.burnedCardsFaceUp).toHaveLength(3);
+      // 16 - 1 burned - 3 face up - 2 dealt = 10
+      expect(state.deck.length).toBe(10);
+    });
+
+    it('should NOT burn extra cards for 3+ player game', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+        ruleset: 'classic'
+      });
+      game.startRound();
+      const state = game.getState();
+
+      expect(state.burnedCard).toBeTruthy();
+      expect(state.burnedCardsFaceUp).toHaveLength(0);
+      // 16 - 1 burned - 3 dealt = 12
+      expect(state.deck.length).toBe(12);
+    });
+  });
+
+  describe('Spy Bonus Tests', () => {
+    it('should award Spy bonus when only one player has Spy in discard', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      // Set up scenario where Alice has Spy in discard
+      let state = game.getState();
+      state.players[0].discardPile = ['spy', 'guard'];
+      state.players[1].discardPile = ['priest'];
+      state.players[0].hand = ['princess'];
+      state.players[1].hand = ['guard'];
+      state.deck = [];
+      game.setState(state);
+
+      // Force round end (deck empty)
+      game.checkRoundEnd();
+      state = game.getState();
+
+      // Alice should get +1 for round win (highest card) and +1 for Spy bonus
+      expect(state.players[0].tokens).toBe(2);
+    });
+
+    it('should NOT award Spy bonus when multiple players have Spy in discard', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      state.players[0].discardPile = ['spy'];
+      state.players[1].discardPile = ['spy'];
+      state.players[0].hand = ['princess'];
+      state.players[1].hand = ['guard'];
+      state.deck = [];
+      game.setState(state);
+
+      game.checkRoundEnd();
+      state = game.getState();
+
+      // Alice only gets +1 for round win, no Spy bonus
+      expect(state.players[0].tokens).toBe(1);
+    });
+
+    it('should NOT award Spy bonus in classic ruleset', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: 'classic'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      // Even if spy somehow got into discard (shouldn't happen in classic)
+      state.players[0].discardPile = ['spy'];
+      state.players[0].hand = ['princess'];
+      state.players[1].hand = ['guard'];
+      state.deck = [];
+      game.setState(state);
+
+      game.checkRoundEnd();
+      state = game.getState();
+
+      // No Spy bonus in classic
+      expect(state.players[0].tokens).toBe(1);
+    });
+  });
+
+  describe('Chancellor Tests', () => {
+    it('should enter CHANCELLOR_RESOLVING phase when Chancellor is played', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      state.players[0].hand = ['chancellor', 'guard'];
+      state.deck = ['priest', 'baron', 'handmaid'];
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'chancellor'
+      };
+
+      game.applyMove(action);
+      state = game.getState();
+
+      expect(state.phase).toBe('CHANCELLOR_RESOLVING');
+      // Should have drawn 2 cards: guard (kept from before) + 2 drawn = 3 cards
+      expect(state.players[0].hand).toHaveLength(3);
+      expect(state.chancellorCards).toHaveLength(2);
+    });
+
+    it('should allow Chancellor return and advance turn', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      state.players[0].hand = ['chancellor', 'guard'];
+      state.deck = ['priest', 'baron', 'handmaid'];
+      game.setState(state);
+
+      // Play Chancellor
+      game.applyMove({
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'chancellor'
+      });
+
+      state = game.getState();
+      expect(state.phase).toBe('CHANCELLOR_RESOLVING');
+      
+      // Get the cards in hand (should be guard, priest, baron)
+      const handAfterDraw = state.players[0].hand;
+      expect(handAfterDraw).toHaveLength(3);
+
+      // Return 2 cards
+      const cardsToReturn = [handAfterDraw[1], handAfterDraw[2]];
+      const result = game.applyMove({
+        type: 'CHANCELLOR_RETURN',
+        playerId: 'p1',
+        cardsToReturn
+      });
+
+      expect(result.success).toBe(true);
+      state = game.getState();
+      
+      // Should now be Bob's turn
+      expect(state.activePlayerIndex).toBe(1);
+      expect(state.phase).toBe('TURN_START');
+      
+      // Alice should have 1 card left
+      expect(state.players[0].hand).toHaveLength(1);
+      
+      // Returned cards should be at bottom of deck
+      expect(state.deck.slice(-2)).toEqual(expect.arrayContaining(cardsToReturn));
+    });
+
+    it('should reject Chancellor return with wrong number of cards', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      state.phase = 'CHANCELLOR_RESOLVING';
+      state.players[0].hand = ['guard', 'priest', 'baron'];
+      game.setState(state);
+
+      // Try to return only 1 card
+      const result = game.applyMove({
+        type: 'CHANCELLOR_RETURN',
+        playerId: 'p1',
+        cardsToReturn: ['guard']
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('2 cards');
+    });
+  });
+
+  describe('Guard Can Guess Spy', () => {
+    it('should allow Guard guess of Spy and eliminate on correct guess', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      state.players[0].hand = ['guard', 'priest'];
+      state.players[1].hand = ['spy'];
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'guard',
+        targetPlayerId: 'p2',
+        targetCardGuess: 'spy'
+      };
+
+      const validation = game.validateMove('p1', action);
+      expect(validation.valid).toBe(true);
+      
+      // Actually play the card
+      const result = game.applyMove(action);
+      expect(result.success).toBe(true);
+      expect(result.eliminatedPlayerId).toBe('p2');
+    });
+  });
+});

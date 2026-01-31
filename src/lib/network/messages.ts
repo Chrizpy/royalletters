@@ -36,9 +36,10 @@ export interface GameStateSyncPayload {
 }
 
 export interface PlayerActionPayload {
-  cardId: string;
+  cardId?: string;
   targetPlayerId?: string;
   targetCardGuess?: string;
+  cardsToReturn?: string[];  // For Chancellor effect
 }
 
 export interface RoundStartPayload {
