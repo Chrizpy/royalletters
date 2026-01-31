@@ -36,9 +36,10 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    min-height: 100dvh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 2rem;
+    padding: 1rem;
+    box-sizing: border-box;
   }
 
   .lobby-container {
@@ -48,16 +49,16 @@
   }
 
   h1 {
-    font-size: 3rem;
+    font-size: 2.5rem;
     color: white;
     margin-bottom: 0.5rem;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   }
 
   .subtitle {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
   }
 
   .menu-buttons {
@@ -70,7 +71,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem;
+    padding: 1.5rem;
     background: white;
     border: none;
     border-radius: 12px;
@@ -85,19 +86,19 @@
   }
 
   .btn-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
   }
 
   .btn-text {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 600;
     color: #333;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
   }
 
   .btn-description {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #666;
   }
 

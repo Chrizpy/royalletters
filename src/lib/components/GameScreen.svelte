@@ -13,6 +13,7 @@
   export let localPlayerId: string;
   export let onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
   export let onStartRound: () => void;
+  export let onPlayAgain: (() => void) | undefined = undefined;
   export let isHost: boolean = false;
 
   // Local state
@@ -185,6 +186,13 @@
         <div class="winner-text">
           {gameState.players.find(p => p.id === gameState.winnerId)?.name} wins!
         </div>
+        {#if isHost && onPlayAgain}
+          <button class="play-again-btn" on:click={onPlayAgain}>
+            🔄 Play Again
+          </button>
+        {:else if !isHost}
+          <p class="waiting-restart">Waiting for host to restart...</p>
+        {/if}
       </div>
     {/if}
 
@@ -275,22 +283,24 @@
 
 <style>
   .loading-screen {
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     color: white;
+    box-sizing: border-box;
   }
 
   .game-screen {
-    min-height: 100vh;
+    min-height: 100dvh;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     display: flex;
     flex-direction: column;
     padding: 1rem;
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
     color: white;
-    overflow: hidden;
+    box-sizing: border-box;
   }
 
   /* Status bar */
@@ -468,6 +478,31 @@
   .winner-text {
     font-size: 1.5rem;
     font-weight: 700;
+  }
+
+  .play-again-btn {
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.9);
+    color: #f12711;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .play-again-btn:hover {
+    background: white;
+    transform: scale(1.05);
+  }
+
+  .waiting-restart {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-style: italic;
   }
 
   /* Player hand area */

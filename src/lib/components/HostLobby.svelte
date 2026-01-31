@@ -159,6 +159,18 @@
     broadcastGameState();
   }
 
+  function handlePlayAgain() {
+    // Re-initialize the game with the same players
+    const allPlayers = [
+      { id: generatedPeerId, name: hostName, isHost: true },
+      ...players.map(p => ({ id: p.id, name: p.name, isHost: false }))
+    ];
+    
+    initGame(allPlayers);
+    startRound();
+    broadcastGameState();
+  }
+
   function handleBack() {
     if (peerManager) {
       peerManager.disconnect();
@@ -172,6 +184,7 @@
     localPlayerId={generatedPeerId}
     onPlayCard={handlePlayCard}
     onStartRound={handleStartRound}
+    onPlayAgain={handlePlayAgain}
     isHost={true}
   />
 {:else}
@@ -251,19 +264,22 @@
   .host-lobby {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    align-items: flex-start;
+    min-height: 100dvh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 2rem;
+    padding: 1rem;
+    box-sizing: border-box;
   }
 
   .host-container {
     background: white;
     border-radius: 16px;
-    padding: 2rem;
+    padding: 1.5rem;
     max-width: 500px;
     width: 100%;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    margin-top: 1rem;
+    margin-bottom: 1rem;
   }
 
   h2 {
@@ -327,8 +343,10 @@
   .qr-code img {
     border: 4px solid #667eea;
     border-radius: 12px;
-    padding: 1rem;
+    padding: 0.5rem;
     background: white;
+    max-width: 200px;
+    height: auto;
   }
 
   .peer-id-section {

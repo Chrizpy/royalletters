@@ -267,19 +267,22 @@
   .join-game {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    align-items: flex-start;
+    min-height: 100dvh;
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    padding: 2rem;
+    padding: 1rem;
+    box-sizing: border-box;
   }
 
   .join-container {
     background: white;
     border-radius: 16px;
-    padding: 2rem;
+    padding: 1.5rem;
     max-width: 500px;
     width: 100%;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    margin-top: 1rem;
+    margin-bottom: 1rem;
   }
 
   h2 {
