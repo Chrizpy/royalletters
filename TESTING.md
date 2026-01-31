@@ -89,6 +89,29 @@ For testing with QR code scanning:
 
 ## Troubleshooting
 
+### Blank/white screen when loading
+If you see a blank screen when navigating to http://localhost:5173:
+
+1. **Clear browser cache and hard reload:**
+   - Chrome/Edge: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+   - Firefox: `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+
+2. **Ensure dependencies are installed:**
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   npm run dev
+   ```
+
+3. **Check browser console for errors:**
+   - Open DevTools (F12)
+   - Look for red errors in Console tab
+   - Common issues: module import errors, missing dependencies
+
+4. **Try a different browser:**
+   - Requires modern browser with WebRTC support
+   - Recommended: Chrome, Firefox, Edge (latest versions)
+
 ### Connection fails between devices
 - Ensure both devices are on the same network
 - Check firewall isn't blocking WebRTC connections
