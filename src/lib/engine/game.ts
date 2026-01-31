@@ -76,7 +76,7 @@ export class GameEngine {
       ...p,
       hand: [],
       discardPile: [],
-      status: p.status === 'WON_ROUND' ? 'PLAYING' : p.status,
+      status: 'PLAYING',  // Reset ALL players to PLAYING for new round
     }));
 
     // Create and shuffle deck
@@ -164,6 +164,20 @@ export class GameEngine {
 
     // Check if target is required
     if (cardDef.effect.requiresTargetPlayer) {
+      // Check if there are any valid targets available (non-eliminated, non-protected players)
+      const validTargets = this.state.players.filter(p => {
+        if (p.id === playerId && !cardDef.effect.canTargetSelf) return false;
+        if (p.status === 'ELIMINATED') return false;
+        if (p.status === 'PROTECTED' && p.id !== playerId) return false;
+        return true;
+      });
+
+      // If no valid targets exist, the card can be played with no effect (no target required)
+      if (validTargets.length === 0) {
+        // Card will be played with no effect - this is allowed per Love Letter rules
+        return { valid: true };
+      }
+
       if (!action.targetPlayerId) {
         return { valid: false, error: 'Target player required' };
       }
@@ -221,8 +235,11 @@ export class GameEngine {
     const activePlayer = this.getActivePlayer()!;
     const cardDef = getCardDefinition(action.cardId)!;
 
-    // Remove card from hand and add to discard pile
-    activePlayer.hand = activePlayer.hand.filter(c => c !== action.cardId);
+    // Remove only ONE instance of the card from hand and add to discard pile
+    const cardIndex = activePlayer.hand.indexOf(action.cardId);
+    if (cardIndex !== -1) {
+      activePlayer.hand.splice(cardIndex, 1);
+    }
     activePlayer.discardPile.push(action.cardId);
 
     let result: ActionResult = {
@@ -233,32 +250,43 @@ export class GameEngine {
 
     this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
 
-    // Apply card effect
-    switch (cardDef.effect.type) {
-      case 'GUESS_CARD':
-        result = this.applyGuessCard(action, activePlayer);
-        break;
-      case 'SEE_HAND':
-        result = this.applySeeHand(action, activePlayer);
-        break;
-      case 'COMPARE_HANDS':
-        result = this.applyCompareHands(action, activePlayer);
-        break;
-      case 'PROTECTION':
-        result = this.applyProtection(activePlayer);
-        break;
-      case 'FORCE_DISCARD':
-        result = this.applyForceDiscard(action, activePlayer);
-        break;
-      case 'TRADE_HANDS':
-        result = this.applyTradeHands(action, activePlayer);
-        break;
-      case 'CONDITIONAL_DISCARD':
-        result = this.applyConditionalDiscard(activePlayer);
-        break;
-      case 'LOSE_IF_DISCARDED':
-        result = this.applyLoseIfDiscarded(activePlayer);
-        break;
+    // Check if card requires target but no target was provided (all players protected/eliminated)
+    // In this case, the card is played with no effect
+    if (cardDef.effect.requiresTargetPlayer && !action.targetPlayerId) {
+      this.addLog(`${cardDef.name} had no effect (no valid targets)`, activePlayer.id);
+      result = {
+        success: true,
+        message: `${cardDef.name} had no effect - all other players are protected or eliminated`,
+        newState: this.state,
+      };
+    } else {
+      // Apply card effect
+      switch (cardDef.effect.type) {
+        case 'GUESS_CARD':
+          result = this.applyGuessCard(action, activePlayer);
+          break;
+        case 'SEE_HAND':
+          result = this.applySeeHand(action, activePlayer);
+          break;
+        case 'COMPARE_HANDS':
+          result = this.applyCompareHands(action, activePlayer);
+          break;
+        case 'PROTECTION':
+          result = this.applyProtection(activePlayer);
+          break;
+        case 'FORCE_DISCARD':
+          result = this.applyForceDiscard(action, activePlayer);
+          break;
+        case 'TRADE_HANDS':
+          result = this.applyTradeHands(action, activePlayer);
+          break;
+        case 'CONDITIONAL_DISCARD':
+          result = this.applyConditionalDiscard(activePlayer);
+          break;
+        case 'LOSE_IF_DISCARDED':
+          result = this.applyLoseIfDiscarded(activePlayer);
+          break;
+      }
     }
 
     // Advance turn
@@ -272,6 +300,11 @@ export class GameEngine {
     const guess = action.targetCardGuess!;
 
     if (targetPlayer.hand.includes(guess)) {
+      // Move the eliminated player's card(s) to their discard pile
+      while (targetPlayer.hand.length > 0) {
+        const card = targetPlayer.hand.shift()!;
+        targetPlayer.discardPile.push(card);
+      }
       targetPlayer.status = 'ELIMINATED';
       this.addLog(`${targetPlayer.name} was eliminated (had ${guess})`, targetPlayer.id);
       return {
@@ -322,6 +355,11 @@ export class GameEngine {
     const targetValue = getCardDefinition(targetCard)?.value || 0;
 
     if (activeValue < targetValue) {
+      // Move the eliminated player's card(s) to their discard pile
+      while (activePlayer.hand.length > 0) {
+        const card = activePlayer.hand.shift()!;
+        activePlayer.discardPile.push(card);
+      }
       activePlayer.status = 'ELIMINATED';
       this.addLog(`${activePlayer.name} was eliminated (lower card)`, activePlayer.id);
       return {
@@ -331,6 +369,11 @@ export class GameEngine {
         newState: this.state,
       };
     } else if (targetValue < activeValue) {
+      // Move the eliminated player's card(s) to their discard pile
+      while (targetPlayer.hand.length > 0) {
+        const card = targetPlayer.hand.shift()!;
+        targetPlayer.discardPile.push(card);
+      }
       targetPlayer.status = 'ELIMINATED';
       this.addLog(`${targetPlayer.name} was eliminated (lower card)`, targetPlayer.id);
       return {
@@ -435,12 +478,6 @@ export class GameEngine {
    * Advance to next player's turn
    */
   advanceTurn(): void {
-    // Reset protection status for the current player (it only lasts until their next turn)
-    const currentPlayer = this.getActivePlayer();
-    if (currentPlayer && currentPlayer.status === 'PROTECTED') {
-      currentPlayer.status = 'PLAYING';
-    }
-
     // Check if round should end
     if (this.checkRoundEnd()) {
       return;
@@ -455,6 +492,11 @@ export class GameEngine {
       if (player.status !== 'ELIMINATED') {
         this.state.activePlayerIndex = nextIndex;
         this.state.phase = 'TURN_START';
+        
+        // Reset protection status for the NEW active player (protection lasts until their next turn)
+        if (player.status === 'PROTECTED') {
+          player.status = 'PLAYING';
+        }
         return;
       }
       nextIndex = (nextIndex + 1) % this.state.players.length;

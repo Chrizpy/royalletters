@@ -179,6 +179,27 @@ describe('Round Start Tests', () => {
     state = game.getState();
     expect(state.roundCount).toBe(2);
   });
+
+  it('should reset eliminated players to PLAYING status on new round', () => {
+    game.startRound();
+    let state = game.getState();
+    
+    // Simulate player being eliminated
+    state.players[1].status = 'ELIMINATED';
+    game.setState(state);
+    
+    // Verify player is eliminated
+    expect(game.getState().players[1].status).toBe('ELIMINATED');
+    
+    // Start a new round
+    game.startRound();
+    state = game.getState();
+    
+    // All players should be PLAYING in the new round
+    expect(state.players[0].status).toBe('PLAYING');
+    expect(state.players[1].status).toBe('PLAYING');
+    expect(state.players[2].status).toBe('PLAYING');
+  });
 });
 
 describe('Draw Phase Tests', () => {
@@ -430,6 +451,9 @@ describe('Card Effect Tests', () => {
 
       expect(result.success).toBe(true);
       expect(newState.players[1].status).toBe('ELIMINATED');
+      // Eliminated player's card should be in discard pile (visible to all)
+      expect(newState.players[1].hand).toHaveLength(0);
+      expect(newState.players[1].discardPile).toContain('guard');
     });
 
     it('should eliminate self if target has higher card', () => {
@@ -450,6 +474,9 @@ describe('Card Effect Tests', () => {
 
       expect(result.success).toBe(true);
       expect(newState.players[0].status).toBe('ELIMINATED');
+      // Eliminated player's card should be in discard pile (visible to all)
+      expect(newState.players[0].hand).toHaveLength(0);
+      expect(newState.players[0].discardPile).toContain('guard'); // The remaining card
     });
 
     it('should not eliminate anyone on tie', () => {
@@ -492,6 +519,104 @@ describe('Card Effect Tests', () => {
       // After advanceTurn, the protection is reset to PLAYING
       // So we need to check differently
       expect(result.success).toBe(true);
+    });
+
+    it('should only remove one copy of a card when playing it', () => {
+      const state = game.getState();
+      // Player has two Handmaids
+      state.players[0].hand = ['handmaid', 'handmaid'];
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'handmaid',
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      // Player should still have one Handmaid left
+      expect(newState.players[0].hand).toHaveLength(1);
+      expect(newState.players[0].hand[0]).toBe('handmaid');
+      // And one Handmaid in the discard pile
+      expect(newState.players[0].discardPile).toContain('handmaid');
+    });
+
+    it('should protect player through other players turns until their next turn', () => {
+      // Set up 3-player game
+      const game3 = new GameEngine();
+      game3.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+      });
+      game3.startRound();
+      game3.drawPhase();
+
+      let state = game3.getState();
+      // Alice plays Handmaid
+      state.players[0].hand = ['handmaid', 'guard'];
+      state.players[1].hand = ['guard'];
+      state.players[2].hand = ['baron'];
+      game3.setState(state);
+
+      // Alice plays Handmaid
+      game3.applyMove({
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'handmaid',
+      });
+
+      state = game3.getState();
+      // After Alice plays Handmaid, she should be PROTECTED
+      expect(state.players[0].status).toBe('PROTECTED');
+      
+      // Bob's turn - try to target Alice with Guard
+      game3.drawPhase();
+      state = game3.getState();
+      state.players[1].hand = ['guard', 'priest'];
+      game3.setState(state);
+
+      // Bob should NOT be able to target Alice (she's protected)
+      const validation = game3.validateMove('p2', {
+        type: 'PLAY_CARD',
+        playerId: 'p2',
+        cardId: 'guard',
+        targetPlayerId: 'p1',
+        targetCardGuess: 'guard',
+      });
+      expect(validation.valid).toBe(false);
+      expect(validation.error).toContain('protected');
+      
+      // Alice should still be protected after Bob's turn ends
+      expect(state.players[0].status).toBe('PROTECTED');
+    });
+
+    it('should allow playing cards with no effect when all other players are protected', () => {
+      const state = game.getState();
+      state.players[0].hand = ['guard', 'priest'];
+      state.players[1].hand = ['baron'];
+      state.players[1].status = 'PROTECTED';
+      game.setState(state);
+
+      // Guard should be playable without target when all others are protected
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'guard',
+        // No targetPlayerId - all others are protected
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('no effect');
+      // Protected player should still be OK
+      expect(result.newState.players[1].status).not.toBe('ELIMINATED');
     });
   });
 
@@ -899,17 +1024,22 @@ describe('Advance Turn Tests', () => {
     expect(newState.activePlayerIndex).toBe(2);
   });
 
-  it('should reset PROTECTED status when turn advances', () => {
+  it('should reset PROTECTED status when protected player becomes active again', () => {
+    // In a 3-player game: Player 0 (Alice) is protected, currently it's Player 2 (Charlie)'s turn
     const state = game.getState();
     state.players[0].status = 'PROTECTED';
-    state.players[0].hand = ['handmaid'];
-    state.activePlayerIndex = 0;
+    state.players[0].hand = ['guard'];
+    state.players[1].hand = ['priest'];
+    state.players[2].hand = ['baron'];
+    state.activePlayerIndex = 2;  // Charlie's turn
     game.setState(state);
 
+    // Advance from Charlie (index 2) to Alice (index 0) - protected player's turn now begins
     game.advanceTurn();
     const newState = game.getState();
 
-    // Protection should be reset
+    // Protection should be reset when it becomes their turn again
+    expect(newState.activePlayerIndex).toBe(0);
     expect(newState.players[0].status).toBe('PLAYING');
   });
 });

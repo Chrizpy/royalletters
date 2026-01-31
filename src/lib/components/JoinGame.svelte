@@ -3,7 +3,9 @@
   import { Html5Qrcode } from 'html5-qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
-  import { v4 as uuidv4 } from 'uuid';
+  import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload } from '../network/messages';
+  import GameScreen from './GameScreen.svelte';
 
   let manualPeerId = '';
   let error = '';
@@ -13,6 +15,11 @@
   let peerManager: PeerManager;
   let localConnectionState: string = 'disconnected';
   let cameraPermissionDenied = false;
+  let guestPeerId = '';
+  let hostPeerId = '';
+
+  // Subscribe to game started state
+  $: inGame = $gameStarted;
 
   onMount(async () => {
     try {
@@ -76,13 +83,31 @@
     // Ignore scan errors (they happen continuously while scanning)
   }
 
-  async function connectToHost(hostPeerId: string) {
+  function handleMessage(message: NetworkMessage) {
+    console.log('Guest received message:', message.type);
+    
+    if (message.type === 'GAME_STATE_SYNC') {
+      const payload = message.payload as GameStateSyncPayload;
+      setGameState(payload.state);
+    } else if (message.type === 'PRIEST_REVEAL') {
+      // Host sent us a private Priest reveal - this guest played Priest
+      const payload = message.payload as PriestRevealPayload;
+      revealedCard.set({
+        cardId: payload.cardId,
+        playerName: payload.targetPlayerName,
+        viewerPlayerId: guestPeerId  // This guest is the viewer
+      });
+    }
+  }
+
+  async function connectToHost(targetHostPeerId: string) {
     try {
       error = '';
+      hostPeerId = targetHostPeerId;
       
       // Generate guest peer ID
       const randomSuffix = Math.random().toString(36).substring(2, 6);
-      const guestPeerId = `guest-${randomSuffix}`;
+      guestPeerId = `guest-${randomSuffix}`;
       
       // Create peer manager
       peerManager = new PeerManager();
@@ -97,6 +122,11 @@
           peerId.set(guestPeerId);
         }
       });
+
+      // Set up message handler
+      peerManager.onMessage((message, conn) => {
+        handleMessage(message);
+      });
       
       // Connect to host
       await peerManager.connectToHost(hostPeerId, guestPeerId);
@@ -105,6 +135,25 @@
       error = `Failed to connect: ${err}`;
       console.error(err);
     }
+  }
+
+  function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
+    // Guest sends action to host
+    if (!peerManager) return;
+    
+    const payload: PlayerActionPayload = {
+      cardId,
+      targetPlayerId,
+      targetCardGuess
+    };
+    
+    const message = createMessage('PLAYER_ACTION', guestPeerId, payload);
+    peerManager.broadcast(message);
+  }
+
+  function handleStartRound() {
+    // Guest can't start rounds - only host can
+    console.log('Only host can start rounds');
   }
 
   function handleManualConnect() {
@@ -138,35 +187,43 @@
   }
 </script>
 
-<div class="join-game">
-  <div class="join-container">
-    <h2>Join Game</h2>
-    
-    {#if error}
-      <div class="error">{error}</div>
-    {/if}
-    
-    {#if localConnectionState === 'connected'}
-      <div class="success">
-        <div class="success-icon">✓</div>
-        <p>Connected successfully!</p>
-        <p class="waiting">Waiting for host to start game...</p>
-      </div>
-    {:else if localConnectionState === 'connecting'}
-      <div class="loading">
-        <div class="spinner"></div>
-        <p>Connecting to host...</p>
-      </div>
-    {:else}
-      {#if !showManualInput && !cameraPermissionDenied}
-        <div class="scanner-section">
-          <p class="instruction">Point your camera at the host's QR code</p>
-          <div id="qr-reader" class="qr-reader"></div>
-          <button class="toggle-btn" on:click={toggleManualInput}>
-            Enter code manually
-          </button>
+{#if inGame && $gameState}
+  <GameScreen 
+    localPlayerId={guestPeerId}
+    onPlayCard={handlePlayCard}
+    onStartRound={handleStartRound}
+    isHost={false}
+  />
+{:else}
+  <div class="join-game">
+    <div class="join-container">
+      <h2>Join Game</h2>
+      
+      {#if error}
+        <div class="error">{error}</div>
+      {/if}
+      
+      {#if localConnectionState === 'connected'}
+        <div class="success">
+          <div class="success-icon">✓</div>
+          <p>Connected successfully!</p>
+          <p class="waiting">Waiting for host to start game...</p>
+        </div>
+      {:else if localConnectionState === 'connecting'}
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Connecting to host...</p>
         </div>
       {:else}
+        {#if !showManualInput && !cameraPermissionDenied}
+          <div class="scanner-section">
+            <p class="instruction">Point your camera at the host's QR code</p>
+            <div id="qr-reader" class="qr-reader"></div>
+            <button class="toggle-btn" on:click={toggleManualInput}>
+              Enter code manually
+            </button>
+          </div>
+        {:else}
         <div class="manual-section">
           {#if cameraPermissionDenied}
             <div class="info">
@@ -204,6 +261,7 @@
     <button class="back-btn" on:click={handleBack}>Back</button>
   </div>
 </div>
+{/if}
 
 <style>
   .join-game {
