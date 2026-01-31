@@ -11,8 +11,8 @@ export const gameState = writable<GameState | null>(null);
 // Whether the game has started
 export const gameStarted = writable<boolean>(false);
 
-// Revealed card (for Priest effect)
-export const revealedCard = writable<{ cardId: string; playerName: string } | null>(null);
+// Revealed card (for Priest effect) - includes viewer to ensure only the right player sees it
+export const revealedCard = writable<{ cardId: string; playerName: string; viewerPlayerId: string } | null>(null);
 
 /**
  * Initialize the game engine with players
@@ -62,12 +62,13 @@ export function applyAction(action: GameAction): ActionResult | undefined {
   const result = engine.applyMove(action);
   const newState = engine.getState();
   
-  // Handle Priest reveal - store the revealed card info
+  // Handle Priest reveal - store the revealed card info with who should see it
   if (result.revealedCard) {
     const targetPlayer = newState.players.find(p => p.id === action.targetPlayerId);
     revealedCard.set({
       cardId: result.revealedCard,
-      playerName: targetPlayer?.name || 'Unknown'
+      playerName: targetPlayer?.name || 'Unknown',
+      viewerPlayerId: action.playerId  // Only the player who played Priest should see this
     });
   }
   

@@ -3,8 +3,8 @@
   import { Html5Qrcode } from 'html5-qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
-  import { gameState, gameStarted, setGameState } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload } from '../network/messages';
+  import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
 
   let manualPeerId = '';
@@ -89,6 +89,14 @@
     if (message.type === 'GAME_STATE_SYNC') {
       const payload = message.payload as GameStateSyncPayload;
       setGameState(payload.state);
+    } else if (message.type === 'PRIEST_REVEAL') {
+      // Host sent us a private Priest reveal - this guest played Priest
+      const payload = message.payload as PriestRevealPayload;
+      revealedCard.set({
+        cardId: payload.cardId,
+        playerName: payload.targetPlayerName,
+        viewerPlayerId: guestPeerId  // This guest is the viewer
+      });
     }
   }
 

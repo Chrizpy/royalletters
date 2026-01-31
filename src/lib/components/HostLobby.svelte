@@ -4,7 +4,7 @@
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
   import { gameState, gameStarted, initGame, startRound, applyAction, getEngine } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
 
   let qrCodeDataUrl = '';
@@ -94,6 +94,18 @@
         targetPlayerId: payload.targetPlayerId,
         targetCardGuess: payload.targetCardGuess
       });
+      
+      // If a Priest reveal happened, send it privately to the player who played Priest
+      if (result?.revealedCard && peerManager) {
+        const engine = getEngine();
+        const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
+        const priestRevealPayload: PriestRevealPayload = {
+          cardId: result.revealedCard,
+          targetPlayerName: targetPlayer?.name || 'Unknown'
+        };
+        const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
+        peerManager.sendTo(fromPeerId, priestRevealMessage);
+      }
       
       // Broadcast updated state to all clients
       broadcastGameState();

@@ -258,8 +258,8 @@
   <!-- Game log -->
   <GameLog logs={gameState.logs} />
   
-  <!-- Card reveal modal (for Priest) -->
-  {#if revealed}
+  <!-- Card reveal modal (for Priest) - only show to the player who played Priest -->
+  {#if revealed && revealed.viewerPlayerId === localPlayerId}
     <CardReveal 
       cardId={revealed.cardId}
       playerName={revealed.playerName}

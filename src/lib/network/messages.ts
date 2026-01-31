@@ -6,7 +6,8 @@ export type MessageType =
   | 'GAME_STATE_SYNC'    // Full state synchronization
   | 'PLAYER_ACTION'      // A player plays a card
   | 'ROUND_START'        // Host starts a new round (includes RNG seed)
-  | 'CONNECTION_ACK';    // Acknowledge connection established
+  | 'CONNECTION_ACK'     // Acknowledge connection established
+  | 'PRIEST_REVEAL';     // Private reveal for Priest card effect
 
 export interface NetworkMessage {
   type: MessageType;
@@ -47,6 +48,11 @@ export interface RoundStartPayload {
 export interface ConnectionAckPayload {
   playerId: string;
   playerName: string;
+}
+
+export interface PriestRevealPayload {
+  cardId: string;
+  targetPlayerName: string;
 }
 
 export function createMessage(
