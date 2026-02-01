@@ -33,10 +33,10 @@
   }
 </script>
 
-<div class="chancellor-overlay" role="dialog" aria-modal="true" aria-labelledby="chancellor-title" tabindex="-1">
+<div class="chancellor-overlay" role="dialog" aria-modal="true" aria-labelledby="chancellor-title" aria-describedby="chancellor-desc">
   <div class="chancellor-modal">
     <h3 id="chancellor-title">📜 Chancellor Effect</h3>
-    <p class="subtitle">Select {cardsToReturnCount} card{cardsToReturnCount !== 1 ? 's' : ''} to return to the deck bottom.</p>
+    <p id="chancellor-desc" class="subtitle">Select {cardsToReturnCount} card{cardsToReturnCount !== 1 ? 's' : ''} to return to the deck bottom.</p>
     
     {#if cardsToReturnCount > 1}
       <p class="order-hint">
