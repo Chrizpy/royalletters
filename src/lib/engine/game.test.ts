@@ -704,6 +704,58 @@ describe('Card Effect Tests', () => {
       expect(newState.players[0].hand).toContain('baron');
       expect(newState.players[1].hand).toHaveLength(0);
     });
+
+    it('should swap with burned card when all other players are protected', () => {
+      const state = game.getState();
+      state.players[0].hand = ['king', 'guard'];
+      state.players[1].hand = ['baron'];
+      state.players[1].status = 'PROTECTED';
+      state.burnedCard = 'chancellor';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        // No targetPlayerId - swap with burned card
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('burned card');
+      // Alice should now have the burned card (chancellor), burned card should be her old card (guard)
+      expect(newState.players[0].hand).toContain('chancellor');
+      expect(newState.burnedCard).toBe('guard');
+      // Bob's hand should be unchanged
+      expect(newState.players[1].hand).toContain('baron');
+    });
+
+    it('should swap with burned card when all other players are eliminated', () => {
+      const state = game.getState();
+      state.players[0].hand = ['king', 'priest'];
+      state.players[1].hand = [];
+      state.players[1].status = 'ELIMINATED';
+      state.burnedCard = 'princess';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        // No targetPlayerId - swap with burned card
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('burned card');
+      // Alice should now have the burned card (princess), burned card should be her old card (priest)
+      expect(newState.players[0].hand).toContain('princess');
+      expect(newState.burnedCard).toBe('priest');
+    });
   });
 
   describe('Countess Tests', () => {

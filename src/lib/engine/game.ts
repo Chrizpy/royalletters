@@ -319,14 +319,19 @@ export class GameEngine {
     this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
 
     // Check if card requires target but no target was provided (all players protected/eliminated)
-    // In this case, the card is played with no effect
     if (cardDef.effect.requiresTargetPlayer && !action.targetPlayerId) {
-      this.addLog(`${cardDef.name} had no effect (no valid targets)`, activePlayer.id);
-      result = {
-        success: true,
-        message: `${cardDef.name} had no effect - all other players are protected or eliminated`,
-        newState: this.state,
-      };
+      // Special case: King (TRADE_HANDS) swaps with the burned card when no valid targets
+      if (cardDef.effect.type === 'TRADE_HANDS' && this.state.burnedCard) {
+        result = this.applyTradeWithBurnedCard(activePlayer);
+      } else {
+        // Other cards with no valid targets have no effect
+        this.addLog(`${cardDef.name} had no effect (no valid targets)`, activePlayer.id);
+        result = {
+          success: true,
+          message: `${cardDef.name} had no effect - all other players are protected or eliminated`,
+          newState: this.state,
+        };
+      }
     } else {
       // Apply card effect
       switch (cardDef.effect.type) {
@@ -524,6 +529,33 @@ export class GameEngine {
     return {
       success: true,
       message: `You traded hands with ${targetPlayer.name}`,
+      newState: this.state,
+    };
+  }
+
+  private applyTradeWithBurnedCard(activePlayer: PlayerState): ActionResult {
+    // When King is played but no valid player targets exist, swap with the burned card
+    const burnedCard = this.state.burnedCard;
+    if (!burnedCard) {
+      // No burned card available - should not happen but handle gracefully
+      this.addLog(`King had no effect (no burned card)`, activePlayer.id);
+      return {
+        success: true,
+        message: 'King had no effect - no burned card available',
+        newState: this.state,
+      };
+    }
+
+    // Swap player's card with the burned card
+    const playerCard = activePlayer.hand[0];
+    activePlayer.hand[0] = burnedCard;
+    this.state.burnedCard = playerCard;
+
+    this.addLog(`${activePlayer.name} swapped their card with the burned card`, activePlayer.id);
+
+    return {
+      success: true,
+      message: 'You swapped your card with the burned card',
       newState: this.state,
     };
   }
