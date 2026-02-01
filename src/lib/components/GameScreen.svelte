@@ -7,6 +7,7 @@
   import CardReveal from './CardReveal.svelte';
   import GameFeed from './GameFeed.svelte';
   import EliminationModal from './EliminationModal.svelte';
+  import ChancellorModal from './ChancellorModal.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
@@ -26,7 +27,6 @@
   let selectingGuess: boolean = false;
   let pendingCardId: string | null = null;
   let pendingTargetId: string | null = null;
-  let chancellorSelectedIndices: number[] = [];  // Track by index to handle duplicate cards
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -38,40 +38,16 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
-  // Calculate how many cards need to be returned in Chancellor phase (hand size - 1)
-  $: chancellorCardsToReturnCount = isChancellorPhase && localPlayer ? localPlayer.hand.length - 1 : 2;
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
     return map[playerCount] || 4;
   }
   
-  function toggleChancellorCard(cardIndex: number) {
-    if (!isChancellorPhase) return;
-    
-    const indexInSelection = chancellorSelectedIndices.indexOf(cardIndex);
-    if (indexInSelection === -1) {
-      // Only allow selecting up to the required number of cards
-      if (chancellorSelectedIndices.length < chancellorCardsToReturnCount) {
-        chancellorSelectedIndices = [...chancellorSelectedIndices, cardIndex];
-      }
-    } else {
-      chancellorSelectedIndices = chancellorSelectedIndices.filter(i => i !== cardIndex);
+  function handleChancellorReturn(cardsToReturn: string[]) {
+    if (onChancellorReturn) {
+      onChancellorReturn(cardsToReturn);
     }
-  }
-  
-  function confirmChancellorReturn() {
-    if (chancellorSelectedIndices.length !== chancellorCardsToReturnCount || !onChancellorReturn || !localPlayer) return;
-    // Validate indices are still valid for current hand
-    const hand = localPlayer.hand;
-    if (chancellorSelectedIndices.some(i => i < 0 || i >= hand.length)) {
-      chancellorSelectedIndices = [];
-      return;
-    }
-    // Convert indices back to card IDs for the callback
-    const cardsToReturn = chancellorSelectedIndices.map(i => hand[i]);
-    onChancellorReturn(cardsToReturn);
-    chancellorSelectedIndices = [];
   }
 
   function selectCard(cardId: string) {
@@ -253,40 +229,6 @@
         onCancel={cancelSelection}
       />
     {/if}
-    
-    {#if isChancellorPhase}
-      <div class="chancellor-modal">
-        <div class="chancellor-content">
-          <h3>📜 Chancellor Effect</h3>
-          <p>Select {chancellorCardsToReturnCount} card{chancellorCardsToReturnCount !== 1 ? 's' : ''} to return to the deck bottom.</p>
-          {#if chancellorCardsToReturnCount > 1}
-            <p class="chancellor-order-hint">
-              First selected → very bottom | Second selected → above it
-            </p>
-          {/if}
-          <div class="chancellor-selected-list">
-            {#if chancellorSelectedIndices.length > 1 && localPlayer}
-              <div class="selected-card-item">
-                <span class="position-badge">⬆️ 2nd</span>
-                <span class="selected-card-name">{getCardDefinition(localPlayer.hand[chancellorSelectedIndices[1]])?.name}</span>
-              </div>
-            {/if}
-            {#if chancellorSelectedIndices.length > 0 && localPlayer}
-              <div class="selected-card-item bottom-card">
-                <span class="position-badge">⬇️ Bottom</span>
-                <span class="selected-card-name">{getCardDefinition(localPlayer.hand[chancellorSelectedIndices[0]])?.name}</span>
-              </div>
-            {/if}
-          </div>
-          <p class="selected-count">Selected: {chancellorSelectedIndices.length}/{chancellorCardsToReturnCount}</p>
-          {#if chancellorSelectedIndices.length === chancellorCardsToReturnCount}
-            <button class="confirm-chancellor-btn" on:click={confirmChancellorReturn}>
-              Confirm Return
-            </button>
-          {/if}
-        </div>
-      </div>
-    {/if}
   </div>
 
   <!-- Local player hand -->
@@ -320,13 +262,13 @@
       {/if}
     </div>
 
-    <div class="hand" class:chancellor-mode={isChancellorPhase}>
+    <div class="hand">
       {#each localPlayer?.hand || [] as cardId, index}
         <Card 
           {cardId}
-          isSelected={isChancellorPhase ? chancellorSelectedIndices.includes(index) : selectedCard === cardId}
-          isPlayable={canPlay || isChancellorPhase}
-          onClick={() => isChancellorPhase ? toggleChancellorCard(index) : selectCard(cardId)}
+          isSelected={selectedCard === cardId}
+          isPlayable={canPlay}
+          onClick={() => selectCard(cardId)}
           delay={index * 100}
         />
       {/each}
@@ -359,6 +301,15 @@
   
   <!-- Elimination modal - show when local player is eliminated -->
   <EliminationModal player={localPlayer} />
+  
+  <!-- Chancellor modal - show when in chancellor phase -->
+  {#if isChancellorPhase && localPlayer}
+    <ChancellorModal
+      playerHand={localPlayer.hand}
+      cardsToReturnCount={localPlayer.hand.length - 1}
+      onConfirmReturn={handleChancellorReturn}
+    />
+  {/if}
 </div>
 {:else}
   <div class="loading-screen">
@@ -591,91 +542,6 @@
     font-style: italic;
   }
 
-  /* Chancellor modal */
-  .chancellor-modal {
-    background: rgba(0, 0, 0, 0.5);
-    padding: 1.5rem;
-    border-radius: 16px;
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(142, 68, 173, 0.5);
-    animation: modal-pop 0.3s ease-out;
-  }
-
-  .chancellor-content {
-    text-align: center;
-    color: white;
-  }
-
-  .chancellor-content h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.3rem;
-  }
-
-  .chancellor-content p {
-    margin: 0 0 1rem 0;
-    color: rgba(255, 255, 255, 0.8);
-  }
-
-  .selected-count {
-    font-weight: 600;
-    color: #8e44ad !important;
-  }
-
-  .chancellor-order-hint {
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6) !important;
-    margin-bottom: 0.75rem !important;
-  }
-
-  .chancellor-selected-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    min-height: 70px;
-  }
-
-  .selected-card-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(142, 68, 173, 0.3);
-    border-radius: 8px;
-    border: 1px solid rgba(142, 68, 173, 0.5);
-  }
-
-  .position-badge {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.5rem;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    font-weight: 600;
-  }
-
-  .selected-card-name {
-    font-weight: 500;
-  }
-
-  .confirm-chancellor-btn {
-    padding: 0.75rem 2rem;
-    font-size: 1rem;
-    font-weight: 600;
-    background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin-top: 0.5rem;
-  }
-
-  .confirm-chancellor-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);
-  }
-
   /* Player hand area */
   .player-hand-area {
     background: rgba(255, 255, 255, 0.05);
@@ -738,13 +604,6 @@
     justify-content: center;
     gap: 1rem;
     min-height: 160px;
-  }
-
-  .hand.chancellor-mode {
-    border: 2px dashed rgba(142, 68, 173, 0.5);
-    border-radius: 12px;
-    padding: 0.5rem;
-    background: rgba(142, 68, 173, 0.1);
   }
 
   .empty-hand {
