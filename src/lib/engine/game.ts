@@ -267,8 +267,12 @@ export class GameEngine {
       return { valid: false, error: 'Not in Chancellor resolving phase' };
     }
     
-    if (!action.cardsToReturn || action.cardsToReturn.length !== 2) {
-      return { valid: false, error: 'Must return exactly 2 cards' };
+    // Number of cards to return depends on how many were drawn
+    // Player must keep exactly 1 card, so they return (hand size - 1) cards
+    const cardsToReturnCount = activePlayer.hand.length - 1;
+    
+    if (!action.cardsToReturn || action.cardsToReturn.length !== cardsToReturnCount) {
+      return { valid: false, error: `Must return exactly ${cardsToReturnCount} card(s)` };
     }
     
     // Verify all cards to return are in player's hand
@@ -632,11 +636,14 @@ export class GameEngine {
     this.state.chancellorCards = drawnCards;
     this.state.phase = 'CHANCELLOR_RESOLVING';
     
-    this.addLog(`${activePlayer.name} drew ${drawnCards.length} cards with Chancellor`, activePlayer.id);
+    this.addLog(`${activePlayer.name} drew ${drawnCards.length} card${drawnCards.length !== 1 ? 's' : ''} with Chancellor`, activePlayer.id);
+    
+    // Calculate how many cards to return (hand size - 1 to keep exactly 1)
+    const cardsToReturnCount = activePlayer.hand.length - 1;
     
     return {
       success: true,
-      message: `Drew ${drawnCards.length} cards. Select 2 cards to return to the bottom of the deck.`,
+      message: `Drew ${drawnCards.length} card${drawnCards.length !== 1 ? 's' : ''}. Select ${cardsToReturnCount} card${cardsToReturnCount !== 1 ? 's' : ''} to return to the bottom of the deck.`,
       newState: this.state,
     };
   }
@@ -666,7 +673,8 @@ export class GameEngine {
     // Clear chancellor state
     this.state.chancellorCards = undefined;
     
-    this.addLog(`${activePlayer.name} returned 2 cards to the deck`, activePlayer.id);
+    const returnCount = cardsToReturn.length;
+    this.addLog(`${activePlayer.name} returned ${returnCount} card${returnCount !== 1 ? 's' : ''} to the deck`, activePlayer.id);
     
     // Now advance turn
     this.advanceTurn();
