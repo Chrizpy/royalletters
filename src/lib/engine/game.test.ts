@@ -829,7 +829,7 @@ describe('Game End Tests', () => {
     });
 
     const state = game.getState();
-    state.players[0].tokens = 7; // 2 player game requires 7 tokens
+    state.players[0].tokens = 6; // 2 player game requires 6 tokens
     game.setState(state);
 
     game.checkGameEnd();
@@ -880,6 +880,53 @@ describe('Game End Tests', () => {
 
     expect(newState.phase).toBe('GAME_END');
     expect(newState.winnerId).toBe('p3');
+  });
+
+  it('should end game when player reaches token goal (5 players)', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+        { id: 'p4', name: 'David' },
+        { id: 'p5', name: 'Eve' },
+      ],
+    });
+
+    const state = game.getState();
+    state.players[3].tokens = 3; // 5 player game requires 3 tokens
+    game.setState(state);
+
+    game.checkGameEnd();
+    const newState = game.getState();
+
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerId).toBe('p4');
+  });
+
+  it('should end game when player reaches token goal (6 players)', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+        { id: 'p4', name: 'David' },
+        { id: 'p5', name: 'Eve' },
+        { id: 'p6', name: 'Frank' },
+      ],
+    });
+
+    const state = game.getState();
+    state.players[4].tokens = 3; // 6 player game requires 3 tokens
+    game.setState(state);
+
+    game.checkGameEnd();
+    const newState = game.getState();
+
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerId).toBe('p5');
   });
 });
 
@@ -1194,6 +1241,73 @@ describe('2019 Ruleset Tests', () => {
       state = game.getState();
 
       // No Spy bonus in classic
+      expect(state.players[0].tokens).toBe(1);
+    });
+
+    it('should award Spy bonus when other player with Spy is eliminated', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      // Alice has Spy in discard and is still playing
+      // Bob has Spy in discard but is ELIMINATED
+      // Charlie has no Spy
+      state.players[0].discardPile = ['spy'];
+      state.players[0].status = 'PLAYING';
+      state.players[0].hand = ['princess'];
+      state.players[1].discardPile = ['spy'];
+      state.players[1].status = 'ELIMINATED';
+      state.players[1].hand = [];
+      state.players[2].discardPile = ['guard'];
+      state.players[2].status = 'PLAYING';
+      state.players[2].hand = ['guard'];
+      state.deck = [];
+      game.setState(state);
+
+      game.checkRoundEnd();
+      state = game.getState();
+
+      // Alice wins round (+1) AND gets Spy bonus (+1) because Bob is eliminated
+      expect(state.players[0].tokens).toBe(2);
+    });
+
+    it('should NOT award Spy bonus when eliminated player is the only one with Spy', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      // Bob has Spy in discard but is ELIMINATED
+      // Alice has no Spy
+      state.players[0].discardPile = ['guard'];
+      state.players[0].status = 'PLAYING';
+      state.players[0].hand = ['princess'];
+      state.players[1].discardPile = ['spy'];
+      state.players[1].status = 'ELIMINATED';
+      state.players[1].hand = [];
+      state.deck = [];
+      game.setState(state);
+
+      game.checkRoundEnd();
+      state = game.getState();
+
+      // Alice wins round (+1) but no Spy bonus because she doesn't have Spy
       expect(state.players[0].tokens).toBe(1);
     });
   });
