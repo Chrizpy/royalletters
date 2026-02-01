@@ -148,7 +148,7 @@ describe('AI Engine Tests', () => {
       }
     });
     
-    it('should must play Countess when holding King or Prince', () => {
+    it('must play Countess when holding King or Prince', () => {
       // Create a scenario where AI has Countess + King
       const config: GameConfig = {
         players: [
