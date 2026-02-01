@@ -405,6 +405,7 @@
     font-family: inherit;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
+    color: #333;
   }
 
   .name-input:focus {
@@ -445,6 +446,7 @@
     border-radius: 8px;
     font-size: 1rem;
     font-family: monospace;
+    color: #333;
   }
 
   .peer-input:focus {

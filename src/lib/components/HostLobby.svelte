@@ -495,6 +495,7 @@
     font-family: inherit;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
+    color: #333;
   }
 
   .name-input:focus {
@@ -524,6 +525,7 @@
     transition: border-color 0.3s ease;
     background: white;
     cursor: pointer;
+    color: #333;
   }
 
   .ruleset-select:focus {
