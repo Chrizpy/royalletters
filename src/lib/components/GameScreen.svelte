@@ -5,6 +5,8 @@
   import GuessSelector from './GuessSelector.svelte';
   import GameMenu from './GameMenu.svelte';
   import CardReveal from './CardReveal.svelte';
+  import GameFeed from './GameFeed.svelte';
+  import EliminationModal from './EliminationModal.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
@@ -333,6 +335,9 @@
     {/if}
   </div>
 
+  <!-- Game Feed overlay for log messages -->
+  <GameFeed logs={gameState.logs} />
+
   <!-- Game menu (log + chat) -->
   <GameMenu logs={gameState.logs} {onSendChat} />
   
@@ -344,6 +349,9 @@
       onDismiss={clearRevealedCard}
     />
   {/if}
+  
+  <!-- Elimination modal - show when local player is eliminated -->
+  <EliminationModal player={localPlayer} />
 </div>
 {:else}
   <div class="loading-screen">

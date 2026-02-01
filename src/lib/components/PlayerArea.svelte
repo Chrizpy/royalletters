@@ -50,7 +50,7 @@
 
   {#if player.discardPile.length > 0}
     <div class="discard-preview">
-      {#each player.discardPile.slice(-3) as cardId}
+      {#each player.discardPile as cardId}
         <span class="discarded-mini" title={getCardDefinition(cardId)?.name}>
           {getCardDefinition(cardId)?.value}
         </span>
@@ -187,7 +187,10 @@
     bottom: -8px;
     right: 10px;
     display: flex;
+    flex-wrap: wrap;
     gap: 2px;
+    max-width: 120px;
+    justify-content: flex-end;
   }
 
   .discarded-mini {

@@ -59,6 +59,11 @@
       handleSendChat();
     }
   }
+  function handleExitGame() {
+    if (confirm('Are you sure you want to exit the game?')) {
+      window.location.href = '/';
+    }
+  }
 </script>
 
 <!-- Main Floating Action Button Container -->
@@ -66,6 +71,10 @@
   <!-- Expanded Menu Items (The "Two Bubbles") -->
   {#if isMenuOpen}
     <div class="menu-items">
+      <button class="mini-fab exit-fab" on:click={handleExitGame} aria-label="Exit game">
+        <span class="mini-fab-icon">🚪</span>
+        <span class="tooltip">Exit</span>
+      </button>
       <button class="mini-fab chat-fab" on:click={() => openModal('chat')} aria-label="Open chat">
         <span class="mini-fab-icon">💬</span>
         <span class="tooltip">Chat</span>
@@ -207,6 +216,10 @@
 
   .log-fab-mini {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .exit-fab {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
   }
 
   .mini-fab:hover {
