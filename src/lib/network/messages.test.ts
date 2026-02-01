@@ -33,7 +33,8 @@ describe('Network Messages Tests', () => {
       'GAME_STATE_SYNC',
       'PLAYER_ACTION',
       'ROUND_START',
-      'CONNECTION_ACK'
+      'CONNECTION_ACK',
+      'CHAT_MESSAGE'
     ] as const;
 
     messageTypes.forEach(type => {

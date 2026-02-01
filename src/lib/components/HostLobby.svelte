@@ -4,8 +4,10 @@
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
   import { gameState, gameStarted, initGame, startRound, applyAction, getEngine } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
+  import { addChatMessage } from '../stores/chat';
+  import { v4 as uuidv4 } from 'uuid';
   import type { Ruleset } from '../types';
 
   let qrCodeDataUrl = '';
@@ -129,6 +131,20 @@
       
       // Broadcast updated state to all clients
       broadcastGameState();
+    } else if (message.type === 'CHAT_MESSAGE') {
+      // Received chat message from a guest - add to local store and broadcast to all except sender
+      const payload = message.payload as ChatMessagePayload;
+      const chatMsg = {
+        id: uuidv4(),
+        senderId: message.senderId,
+        senderName: payload.senderName,
+        text: payload.text,
+        timestamp: payload.timestamp
+      };
+      addChatMessage(chatMsg);
+      
+      // Broadcast to all other clients except the original sender
+      peerManager.broadcastExcept(message, fromPeerId);
     }
   }
 
@@ -203,6 +219,29 @@
     broadcastGameState();
   }
 
+  function handleSendChat(text: string) {
+    // Create chat message
+    const chatMsg = {
+      id: uuidv4(),
+      senderId: generatedPeerId,
+      senderName: hostName,
+      text,
+      timestamp: Date.now()
+    };
+    
+    // Add to local store
+    addChatMessage(chatMsg);
+    
+    // Broadcast to all clients
+    const payload: ChatMessagePayload = {
+      text,
+      senderName: hostName,
+      timestamp: chatMsg.timestamp
+    };
+    const message = createMessage('CHAT_MESSAGE', generatedPeerId, payload);
+    peerManager.broadcast(message);
+  }
+
   function handleBack() {
     if (peerManager) {
       peerManager.disconnect();
@@ -218,6 +257,7 @@
     onChancellorReturn={handleChancellorReturn}
     onStartRound={handleStartRound}
     onPlayAgain={handlePlayAgain}
+    onSendChat={handleSendChat}
     isHost={true}
   />
 {:else}

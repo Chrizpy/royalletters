@@ -3,7 +3,7 @@
   import PlayerArea from './PlayerArea.svelte';
   import TargetSelector from './TargetSelector.svelte';
   import GuessSelector from './GuessSelector.svelte';
-  import GameLog from './GameLog.svelte';
+  import GameMenu from './GameMenu.svelte';
   import CardReveal from './CardReveal.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
@@ -16,6 +16,7 @@
   export let onStartRound: () => void;
   export let onPlayAgain: (() => void) | undefined = undefined;
   export let isHost: boolean = false;
+  export let onSendChat: ((text: string) => void) | undefined = undefined;
 
   // Local state
   let selectedCard: string | null = null;
@@ -324,8 +325,8 @@
     {/if}
   </div>
 
-  <!-- Game log -->
-  <GameLog logs={gameState.logs} />
+  <!-- Game menu (log + chat) -->
+  <GameMenu logs={gameState.logs} {onSendChat} />
   
   <!-- Card reveal modal (for Priest) - only show to the player who played Priest -->
   {#if revealed && revealed.viewerPlayerId === localPlayerId}
