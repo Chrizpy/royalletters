@@ -5,6 +5,7 @@
     id: number;
     message: string;
     timestamp: number;
+    timeoutId: ReturnType<typeof setTimeout>;
   }
 
   export let logs: LogEntry[] = [];
@@ -22,22 +23,26 @@
       // Add new log entries to the feed
       for (let i = lastLogCount; i < logs.length; i++) {
         const log = logs[i];
-        const item: FeedItem = {
-          id: nextId++,
-          message: log.message,
-          timestamp: Date.now()
-        };
-        feedItems = [...feedItems, item];
+        const itemId = nextId++;
         
         // Schedule removal after display time
-        const itemId = item.id;
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
           feedItems = feedItems.filter(f => f.id !== itemId);
         }, FEED_DISPLAY_TIME_MS);
+        
+        const item: FeedItem = {
+          id: itemId,
+          message: log.message,
+          timestamp: Date.now(),
+          timeoutId
+        };
+        feedItems = [...feedItems, item];
       }
       
-      // Keep only the most recent items visible
+      // Keep only the most recent items visible, clearing timeouts for removed items
       if (feedItems.length > MAX_VISIBLE_ITEMS) {
+        const itemsToRemove = feedItems.slice(0, feedItems.length - MAX_VISIBLE_ITEMS);
+        itemsToRemove.forEach(item => clearTimeout(item.timeoutId));
         feedItems = feedItems.slice(-MAX_VISIBLE_ITEMS);
       }
       
@@ -79,9 +84,7 @@
     backdrop-filter: blur(4px);
     animation: feed-fade 4s ease-out forwards;
     max-width: 90vw;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    word-wrap: break-word;
   }
 
   @keyframes feed-fade {
