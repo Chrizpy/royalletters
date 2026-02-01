@@ -482,7 +482,7 @@
   .name-section label {
     display: block;
     font-weight: 500;
-    color: #333;
+    color: #000;
     margin-bottom: 0.5rem;
   }
 
@@ -495,6 +495,8 @@
     font-family: inherit;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
+    background: white;
+    color: #333;
   }
 
   .name-input:focus {
@@ -509,7 +511,7 @@
   .ruleset-section label {
     display: block;
     font-weight: 500;
-    color: #333;
+    color: #000;
     margin-bottom: 0.5rem;
   }
 
@@ -524,6 +526,7 @@
     transition: border-color 0.3s ease;
     background: white;
     cursor: pointer;
+    color: #333;
   }
 
   .ruleset-select:focus {
