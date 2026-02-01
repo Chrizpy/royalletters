@@ -8,42 +8,79 @@
     timeoutId: ReturnType<typeof setTimeout>;
   }
 
+  interface PendingItem {
+    log: LogEntry;
+    addedAt: number;
+  }
+
   export let logs: LogEntry[] = [];
 
   const FEED_DISPLAY_TIME_MS = 6000;
   const MAX_VISIBLE_ITEMS = 8;
+  const STAGGER_DELAY_MS = 300; // Delay between each message appearing
 
   let feedItems: FeedItem[] = [];
+  let pendingItems: PendingItem[] = [];
   let nextId = 0;
   let lastLogCount = 0;
+  let processingInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Watch for new logs and add them to the feed
+  // Add a single item to the feed
+  function addItemToFeed(log: LogEntry) {
+    const itemId = nextId++;
+    
+    // Schedule removal after display time
+    const timeoutId = setTimeout(() => {
+      feedItems = feedItems.filter(f => f.id !== itemId);
+    }, FEED_DISPLAY_TIME_MS);
+    
+    const item: FeedItem = {
+      id: itemId,
+      message: log.message,
+      timestamp: Date.now(),
+      timeoutId
+    };
+    feedItems = [...feedItems, item];
+    
+    // Keep only the most recent items visible
+    if (feedItems.length > MAX_VISIBLE_ITEMS) {
+      const itemsToRemove = feedItems.slice(0, feedItems.length - MAX_VISIBLE_ITEMS);
+      itemsToRemove.forEach(i => clearTimeout(i.timeoutId));
+      feedItems = feedItems.slice(-MAX_VISIBLE_ITEMS);
+    }
+  }
+
+  // Process pending items one at a time
+  function processPendingItems() {
+    if (pendingItems.length > 0) {
+      const next = pendingItems.shift()!;
+      addItemToFeed(next.log);
+      pendingItems = pendingItems; // Trigger reactivity
+    }
+    
+    if (pendingItems.length === 0 && processingInterval) {
+      clearInterval(processingInterval);
+      processingInterval = null;
+    }
+  }
+
+  // Watch for new logs and queue them for staggered display
   $: {
     if (logs.length > lastLogCount) {
-      // Add new log entries to the feed
+      // Queue new log entries
       for (let i = lastLogCount; i < logs.length; i++) {
-        const log = logs[i];
-        const itemId = nextId++;
-        
-        // Schedule removal after display time
-        const timeoutId = setTimeout(() => {
-          feedItems = feedItems.filter(f => f.id !== itemId);
-        }, FEED_DISPLAY_TIME_MS);
-        
-        const item: FeedItem = {
-          id: itemId,
-          message: log.message,
-          timestamp: Date.now(),
-          timeoutId
-        };
-        feedItems = [...feedItems, item];
+        pendingItems = [...pendingItems, { log: logs[i], addedAt: Date.now() }];
       }
       
-      // Keep only the most recent items visible, clearing timeouts for removed items
-      if (feedItems.length > MAX_VISIBLE_ITEMS) {
-        const itemsToRemove = feedItems.slice(0, feedItems.length - MAX_VISIBLE_ITEMS);
-        itemsToRemove.forEach(item => clearTimeout(item.timeoutId));
-        feedItems = feedItems.slice(-MAX_VISIBLE_ITEMS);
+      // Start processing if not already running
+      if (!processingInterval && pendingItems.length > 0) {
+        // Add the first item immediately
+        processPendingItems();
+        
+        // Process remaining items with stagger delay
+        if (pendingItems.length > 0) {
+          processingInterval = setInterval(processPendingItems, STAGGER_DELAY_MS);
+        }
       }
       
       lastLogCount = logs.length;
