@@ -14,9 +14,16 @@
   let remainingTime = TOTAL_TIME;
   let timerInterval: ReturnType<typeof setInterval> | null = null;
   let hasDismissed = false;
+  let wasEverPaused = false;  // Track if game was paused at least once
+  
+  // Track when game gets paused (so we know when it's safe to auto-close on unpause)
+  $: if ($gamePaused.isPaused && $gamePaused.reason === 'priest_reveal') {
+    wasEverPaused = true;
+  }
   
   // Subscribe to gamePaused to auto-close when game resumes
-  $: if (!$gamePaused.isPaused && timerInterval && !hasDismissed) {
+  // Only auto-close if the game was paused at least once (to avoid race condition on mount)
+  $: if (!$gamePaused.isPaused && timerInterval && !hasDismissed && wasEverPaused) {
     // Game was unpaused (either by timer or manually), close modal
     hasDismissed = true;
     cleanup();
