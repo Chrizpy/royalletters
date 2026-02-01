@@ -1,22 +1,61 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import type { PlayerState } from '../types';
-  import { resumeGame } from '../stores/game';
+  import { gamePaused, resumeGame } from '../stores/game';
 
   export let player: PlayerState | undefined;
+
+  // Timer state
+  const TOTAL_TIME = 10;
+  let remainingTime = TOTAL_TIME;
+  let timerInterval: ReturnType<typeof setInterval> | null = null;
 
   let dismissed = false;
   let lastEliminationReason: string | undefined;
 
-  // Reset dismissed state when elimination reason changes (new elimination)
+  // Reset dismissed state and timer when elimination reason changes (new elimination)
   $: if (player?.eliminationReason !== lastEliminationReason) {
     dismissed = false;
     lastEliminationReason = player?.eliminationReason;
+    remainingTime = TOTAL_TIME;
+    startTimer();
   }
 
   $: isEliminated = player?.status === 'ELIMINATED';
   $: showModal = isEliminated && player?.eliminationReason && !dismissed;
+  
+  // Auto-close when game is unpaused (timer expired or other player action)
+  // Guard with !dismissed to prevent multiple calls
+  $: if (!$gamePaused.isPaused && showModal && timerInterval && !dismissed) {
+    dismiss();
+  }
+  
+  function startTimer() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+    }
+    timerInterval = setInterval(() => {
+      remainingTime = Math.max(0, remainingTime - 1);
+    }, 1000);
+  }
+  
+  onMount(() => {
+    if (showModal) {
+      startTimer();
+    }
+  });
+  
+  onDestroy(() => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+    }
+  });
 
   function dismiss() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
     dismissed = true;
     // Resume the game when the eliminated player dismisses the modal
     resumeGame();
@@ -26,6 +65,11 @@
 {#if showModal}
   <div class="elimination-overlay" role="dialog" aria-modal="true">
     <div class="elimination-modal">
+      <div class="timer-container">
+        <div class="timer-ring" style="--progress: {(remainingTime / TOTAL_TIME) * 100}%">
+          <span class="timer-text">{remainingTime}</span>
+        </div>
+      </div>
       <div class="elimination-icon">💀</div>
       <h2 class="elimination-title">You've Been Eliminated!</h2>
       <p class="elimination-reason">{player?.eliminationReason}</p>
@@ -64,6 +108,44 @@
     text-align: center;
     animation: modal-pop 0.4s ease-out;
     box-shadow: 0 0 40px rgba(214, 48, 49, 0.4);
+    position: relative;
+  }
+
+  .timer-container {
+    position: absolute;
+    top: -20px;
+    right: -20px;
+  }
+
+  .timer-ring {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: conic-gradient(
+      #d63031 var(--progress),
+      rgba(255, 255, 255, 0.2) var(--progress)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(214, 48, 49, 0.4);
+  }
+
+  .timer-ring::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2d1f1f 0%, #1a1a2e 100%);
+  }
+
+  .timer-text {
+    position: relative;
+    z-index: 1;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #d63031;
   }
 
   @keyframes modal-pop {

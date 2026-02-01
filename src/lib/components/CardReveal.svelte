@@ -1,11 +1,45 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { getCardDefinition } from '../engine/deck';
+  import { gamePaused } from '../stores/game';
 
   export let cardId: string;
   export let playerName: string;
   export let onDismiss: () => void;
 
   $: card = getCardDefinition(cardId);
+  
+  // Timer state
+  const TOTAL_TIME = 10;
+  let remainingTime = TOTAL_TIME;
+  let timerInterval: ReturnType<typeof setInterval> | null = null;
+  let hasDismissed = false;
+  
+  // Subscribe to gamePaused to auto-close when game resumes
+  $: if (!$gamePaused.isPaused && timerInterval && !hasDismissed) {
+    // Game was unpaused (either by timer or manually), close modal
+    hasDismissed = true;
+    cleanup();
+    onDismiss();
+  }
+  
+  function cleanup() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }
+  
+  onMount(() => {
+    // Start countdown timer
+    timerInterval = setInterval(() => {
+      remainingTime = Math.max(0, remainingTime - 1);
+    }, 1000);
+  });
+  
+  onDestroy(() => {
+    cleanup();
+  });
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
@@ -38,6 +72,11 @@
 
 <div class="reveal-overlay" role="dialog" aria-modal="true" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onDismiss()}>
   <div class="reveal-modal">
+    <div class="timer-container">
+      <div class="timer-ring" style="--progress: {(remainingTime / TOTAL_TIME) * 100}%">
+        <span class="timer-text">{remainingTime}</span>
+      </div>
+    </div>
     <h3>👁️ {playerName}'s Card Revealed!</h3>
     
     {#if card}
@@ -83,6 +122,44 @@
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     animation: pop-in 0.3s ease-out;
     color: white;
+    position: relative;
+  }
+
+  .timer-container {
+    position: absolute;
+    top: -20px;
+    right: -20px;
+  }
+
+  .timer-ring {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: conic-gradient(
+      #f39c12 var(--progress),
+      rgba(255, 255, 255, 0.2) var(--progress)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+  }
+
+  .timer-ring::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+
+  .timer-text {
+    position: relative;
+    z-index: 1;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f39c12;
   }
 
   @keyframes pop-in {

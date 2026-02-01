@@ -308,6 +308,18 @@
       {/if}
     </div>
 
+    <!-- Discard pile moved above the hand to prevent UI jumping -->
+    <div class="discard-pile" class:has-cards={localPlayer?.discardPile && localPlayer.discardPile.length > 0}>
+      <span class="discard-label">Discarded:</span>
+      {#if localPlayer?.discardPile && localPlayer.discardPile.length > 0}
+        {#each localPlayer.discardPile as cardId}
+          <span class="discarded-card">{getCardDefinition(cardId)?.name}</span>
+        {/each}
+      {:else}
+        <span class="no-discards">None</span>
+      {/if}
+    </div>
+
     <div class="hand" class:chancellor-mode={isChancellorPhase}>
       {#each localPlayer?.hand || [] as cardId, index}
         <Card 
@@ -328,15 +340,6 @@
         </div>
       {/if}
     </div>
-
-    {#if localPlayer?.discardPile && localPlayer.discardPile.length > 0}
-      <div class="discard-pile">
-        <span class="discard-label">Discarded:</span>
-        {#each localPlayer.discardPile as cardId}
-          <span class="discarded-card">{getCardDefinition(cardId)?.name}</span>
-        {/each}
-      </div>
-    {/if}
   </div>
 
   <!-- Game Feed overlay for log messages -->
@@ -756,14 +759,21 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 32px;
   }
 
   .discard-label {
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.6);
+  }
+
+  .no-discards {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-style: italic;
   }
 
   .discarded-card {
@@ -862,8 +872,8 @@
     .discard-pile {
       flex-wrap: wrap;
       gap: 0.25rem;
-      margin-top: 0.5rem;
-      padding-top: 0.5rem;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.5rem;
     }
 
     .discard-label {

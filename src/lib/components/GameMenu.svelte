@@ -13,19 +13,25 @@
   let logsContainer: HTMLDivElement;
   let chatContainer: HTMLDivElement;
   let chatInput = '';
+  let hasScrolledLogOnOpen = false;
+  let hasScrolledChatOnOpen = false;
 
   $: messages = $chatMessages;
   $: isChatInputEmpty = !chatInput.trim();
 
-  $: if (logsContainer && logs.length && activeModal === 'log') {
+  // Only scroll to bottom when the log modal is first opened
+  $: if (logsContainer && logs.length && activeModal === 'log' && !hasScrolledLogOnOpen) {
     setTimeout(() => {
       logsContainer.scrollTop = logsContainer.scrollHeight;
+      hasScrolledLogOnOpen = true;
     }, SCROLL_DELAY_MS);
   }
 
-  $: if (chatContainer && messages.length && activeModal === 'chat') {
+  // Only scroll to bottom when the chat modal is first opened
+  $: if (chatContainer && messages.length && activeModal === 'chat' && !hasScrolledChatOnOpen) {
     setTimeout(() => {
       chatContainer.scrollTop = chatContainer.scrollHeight;
+      hasScrolledChatOnOpen = true;
     }, SCROLL_DELAY_MS);
   }
 
@@ -36,6 +42,12 @@
   function openModal(type: 'log' | 'chat') {
     activeModal = type;
     isMenuOpen = false;
+    // Reset scroll flags when opening modals
+    if (type === 'log') {
+      hasScrolledLogOnOpen = false;
+    } else if (type === 'chat') {
+      hasScrolledChatOnOpen = false;
+    }
   }
 
   function closeModal() {
