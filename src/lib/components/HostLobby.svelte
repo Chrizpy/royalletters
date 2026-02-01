@@ -3,8 +3,8 @@
   import QRCode from 'qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
-  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove, gamePaused, isGamePaused, resumeGame, updateModalTimer, PAUSE_TIMER_SECONDS } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload, type PauseTimerTickPayload, type ModalDismissPayload } from '../network/messages';
+  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove } from '../stores/game';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
   import { v4 as uuidv4 } from 'uuid';
@@ -20,10 +20,6 @@
   let selectedRuleset: Ruleset = 'classic';
   let aiCounter = 1;  // Counter for AI player names
   let aiMoveDelayMs = 1000;  // Default AI move delay (configurable)
-  
-  // Pause timer management (host-controlled)
-  let pauseTimerInterval: ReturnType<typeof setInterval> | null = null;
-  let pauseTimerRemaining = 10;
 
   // Max players depends on ruleset: classic = 4, 2019 = 6
   $: maxPlayers = selectedRuleset === '2019' ? 6 : 4;
@@ -92,82 +88,7 @@
     if (peerManager) {
       peerManager.disconnect();
     }
-    if (pauseTimerInterval) {
-      clearInterval(pauseTimerInterval);
-    }
   });
-  
-  /**
-   * Start the pause timer (host manages this and sends ticks to players)
-   */
-  function startPauseTimer(reason: 'priest_reveal' | 'elimination', targetPlayerId: string) {
-    // Clear any existing timer
-    if (pauseTimerInterval) {
-      clearInterval(pauseTimerInterval);
-    }
-    
-    pauseTimerRemaining = PAUSE_TIMER_SECONDS;
-    updateModalTimer(PAUSE_TIMER_SECONDS);  // Update local store for host display
-    
-    // Send initial tick
-    sendTimerTick(reason, targetPlayerId, pauseTimerRemaining);
-    
-    // Start interval to tick every second
-    pauseTimerInterval = setInterval(() => {
-      pauseTimerRemaining--;
-      updateModalTimer(pauseTimerRemaining);
-      sendTimerTick(reason, targetPlayerId, pauseTimerRemaining);
-      
-      // If timer reaches 0, auto-unpause
-      if (pauseTimerRemaining <= 0) {
-        stopPauseTimer();
-        resumeGame();
-        scheduleAIMove();  // Resume AI if needed
-      }
-    }, 1000);
-  }
-  
-  /**
-   * Stop the pause timer
-   */
-  function stopPauseTimer() {
-    if (pauseTimerInterval) {
-      clearInterval(pauseTimerInterval);
-      pauseTimerInterval = null;
-    }
-    pauseTimerRemaining = 0;
-    updateModalTimer(null);
-  }
-  
-  /**
-   * Send a timer tick message to a specific player (or handle locally if host)
-   */
-  function sendTimerTick(reason: 'priest_reveal' | 'elimination', targetPlayerId: string, remaining: number) {
-    // If target is the host, we don't need to send a message
-    if (targetPlayerId === generatedPeerId) {
-      return;  // Host already updated via updateModalTimer
-    }
-    
-    // Send tick to the target player
-    if (peerManager) {
-      const tickPayload: PauseTimerTickPayload = {
-        reason,
-        remainingSeconds: remaining,
-        targetPlayerId
-      };
-      const tickMessage = createMessage('PAUSE_TIMER_TICK', generatedPeerId, tickPayload);
-      peerManager.sendTo(targetPlayerId, tickMessage);
-    }
-  }
-  
-  /**
-   * Handle modal dismiss from a player (or host)
-   */
-  function handleModalDismiss(reason: 'priest_reveal' | 'elimination') {
-    stopPauseTimer();
-    resumeGame();
-    scheduleAIMove();  // Resume AI if needed
-  }
 
   function handleMessage(message: NetworkMessage, fromPeerId: string) {
     console.log('Host received message:', message.type, 'from:', fromPeerId);
@@ -207,7 +128,6 @@
         });
         
         // If a Priest reveal happened, send it privately to the player who played Priest
-        // and start the pause timer
         if (result?.revealedCard && peerManager) {
           const engine = getEngine();
           const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
@@ -217,26 +137,14 @@
           };
           const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
           peerManager.sendTo(fromPeerId, priestRevealMessage);
-          
-          // Start pause timer for the player who played Priest
-          startPauseTimer('priest_reveal', fromPeerId);
-        }
-        
-        // If a player was eliminated, start the pause timer for them
-        if (result?.eliminatedPlayerId) {
-          startPauseTimer('elimination', result.eliminatedPlayerId);
         }
       }
       
       // Broadcast updated state to all clients
       broadcastGameState();
       
-      // Check if next turn is AI (will wait for pause to end)
+      // Check if next turn is AI
       scheduleAIMove();
-    } else if (message.type === 'MODAL_DISMISS') {
-      // Player dismissed their modal, stop the timer and resume
-      const payload = message.payload as ModalDismissPayload;
-      handleModalDismiss(payload.reason);
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message from a guest - add to local store and broadcast to all except sender
       const payload = message.payload as ChatMessagePayload;
@@ -288,15 +196,9 @@
   /**
    * Schedule AI move if it's an AI player's turn
    * Uses setTimeout to allow state updates to propagate and create natural pacing
-   * Also checks if the game is paused and waits if necessary
    */
   function scheduleAIMove() {
     setTimeout(() => {
-      // If game is paused, wait and check again after a short delay
-      if (isGamePaused()) {
-        setTimeout(scheduleAIMove, 500);  // Check again in 500ms when paused
-        return;
-      }
       processAITurn();
     }, aiMoveDelayMs);
   }
@@ -305,12 +207,6 @@
    * Process AI turn if it's an AI player's turn
    */
   function processAITurn() {
-    // Double-check pause state
-    if (isGamePaused()) {
-      setTimeout(scheduleAIMove, 500);  // Wait and re-check
-      return;
-    }
-    
     if (!checkIfAITurn()) return;
     
     const result = executeAIMove();
@@ -318,19 +214,14 @@
       // Broadcast updated state
       broadcastGameState();
       
-      // If someone was eliminated by AI, start the pause timer for them
-      if (result.eliminatedPlayerId) {
-        startPauseTimer('elimination', result.eliminatedPlayerId);
-      } else {
-        // Check if it's still an AI's turn (could be another AI)
-        scheduleAIMove();
-      }
+      // Check if it's still an AI's turn (could be another AI)
+      scheduleAIMove();
     }
   }
 
   function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
     // Host applies actions directly
-    const result = applyAction({
+    applyAction({
       type: 'PLAY_CARD',
       playerId: generatedPeerId,
       cardId,
@@ -343,21 +234,11 @@
     
     // Check if next turn is AI
     scheduleAIMove();
-    
-    // If host played Priest, start the pause timer for themselves
-    if (result?.revealedCard) {
-      startPauseTimer('priest_reveal', generatedPeerId);
-    }
-    
-    // If someone was eliminated (could be host or another player from AI action)
-    if (result?.eliminatedPlayerId) {
-      startPauseTimer('elimination', result.eliminatedPlayerId);
-    }
   }
   
   function handleChancellorReturn(cardsToReturn: string[]) {
     // Host applies Chancellor return action directly
-    const result = applyAction({
+    applyAction({
       type: 'CHANCELLOR_RETURN',
       playerId: generatedPeerId,
       cardsToReturn
@@ -449,7 +330,6 @@
     onStartRound={handleStartRound}
     onPlayAgain={handlePlayAgain}
     onSendChat={handleSendChat}
-    onModalDismiss={handleModalDismiss}
     isHost={true}
   />
 {:else}
