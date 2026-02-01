@@ -9,7 +9,7 @@
   import GameFeed from './GameFeed.svelte';
   import EliminationModal from './EliminationModal.svelte';
   import { getCardDefinition } from '../engine/deck';
-  import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
+  import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard, skipPause } from '../stores/game';
   import type { PlayerState } from '../types';
 
   // Props
@@ -20,6 +20,7 @@
   export let onPlayAgain: (() => void) | undefined = undefined;
   export let isHost: boolean = false;
   export let onSendChat: ((text: string) => void) | undefined = undefined;
+  export let onSkipPause: (() => void) | undefined = undefined;
 
   // Local state
   let selectedCard: string | null = null;
@@ -406,6 +407,11 @@
         <h2 class="pause-reason">{pauseReason}</h2>
         <div class="pause-timer">{secondsRemaining}</div>
         <p class="pause-message">Game resumes shortly...</p>
+        {#if isHost}
+          <button class="continue-btn" on:click={() => onSkipPause ? onSkipPause() : skipPause()}>
+            Continue ➜
+          </button>
+        {/if}
       </div>
     </div>
   {/if}
@@ -1013,6 +1019,25 @@
     font-style: italic;
   }
 
+  .continue-btn {
+    margin-top: 1.5rem;
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+  }
+
+  .continue-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.6);
+  }
+
   /* Mobile responsive styles for pause overlay */
   @media (max-width: 480px) {
     .pause-content {
@@ -1030,6 +1055,11 @@
 
     .pause-message {
       font-size: 0.9rem;
+    }
+
+    .continue-btn {
+      font-size: 0.9rem;
+      padding: 0.6rem 1.5rem;
     }
   }
 </style>

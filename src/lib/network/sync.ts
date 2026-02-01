@@ -303,6 +303,31 @@ export class GameSync {
   }
 
   /**
+   * HOST: Skip the current pause and resume the game immediately
+   */
+  skipPause(): void {
+    if (!this.isHost) return;
+
+    // Clear any pending pause resume timeout
+    if (this.pauseResumeTimeoutId !== null) {
+      clearTimeout(this.pauseResumeTimeoutId);
+      this.pauseResumeTimeoutId = null;
+    }
+
+    // Resume the game immediately
+    this.engine.resumeGame();
+
+    // Auto-draw for next player if needed
+    const state = this.engine.getState();
+    if (state.phase === 'TURN_START') {
+      this.engine.drawPhase();
+    }
+
+    // Broadcast the new state
+    this.broadcastGameState();
+  }
+
+  /**
    * HOST: Start a new round
    */
   startRound(): void {

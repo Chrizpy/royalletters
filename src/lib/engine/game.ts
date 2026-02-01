@@ -425,8 +425,8 @@ export class GameEngine {
     const revealedCard = targetPlayer.hand[0] || '';
 
     this.addLog(`${activePlayer.name} saw ${targetPlayer.name}'s hand`, activePlayer.id);
-    // Trigger pause to give the player time to read the revealed card
-    this.triggerPause(5000, 'Priest is consulting...');
+    // No pause for Priest - the CardReveal modal handles the display for the Priest player
+    // and the game should continue immediately for other players
 
     return {
       success: true,

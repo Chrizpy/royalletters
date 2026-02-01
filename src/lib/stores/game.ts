@@ -120,6 +120,31 @@ export function clearRevealedCard() {
 }
 
 /**
+ * Skip the current pause and resume the game immediately
+ * Should only be called by the host
+ */
+export function skipPause() {
+  if (!engine) return;
+  
+  // Clear any pending pause resume timeout
+  if (pauseResumeTimeoutId !== null) {
+    clearTimeout(pauseResumeTimeoutId);
+    pauseResumeTimeoutId = null;
+  }
+  
+  // Resume the game immediately
+  engine.resumeGame();
+  
+  // Auto-draw for next player if needed
+  const state = engine.getState();
+  if (state.phase === 'TURN_START') {
+    engine.drawPhase();
+  }
+  
+  gameState.set(engine.getState());
+}
+
+/**
  * Set game state (for syncing from host)
  */
 export function setGameState(state: GameState) {
