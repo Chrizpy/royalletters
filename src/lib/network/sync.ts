@@ -143,6 +143,26 @@ export class GameSync {
     if (result.success) {
       // Broadcast updated state to all clients
       this.broadcastGameState();
+      
+      // Check if the engine triggered a pause
+      if (result.newState.pausedUntil) {
+        const delay = result.newState.pausedUntil - Date.now();
+        
+        // Set a timeout to resume the game
+        setTimeout(() => {
+          // Execute resume logic in the engine
+          this.engine.resumeGame();
+          
+          // Auto-draw for next player if needed
+          const state = this.engine.getState();
+          if (state.phase === 'TURN_START') {
+            this.engine.drawPhase();
+          }
+          
+          // Broadcast the NEW state (turn advanced, pause cleared)
+          this.broadcastGameState();
+        }, delay);
+      }
     } else {
       console.error('Action failed:', result.message);
     }
@@ -237,6 +257,26 @@ export class GameSync {
       
       if (result.success) {
         this.broadcastGameState();
+        
+        // Check if the engine triggered a pause
+        if (result.newState.pausedUntil) {
+          const delay = result.newState.pausedUntil - Date.now();
+          
+          // Set a timeout to resume the game
+          setTimeout(() => {
+            // Execute resume logic in the engine
+            this.engine.resumeGame();
+            
+            // Auto-draw for next player if needed
+            const state = this.engine.getState();
+            if (state.phase === 'TURN_START') {
+              this.engine.drawPhase();
+            }
+            
+            // Broadcast the NEW state (turn advanced, pause cleared)
+            this.broadcastGameState();
+          }, delay);
+        }
       }
     } else {
       // Guest sends to host

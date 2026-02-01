@@ -278,9 +278,14 @@ describe('AI Engine Tests', () => {
       const result = game.applyMove(move!);
       expect(result.success).toBe(true);
       
-      // Check turn advanced or game ended
+      // Check turn advanced or game ended or paused (pause keeps WAITING_FOR_ACTION)
       state = game.getState();
-      expect(['TURN_START', 'ROUND_END', 'CHANCELLOR_RESOLVING']).toContain(state.phase);
+      expect(['TURN_START', 'ROUND_END', 'CHANCELLOR_RESOLVING', 'WAITING_FOR_ACTION']).toContain(state.phase);
+      
+      // If still in WAITING_FOR_ACTION, it should be due to a pause
+      if (state.phase === 'WAITING_FOR_ACTION') {
+        expect(state.pausedUntil).not.toBeNull();
+      }
     });
     
     it('should work with multiple AI players', () => {

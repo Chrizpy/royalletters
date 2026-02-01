@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import Card from './Card.svelte';
   import PlayerArea from './PlayerArea.svelte';
   import TargetSelector from './TargetSelector.svelte';
@@ -28,6 +29,10 @@
   let pendingTargetId: string | null = null;
   let chancellorSelectedIndices: number[] = [];  // Track by index to handle duplicate cards
 
+  // Pause countdown state
+  let now = Date.now();
+  let pauseIntervalId: ReturnType<typeof setInterval> | null = null;
+
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
   $: revealed = $revealedCard;
@@ -40,6 +45,40 @@
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
   // Calculate how many cards need to be returned in Chancellor phase (hand size - 1)
   $: chancellorCardsToReturnCount = isChancellorPhase && localPlayer ? localPlayer.hand.length - 1 : 2;
+
+  // Pause mechanic reactive values
+  $: pauseReason = gameState?.pauseReason;
+  $: pausedUntil = gameState?.pausedUntil;
+  $: secondsRemaining = pausedUntil ? Math.max(0, Math.ceil((pausedUntil - now) / 1000)) : 0;
+  $: isPaused = pausedUntil && secondsRemaining > 0;
+
+  // Start/stop interval based on pause state
+  $: {
+    if (pausedUntil && pausedUntil > now) {
+      // Start interval if not already running
+      if (!pauseIntervalId) {
+        pauseIntervalId = setInterval(() => {
+          now = Date.now();
+        }, 100);
+      }
+    } else {
+      // Clear interval if running
+      if (pauseIntervalId) {
+        clearInterval(pauseIntervalId);
+        pauseIntervalId = null;
+      }
+    }
+  }
+
+  onMount(() => {
+    now = Date.now();
+  });
+
+  onDestroy(() => {
+    if (pauseIntervalId) {
+      clearInterval(pauseIntervalId);
+    }
+  });
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
@@ -359,6 +398,17 @@
   
   <!-- Elimination modal - show when local player is eliminated -->
   <EliminationModal player={localPlayer} />
+
+  <!-- Pause overlay - show during timed pauses -->
+  {#if isPaused}
+    <div class="pause-overlay">
+      <div class="pause-content">
+        <h2 class="pause-reason">{pauseReason}</h2>
+        <div class="pause-timer">{secondsRemaining}</div>
+        <p class="pause-message">Game resumes shortly...</p>
+      </div>
+    </div>
+  {/if}
 </div>
 {:else}
   <div class="loading-screen">
@@ -894,6 +944,92 @@
 
     .player-hand-area {
       padding-bottom: 4.5rem; /* Space for FAB button */
+    }
+  }
+
+  /* Pause overlay styles */
+  .pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    animation: fade-in 0.3s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .pause-content {
+    text-align: center;
+    padding: 2rem 3rem;
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+    border-radius: 20px;
+    border: 2px solid rgba(102, 126, 234, 0.5);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    animation: pop-in 0.3s ease-out;
+  }
+
+  @keyframes pop-in {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .pause-reason {
+    margin: 0 0 1rem 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f5af19;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .pause-timer {
+    font-size: 4rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1;
+    margin-bottom: 1rem;
+    animation: pulse-timer 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse-timer {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .pause-message {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+  }
+
+  /* Mobile responsive styles for pause overlay */
+  @media (max-width: 480px) {
+    .pause-content {
+      padding: 1.5rem 2rem;
+      margin: 1rem;
+    }
+
+    .pause-reason {
+      font-size: 1.2rem;
+    }
+
+    .pause-timer {
+      font-size: 3rem;
+    }
+
+    .pause-message {
+      font-size: 0.9rem;
     }
   }
 </style>

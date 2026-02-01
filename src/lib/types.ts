@@ -64,6 +64,10 @@ export interface GameState {
   roundCount: number;
   ruleset: Ruleset;
   chancellorCards?: string[];  // Cards drawn for Chancellor effect, waiting for player to select which to return
+  
+  // Pause mechanic fields
+  pausedUntil: number | null;  // Timestamp (Date.now() + duration) when game resumes
+  pauseReason: string | null;  // Text to display during pause (e.g., "Player Eliminated")
 }
 
 export interface GameAction {

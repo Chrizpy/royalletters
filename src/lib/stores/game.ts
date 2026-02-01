@@ -73,9 +73,30 @@ export function applyAction(action: GameAction): ActionResult | undefined {
     });
   }
   
-  // Auto-draw for next player if needed
-  if (newState.phase === 'TURN_START') {
-    engine.drawPhase();
+  // Check if the engine triggered a pause
+  if (newState.pausedUntil) {
+    const delay = newState.pausedUntil - Date.now();
+    
+    // Set a timeout to resume the game
+    setTimeout(() => {
+      if (!engine) return;
+      
+      // Execute resume logic in the engine
+      engine.resumeGame();
+      
+      // Auto-draw for next player if needed
+      const state = engine.getState();
+      if (state.phase === 'TURN_START') {
+        engine.drawPhase();
+      }
+      
+      gameState.set(engine.getState());
+    }, delay);
+  } else {
+    // Auto-draw for next player if needed (no pause)
+    if (newState.phase === 'TURN_START') {
+      engine.drawPhase();
+    }
   }
   
   gameState.set(engine.getState());

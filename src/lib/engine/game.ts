@@ -40,6 +40,8 @@ export class GameEngine {
       rngSeed: '',
       roundCount: 0,
       ruleset: 'classic',
+      pausedUntil: null,
+      pauseReason: null,
     };
   }
 
@@ -375,8 +377,10 @@ export class GameEngine {
       }
     }
 
-    // Advance turn
-    this.advanceTurn();
+    // Advance turn only if no pause is active
+    if (!this.state.pausedUntil) {
+      this.advanceTurn();
+    }
 
     return result;
   }
@@ -396,6 +400,8 @@ export class GameEngine {
       targetPlayer.status = 'ELIMINATED';
       targetPlayer.eliminationReason = `${activePlayer.name} correctly guessed you had ${guessName}`;
       this.addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, targetPlayer.id);
+      // Trigger pause to show elimination
+      this.triggerPause(10000, 'Player Eliminated');
       return {
         success: true,
         message: `Correct guess! ${targetPlayer.name} is eliminated`,
@@ -419,6 +425,8 @@ export class GameEngine {
     const revealedCard = targetPlayer.hand[0] || '';
 
     this.addLog(`${activePlayer.name} saw ${targetPlayer.name}'s hand`, activePlayer.id);
+    // Trigger pause to give the player time to read the revealed card
+    this.triggerPause(5000, 'Priest is consulting...');
 
     return {
       success: true,
@@ -456,6 +464,8 @@ export class GameEngine {
       activePlayer.status = 'ELIMINATED';
       activePlayer.eliminationReason = `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`;
       this.addLog(`${activePlayer.name} was eliminated (lower card)`, activePlayer.id);
+      // Trigger pause to show elimination
+      this.triggerPause(10000, 'Player Eliminated');
       return {
         success: true,
         message: `You lost the comparison and are eliminated`,
@@ -473,6 +483,8 @@ export class GameEngine {
       targetPlayer.status = 'ELIMINATED';
       targetPlayer.eliminationReason = `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`;
       this.addLog(`${targetPlayer.name} was eliminated (lower card)`, targetPlayer.id);
+      // Trigger pause to show elimination
+      this.triggerPause(10000, 'Player Eliminated');
       return {
         success: true,
         message: `${targetPlayer.name} had lower card and is eliminated`,
@@ -842,6 +854,26 @@ export class GameEngine {
    */
   setState(state: GameState): void {
     this.state = JSON.parse(JSON.stringify(state));
+  }
+
+  /**
+   * Trigger a pause in the game flow
+   * @param durationMs How long to pause in milliseconds
+   * @param reason Text to display during the pause
+   */
+  triggerPause(durationMs: number, reason: string): void {
+    this.state.pausedUntil = Date.now() + durationMs;
+    this.state.pauseReason = reason;
+  }
+
+  /**
+   * Resume the game after a pause
+   * Clears pause state and advances to next turn
+   */
+  resumeGame(): void {
+    this.state.pausedUntil = null;
+    this.state.pauseReason = null;
+    this.advanceTurn();
   }
 
   /**
