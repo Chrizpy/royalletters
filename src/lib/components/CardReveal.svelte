@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import { getCardDefinition } from '../engine/deck';
-  import { gamePaused } from '../stores/game';
+  import { modalTimerRemaining } from '../stores/game';
 
   export let cardId: string;
   export let playerName: string;
@@ -9,44 +8,14 @@
 
   $: card = getCardDefinition(cardId);
   
-  // Timer state
+  // Timer state - driven by host via modalTimerRemaining store
   const TOTAL_TIME = 10;
-  let remainingTime = TOTAL_TIME;
-  let timerInterval: ReturnType<typeof setInterval> | null = null;
-  let hasDismissed = false;
-  let wasEverPaused = false;  // Track if game was paused at least once
+  $: remainingTime = $modalTimerRemaining ?? TOTAL_TIME;
   
-  // Track when game gets paused (so we know when it's safe to auto-close on unpause)
-  $: if ($gamePaused.isPaused && $gamePaused.reason === 'priest_reveal') {
-    wasEverPaused = true;
-  }
-  
-  // Subscribe to gamePaused to auto-close when game resumes
-  // Only auto-close if the game was paused at least once (to avoid race condition on mount)
-  $: if (!$gamePaused.isPaused && timerInterval && !hasDismissed && wasEverPaused) {
-    // Game was unpaused (either by timer or manually), close modal
-    hasDismissed = true;
-    cleanup();
+  // Auto-close when timer reaches 0
+  $: if (remainingTime <= 0) {
     onDismiss();
   }
-  
-  function cleanup() {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-  }
-  
-  onMount(() => {
-    // Start countdown timer
-    timerInterval = setInterval(() => {
-      remainingTime = Math.max(0, remainingTime - 1);
-    }, 1000);
-  });
-  
-  onDestroy(() => {
-    cleanup();
-  });
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {

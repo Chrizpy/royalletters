@@ -3,8 +3,8 @@
   import { Html5Qrcode } from 'html5-qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
-  import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
+  import { gameState, gameStarted, setGameState, revealedCard, updateModalTimer } from '../stores/game';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload, type PauseTimerTickPayload, type ModalDismissPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
   import { v4 as uuidv4 } from 'uuid';
@@ -100,6 +100,10 @@
         playerName: payload.targetPlayerName,
         viewerPlayerId: guestPeerId  // This guest is the viewer
       });
+    } else if (message.type === 'PAUSE_TIMER_TICK') {
+      // Host sent us a timer tick - update the modal timer display
+      const payload = message.payload as PauseTimerTickPayload;
+      updateModalTimer(payload.remainingSeconds);
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message - add to local store
       const payload = message.payload as ChatMessagePayload;
@@ -112,6 +116,17 @@
       };
       addChatMessage(chatMsg);
     }
+  }
+  
+  /**
+   * Handle modal dismiss - send message to host
+   */
+  function handleModalDismiss(reason: 'priest_reveal' | 'elimination') {
+    if (!peerManager) return;
+    
+    const payload: ModalDismissPayload = { reason };
+    const message = createMessage('MODAL_DISMISS', guestPeerId, payload);
+    peerManager.broadcast(message);
   }
 
   async function connectToHost(targetHostPeerId: string) {
@@ -252,6 +267,7 @@
     onChancellorReturn={handleChancellorReturn}
     onStartRound={handleStartRound}
     onSendChat={handleSendChat}
+    onModalDismiss={handleModalDismiss}
     isHost={false}
   />
 {:else}

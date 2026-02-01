@@ -1,80 +1,34 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import type { PlayerState } from '../types';
-  import { gamePaused, resumeGame } from '../stores/game';
+  import { modalTimerRemaining } from '../stores/game';
 
   export let player: PlayerState | undefined;
+  export let onDismiss: () => void;
 
-  // Timer state
+  // Timer state - driven by host via modalTimerRemaining store
   const TOTAL_TIME = 10;
-  let remainingTime = TOTAL_TIME;
-  let timerInterval: ReturnType<typeof setInterval> | null = null;
-  let wasEverPaused = false;  // Track if game was paused at least once
+  $: remainingTime = $modalTimerRemaining ?? TOTAL_TIME;
 
   let dismissed = false;
   let lastEliminationReason: string | undefined;
 
-  // Track when game gets paused (so we know when it's safe to auto-close on unpause)
-  $: if ($gamePaused.isPaused && $gamePaused.reason === 'elimination') {
-    wasEverPaused = true;
-  }
-
-  // Reset dismissed state and timer when elimination reason changes (new elimination)
+  // Reset dismissed state when elimination reason changes (new elimination)
   $: if (player?.eliminationReason !== lastEliminationReason) {
     dismissed = false;
     lastEliminationReason = player?.eliminationReason;
-    remainingTime = TOTAL_TIME;
-    wasEverPaused = false;
-    // Use setTimeout to ensure state is updated before starting timer
-    if (player?.eliminationReason) {
-      setTimeout(() => startTimer(), 0);
-    }
   }
 
   $: isEliminated = player?.status === 'ELIMINATED';
   $: showModal = isEliminated && player?.eliminationReason && !dismissed;
   
-  // Auto-close when game is unpaused (timer expired or other player action)
-  // Guard with !dismissed and wasEverPaused to prevent race conditions
-  $: if (!$gamePaused.isPaused && showModal && timerInterval && !dismissed && wasEverPaused) {
+  // Auto-close when timer reaches 0
+  $: if (remainingTime <= 0 && showModal) {
     dismiss();
   }
-  
-  function startTimer() {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-    remainingTime = TOTAL_TIME;
-    timerInterval = setInterval(() => {
-      remainingTime = remainingTime - 1;
-      if (remainingTime <= 0) {
-        remainingTime = 0;
-      }
-    }, 1000);
-  }
-  
-  onMount(() => {
-    if (showModal && !timerInterval) {
-      startTimer();
-    }
-  });
-  
-  onDestroy(() => {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-  });
 
   function dismiss() {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
     dismissed = true;
-    // Resume the game when the eliminated player dismisses the modal
-    resumeGame();
+    onDismiss();
   }
 </script>
 

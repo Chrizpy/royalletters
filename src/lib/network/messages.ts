@@ -8,7 +8,9 @@ export type MessageType =
   | 'ROUND_START'        // Host starts a new round (includes RNG seed)
   | 'CONNECTION_ACK'     // Acknowledge connection established
   | 'PRIEST_REVEAL'      // Private reveal for Priest card effect
-  | 'CHAT_MESSAGE';      // In-game chat message
+  | 'CHAT_MESSAGE'       // In-game chat message
+  | 'PAUSE_TIMER_TICK'   // Host sends timer tick to player showing modal
+  | 'MODAL_DISMISS';     // Player tells host they dismissed the modal
 
 export interface NetworkMessage {
   type: MessageType;
@@ -61,6 +63,16 @@ export interface ChatMessagePayload {
   text: string;
   senderName: string;
   timestamp: number;
+}
+
+export interface PauseTimerTickPayload {
+  reason: 'priest_reveal' | 'elimination';
+  remainingSeconds: number;
+  targetPlayerId: string;  // The player who should see this modal
+}
+
+export interface ModalDismissPayload {
+  reason: 'priest_reveal' | 'elimination';
 }
 
 export function createMessage(

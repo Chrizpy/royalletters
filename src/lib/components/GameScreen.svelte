@@ -19,6 +19,7 @@
   export let onPlayAgain: (() => void) | undefined = undefined;
   export let isHost: boolean = false;
   export let onSendChat: ((text: string) => void) | undefined = undefined;
+  export let onModalDismiss: ((reason: 'priest_reveal' | 'elimination') => void) | undefined = undefined;
 
   // Local state
   let selectedCard: string | null = null;
@@ -40,6 +41,16 @@
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
   // Calculate how many cards need to be returned in Chancellor phase (hand size - 1)
   $: chancellorCardsToReturnCount = isChancellorPhase && localPlayer ? localPlayer.hand.length - 1 : 2;
+  
+  // Handle dismissing a modal
+  function handlePriestDismiss() {
+    clearRevealedCard();
+    onModalDismiss?.('priest_reveal');
+  }
+  
+  function handleEliminationDismiss() {
+    onModalDismiss?.('elimination');
+  }
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
@@ -353,12 +364,12 @@
     <CardReveal 
       cardId={revealed.cardId}
       playerName={revealed.playerName}
-      onDismiss={clearRevealedCard}
+      onDismiss={handlePriestDismiss}
     />
   {/if}
   
   <!-- Elimination modal - show when local player is eliminated -->
-  <EliminationModal player={localPlayer} />
+  <EliminationModal player={localPlayer} onDismiss={handleEliminationDismiss} />
 </div>
 {:else}
   <div class="loading-screen">
