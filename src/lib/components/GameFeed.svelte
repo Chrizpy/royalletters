@@ -6,6 +6,8 @@
     message: string;
     timestamp: number;
     timeoutId: ReturnType<typeof setTimeout>;
+    fadeTimeoutId?: ReturnType<typeof setTimeout>;
+    isFadingOut: boolean;
   }
 
   interface PendingItem {
@@ -15,7 +17,8 @@
 
   export let logs: LogEntry[] = [];
 
-  const FEED_DISPLAY_TIME_MS = 6000;
+  const FEED_DISPLAY_TIME_MS = 5000;
+  const FADE_OUT_DURATION_MS = 1000;
   const MAX_VISIBLE_ITEMS = 8;
   const STAGGER_DELAY_MS = 300; // Delay between each message appearing
 
@@ -25,27 +28,43 @@
   let lastLogCount = 0;
   let processingInterval: ReturnType<typeof setInterval> | null = null;
 
+  // Start fade out animation, then remove
+  function startFadeOut(itemId: number) {
+    feedItems = feedItems.map(f => 
+      f.id === itemId ? { ...f, isFadingOut: true } : f
+    );
+    
+    // Remove after fade animation completes
+    setTimeout(() => {
+      feedItems = feedItems.filter(f => f.id !== itemId);
+    }, FADE_OUT_DURATION_MS);
+  }
+
   // Add a single item to the feed
   function addItemToFeed(log: LogEntry) {
     const itemId = nextId++;
     
-    // Schedule removal after display time
+    // Schedule fade out after display time
     const timeoutId = setTimeout(() => {
-      feedItems = feedItems.filter(f => f.id !== itemId);
+      startFadeOut(itemId);
     }, FEED_DISPLAY_TIME_MS);
     
     const item: FeedItem = {
       id: itemId,
       message: log.message,
       timestamp: Date.now(),
-      timeoutId
+      timeoutId,
+      isFadingOut: false
     };
     feedItems = [...feedItems, item];
     
     // Keep only the most recent items visible
     if (feedItems.length > MAX_VISIBLE_ITEMS) {
       const itemsToRemove = feedItems.slice(0, feedItems.length - MAX_VISIBLE_ITEMS);
-      itemsToRemove.forEach(i => clearTimeout(i.timeoutId));
+      itemsToRemove.forEach(i => {
+        clearTimeout(i.timeoutId);
+        if (i.fadeTimeoutId) clearTimeout(i.fadeTimeoutId);
+      });
       feedItems = feedItems.slice(-MAX_VISIBLE_ITEMS);
     }
   }
@@ -99,7 +118,7 @@
     <div 
       class="feed-item" 
       class:fading={item.position >= 5}
-      style="--position: {item.position}"
+      class:fade-out={item.isFadingOut}
     >
       {item.message}
     </div>
@@ -129,17 +148,21 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     word-wrap: break-word;
     animation: slide-in 0.3s ease-out forwards;
-    transition: opacity 0.5s ease-out, transform 0.3s ease-out;
+    transition: opacity 1s ease-out;
   }
 
   .feed-item.fading {
     opacity: 0.3;
   }
 
+  .feed-item.fade-out {
+    opacity: 0 !important;
+  }
+
   @keyframes slide-in {
     0% {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(20px);
     }
     100% {
       opacity: 1;
