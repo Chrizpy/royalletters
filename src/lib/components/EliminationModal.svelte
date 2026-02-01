@@ -9,38 +9,53 @@
   const TOTAL_TIME = 10;
   let remainingTime = TOTAL_TIME;
   let timerInterval: ReturnType<typeof setInterval> | null = null;
+  let wasEverPaused = false;  // Track if game was paused at least once
 
   let dismissed = false;
   let lastEliminationReason: string | undefined;
+
+  // Track when game gets paused (so we know when it's safe to auto-close on unpause)
+  $: if ($gamePaused.isPaused && $gamePaused.reason === 'elimination') {
+    wasEverPaused = true;
+  }
 
   // Reset dismissed state and timer when elimination reason changes (new elimination)
   $: if (player?.eliminationReason !== lastEliminationReason) {
     dismissed = false;
     lastEliminationReason = player?.eliminationReason;
     remainingTime = TOTAL_TIME;
-    startTimer();
+    wasEverPaused = false;
+    // Use setTimeout to ensure state is updated before starting timer
+    if (player?.eliminationReason) {
+      setTimeout(() => startTimer(), 0);
+    }
   }
 
   $: isEliminated = player?.status === 'ELIMINATED';
   $: showModal = isEliminated && player?.eliminationReason && !dismissed;
   
   // Auto-close when game is unpaused (timer expired or other player action)
-  // Guard with !dismissed to prevent multiple calls
-  $: if (!$gamePaused.isPaused && showModal && timerInterval && !dismissed) {
+  // Guard with !dismissed and wasEverPaused to prevent race conditions
+  $: if (!$gamePaused.isPaused && showModal && timerInterval && !dismissed && wasEverPaused) {
     dismiss();
   }
   
   function startTimer() {
     if (timerInterval) {
       clearInterval(timerInterval);
+      timerInterval = null;
     }
+    remainingTime = TOTAL_TIME;
     timerInterval = setInterval(() => {
-      remainingTime = Math.max(0, remainingTime - 1);
+      remainingTime = remainingTime - 1;
+      if (remainingTime <= 0) {
+        remainingTime = 0;
+      }
     }, 1000);
   }
   
   onMount(() => {
-    if (showModal) {
+    if (showModal && !timerInterval) {
       startTimer();
     }
   });
@@ -48,6 +63,7 @@
   onDestroy(() => {
     if (timerInterval) {
       clearInterval(timerInterval);
+      timerInterval = null;
     }
   });
 
