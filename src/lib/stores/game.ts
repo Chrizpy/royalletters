@@ -6,6 +6,9 @@ import type { GameState, GameAction, ActionResult, Ruleset } from '../types';
 // Game engine instance (singleton for the session)
 let engine: GameEngine | null = null;
 
+// Pause resume timeout tracking
+let pauseResumeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
 // Reactive game state store
 export const gameState = writable<GameState | null>(null);
 
@@ -77,8 +80,14 @@ export function applyAction(action: GameAction): ActionResult | undefined {
   if (newState.pausedUntil) {
     const delay = newState.pausedUntil - Date.now();
     
+    // Clear any existing pause timeout before setting a new one
+    if (pauseResumeTimeoutId !== null) {
+      clearTimeout(pauseResumeTimeoutId);
+    }
+    
     // Set a timeout to resume the game
-    setTimeout(() => {
+    pauseResumeTimeoutId = setTimeout(() => {
+      pauseResumeTimeoutId = null;
       if (!engine) return;
       
       // Execute resume logic in the engine
@@ -136,6 +145,11 @@ export function getGameState(): GameState | null {
  * Reset the game
  */
 export function resetGame() {
+  // Clear any pending pause resume timeout
+  if (pauseResumeTimeoutId !== null) {
+    clearTimeout(pauseResumeTimeoutId);
+    pauseResumeTimeoutId = null;
+  }
   engine = null;
   gameState.set(null);
   gameStarted.set(false);

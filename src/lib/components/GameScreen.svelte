@@ -59,7 +59,7 @@
       if (!pauseIntervalId) {
         pauseIntervalId = setInterval(() => {
           now = Date.now();
-        }, 100);
+        }, 1000);
       }
     } else {
       // Clear interval if running

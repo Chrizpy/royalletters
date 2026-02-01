@@ -17,6 +17,7 @@ export class GameSync {
   private isHost: boolean;
   private localPlayerId: string;
   private localPlayerName: string;
+  private pauseResumeTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     engine: GameEngine,
@@ -32,6 +33,46 @@ export class GameSync {
     this.localPlayerName = localPlayerName;
 
     this.setupMessageHandler();
+  }
+
+  /**
+   * Clean up resources (call when destroying the sync instance)
+   */
+  destroy(): void {
+    if (this.pauseResumeTimeoutId !== null) {
+      clearTimeout(this.pauseResumeTimeoutId);
+      this.pauseResumeTimeoutId = null;
+    }
+  }
+
+  /**
+   * Schedule game resume after a pause
+   * Clears any existing timeout before setting a new one
+   */
+  private schedulePauseResume(pausedUntil: number): void {
+    // Clear any existing pause timeout
+    if (this.pauseResumeTimeoutId !== null) {
+      clearTimeout(this.pauseResumeTimeoutId);
+    }
+
+    const delay = pausedUntil - Date.now();
+
+    // Set a timeout to resume the game
+    this.pauseResumeTimeoutId = setTimeout(() => {
+      this.pauseResumeTimeoutId = null;
+
+      // Execute resume logic in the engine
+      this.engine.resumeGame();
+
+      // Auto-draw for next player if needed
+      const state = this.engine.getState();
+      if (state.phase === 'TURN_START') {
+        this.engine.drawPhase();
+      }
+
+      // Broadcast the NEW state (turn advanced, pause cleared)
+      this.broadcastGameState();
+    }, delay);
   }
 
   /**
@@ -146,22 +187,7 @@ export class GameSync {
       
       // Check if the engine triggered a pause
       if (result.newState.pausedUntil) {
-        const delay = result.newState.pausedUntil - Date.now();
-        
-        // Set a timeout to resume the game
-        setTimeout(() => {
-          // Execute resume logic in the engine
-          this.engine.resumeGame();
-          
-          // Auto-draw for next player if needed
-          const state = this.engine.getState();
-          if (state.phase === 'TURN_START') {
-            this.engine.drawPhase();
-          }
-          
-          // Broadcast the NEW state (turn advanced, pause cleared)
-          this.broadcastGameState();
-        }, delay);
+        this.schedulePauseResume(result.newState.pausedUntil);
       }
     } else {
       console.error('Action failed:', result.message);
@@ -260,22 +286,7 @@ export class GameSync {
         
         // Check if the engine triggered a pause
         if (result.newState.pausedUntil) {
-          const delay = result.newState.pausedUntil - Date.now();
-          
-          // Set a timeout to resume the game
-          setTimeout(() => {
-            // Execute resume logic in the engine
-            this.engine.resumeGame();
-            
-            // Auto-draw for next player if needed
-            const state = this.engine.getState();
-            if (state.phase === 'TURN_START') {
-              this.engine.drawPhase();
-            }
-            
-            // Broadcast the NEW state (turn advanced, pause cleared)
-            this.broadcastGameState();
-          }, delay);
+          this.schedulePauseResume(result.newState.pausedUntil);
         }
       }
     } else {
