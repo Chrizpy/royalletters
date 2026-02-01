@@ -56,6 +56,7 @@ export class GameEngine {
       tokens: 0,
       status: 'PLAYING',
       isHost: p.isHost || false,
+      isAI: p.isAI || false,
     }));
 
     this.state = {

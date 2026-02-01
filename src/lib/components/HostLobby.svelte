@@ -3,7 +3,7 @@
   import QRCode from 'qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
-  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine } from '../stores/game';
+  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove } from '../stores/game';
   import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
@@ -15,12 +15,19 @@
   let peerManager: PeerManager;
   let error = '';
   let localConnectionState: string = 'disconnected';
-  let players: Array<{ id: string; name: string }> = [];
+  let players: Array<{ id: string; name: string; isAI?: boolean }> = [];
   let hostName = 'Host';
   let selectedRuleset: Ruleset = 'classic';
+  let aiCounter = 1;  // Counter for AI player names
 
   // Max players depends on ruleset: classic = 4, 2019 = 6
   $: maxPlayers = selectedRuleset === '2019' ? 6 : 4;
+  
+  // Total players including host
+  $: totalPlayers = players.length + 1;
+  
+  // Can add more AI players?
+  $: canAddAI = totalPlayers < maxPlayers;
 
   // Subscribe to game started state
   $: inGame = $gameStarted;
@@ -134,6 +141,9 @@
       
       // Broadcast updated state to all clients
       broadcastGameState();
+      
+      // Check if next turn is AI
+      scheduleAIMove();
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message from a guest - add to local store and broadcast to all except sender
       const payload = message.payload as ChatMessagePayload;
@@ -156,8 +166,8 @@
     
     // Build player list with host first
     const allPlayers = [
-      { id: generatedPeerId, name: hostName, isHost: true },
-      ...players.map(p => ({ id: p.id, name: p.name, isHost: false }))
+      { id: generatedPeerId, name: hostName, isHost: true, isAI: false },
+      ...players.map(p => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false }))
     ];
     
     // Initialize and start the game with selected ruleset
@@ -166,6 +176,9 @@
     
     // Broadcast state to all connected players
     broadcastGameState();
+    
+    // Check if it's an AI's turn after starting
+    scheduleAIMove();
   }
 
   function broadcastGameState() {
@@ -177,6 +190,32 @@
     const message = createMessage('GAME_STATE_SYNC', generatedPeerId, payload);
     
     peerManager.broadcast(message);
+  }
+  
+  /**
+   * Schedule AI move if it's an AI player's turn
+   * Uses setTimeout to allow state updates to propagate and create natural pacing
+   */
+  function scheduleAIMove() {
+    setTimeout(() => {
+      processAITurn();
+    }, 1000);  // 1 second delay for AI moves to feel natural
+  }
+  
+  /**
+   * Process AI turn if it's an AI player's turn
+   */
+  function processAITurn() {
+    if (!checkIfAITurn()) return;
+    
+    const result = executeAIMove();
+    if (result) {
+      // Broadcast updated state
+      broadcastGameState();
+      
+      // Check if it's still an AI's turn (could be another AI)
+      scheduleAIMove();
+    }
   }
 
   function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
@@ -191,6 +230,9 @@
     
     // Broadcast updated state to all clients
     broadcastGameState();
+    
+    // Check if next turn is AI
+    scheduleAIMove();
   }
   
   function handleChancellorReturn(cardsToReturn: string[]) {
@@ -203,23 +245,49 @@
     
     // Broadcast updated state to all clients
     broadcastGameState();
+    
+    // Check if next turn is AI
+    scheduleAIMove();
   }
 
   function handleStartRound() {
     startRound();
     broadcastGameState();
+    
+    // Check if first turn is AI
+    scheduleAIMove();
   }
 
   function handlePlayAgain() {
     // Re-initialize the game with the same players and ruleset
     const allPlayers = [
-      { id: generatedPeerId, name: hostName, isHost: true },
-      ...players.map(p => ({ id: p.id, name: p.name, isHost: false }))
+      { id: generatedPeerId, name: hostName, isHost: true, isAI: false },
+      ...players.map(p => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false }))
     ];
     
     initGame(allPlayers, selectedRuleset);
     startRound();
     broadcastGameState();
+    
+    // Check if first turn is AI
+    scheduleAIMove();
+  }
+  
+  function handleAddAI() {
+    if (!canAddAI) return;
+    
+    const aiId = `ai-${uuidv4().substring(0, 8)}`;
+    const aiName = `AI ${aiCounter++}`;
+    
+    players = [...players, { id: aiId, name: aiName, isAI: true }];
+  }
+  
+  function handleRemovePlayer(playerId: string) {
+    // Only allow removing AI players from lobby
+    const player = players.find(p => p.id === playerId);
+    if (player?.isAI) {
+      players = players.filter(p => p.id !== playerId);
+    }
   }
 
   function handleSendChat(text: string) {
@@ -323,15 +391,30 @@
               <span class="player-name">{hostName} (You)</span>
             </div>
             {#each players as player}
-              <div class="player-item">
-                <span class="player-icon">👤</span>
+              <div class="player-item" class:ai={player.isAI}>
+                <span class="player-icon">{player.isAI ? '🤖' : '👤'}</span>
                 <span class="player-name">{player.name}</span>
+                {#if player.isAI}
+                  <button 
+                    class="remove-btn" 
+                    on:click={() => handleRemovePlayer(player.id)}
+                    title="Remove AI player"
+                  >
+                    ✕
+                  </button>
+                {/if}
               </div>
             {/each}
           </div>
           
+          {#if canAddAI}
+            <button class="add-ai-btn" on:click={handleAddAI}>
+              🤖 Add AI Player
+            </button>
+          {/if}
+          
           {#if players.length === 0}
-            <p class="waiting">Waiting for players to join...</p>
+            <p class="waiting">Waiting for players to join or add AI players...</p>
           {/if}
         </div>
         
@@ -537,6 +620,50 @@
 
   .player-name {
     font-weight: 500;
+    flex: 1;
+  }
+  
+  .player-item.ai {
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    color: white;
+  }
+  
+  .remove-btn {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: white;
+    transition: background 0.2s ease;
+  }
+  
+  .remove-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
+  
+  .add-ai-btn {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    border: 2px dashed #4ade80;
+    border-radius: 8px;
+    background: transparent;
+    color: #22c55e;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .add-ai-btn:hover {
+    background: #f0fdf4;
+    border-color: #22c55e;
   }
 
   .waiting {

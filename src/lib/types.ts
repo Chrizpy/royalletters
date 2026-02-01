@@ -31,6 +31,7 @@ export interface PlayerState {
   tokens: number;
   status: PlayerStatus;
   isHost: boolean;
+  isAI?: boolean;  // Whether this player is controlled by AI
 }
 
 export type GamePhase = 'LOBBY' | 'ROUND_START' | 'TURN_START' | 'WAITING_FOR_ACTION' | 'WAITING_FOR_TARGET' | 'RESOLVING_ACTION' | 'CHANCELLOR_RESOLVING' | 'ROUND_END' | 'GAME_END';
@@ -87,6 +88,7 @@ export interface GameConfig {
     name: string;
     avatarId?: string;
     isHost?: boolean;
+    isAI?: boolean;  // Whether this player is controlled by AI
   }>;
   tokensToWin?: number;
   ruleset?: Ruleset;
