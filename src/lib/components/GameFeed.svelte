@@ -106,10 +106,12 @@
     }
   }
   
-  // Calculate position from bottom (0 = newest at bottom)
+  // Calculate position from top (0 = oldest at top, higher = newer at bottom)
+  // For fading, we want older items at the top to fade when there are many items
   $: itemsWithPosition = feedItems.map((item, index) => ({
     ...item,
-    position: feedItems.length - 1 - index
+    position: index,  // index 0 = oldest (top), higher index = newer (bottom)
+    shouldFade: index < feedItems.length - 5 && feedItems.length > 5  // Fade items beyond the 5 most recent
   }));
 </script>
 
@@ -117,7 +119,7 @@
   {#each itemsWithPosition as item (item.id)}
     <div 
       class="feed-item" 
-      class:fading={item.position >= 5}
+      class:fading={item.shouldFade}
       class:fade-out={item.isFadingOut}
     >
       {item.message}
@@ -131,7 +133,7 @@
     bottom: 35%;
     left: 1rem;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     align-items: flex-start;
     gap: 0.2rem;
     pointer-events: none;
