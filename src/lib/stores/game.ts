@@ -6,6 +6,9 @@ import type { GameState, GameAction, ActionResult, Ruleset } from '../types';
 // Game engine instance (singleton for the session)
 let engine: GameEngine | null = null;
 
+// Pause timer duration in seconds (shared constant)
+export const PAUSE_TIMER_SECONDS = 10;
+
 // Reactive game state store
 export const gameState = writable<GameState | null>(null);
 
@@ -42,7 +45,7 @@ export function pauseGame(reason: 'priest_reveal' | 'elimination', targetPlayerI
     reason,
     targetPlayerId,
   });
-  modalTimerRemaining.set(10);  // Start at 10 seconds
+  modalTimerRemaining.set(PAUSE_TIMER_SECONDS);
 }
 
 /**
@@ -60,7 +63,7 @@ export function resumeGame(): void {
 /**
  * Update the modal timer remaining (called when tick message is received)
  */
-export function updateModalTimer(remainingSeconds: number): void {
+export function updateModalTimer(remainingSeconds: number | null): void {
   modalTimerRemaining.set(remainingSeconds);
 }
 

@@ -1,13 +1,12 @@
 <script lang="ts">
   import type { PlayerState } from '../types';
-  import { modalTimerRemaining } from '../stores/game';
+  import { modalTimerRemaining, PAUSE_TIMER_SECONDS } from '../stores/game';
 
   export let player: PlayerState | undefined;
   export let onDismiss: () => void;
 
   // Timer state - driven by host via modalTimerRemaining store
-  const TOTAL_TIME = 10;
-  $: remainingTime = $modalTimerRemaining ?? TOTAL_TIME;
+  $: remainingTime = $modalTimerRemaining ?? PAUSE_TIMER_SECONDS;
 
   let dismissed = false;
   let lastEliminationReason: string | undefined;
@@ -21,7 +20,7 @@
   $: isEliminated = player?.status === 'ELIMINATED';
   $: showModal = isEliminated && player?.eliminationReason && !dismissed;
   
-  // Auto-close when timer reaches 0
+  // Auto-close when timer reaches 0 (showModal guard prevents premature calls)
   $: if (remainingTime <= 0 && showModal) {
     dismiss();
   }
@@ -36,7 +35,7 @@
   <div class="elimination-overlay" role="dialog" aria-modal="true">
     <div class="elimination-modal">
       <div class="timer-container">
-        <div class="timer-ring" style="--progress: {(remainingTime / TOTAL_TIME) * 100}%">
+        <div class="timer-ring" style="--progress: {(remainingTime / PAUSE_TIMER_SECONDS) * 100}%">
           <span class="timer-text">{remainingTime}</span>
         </div>
       </div>

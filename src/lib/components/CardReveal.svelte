@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getCardDefinition } from '../engine/deck';
-  import { modalTimerRemaining } from '../stores/game';
+  import { modalTimerRemaining, PAUSE_TIMER_SECONDS } from '../stores/game';
 
   export let cardId: string;
   export let playerName: string;
@@ -9,11 +9,14 @@
   $: card = getCardDefinition(cardId);
   
   // Timer state - driven by host via modalTimerRemaining store
-  const TOTAL_TIME = 10;
-  $: remainingTime = $modalTimerRemaining ?? TOTAL_TIME;
+  $: remainingTime = $modalTimerRemaining ?? PAUSE_TIMER_SECONDS;
   
-  // Auto-close when timer reaches 0
-  $: if (remainingTime <= 0) {
+  // Track if we've already triggered auto-dismiss to prevent multiple calls
+  let hasAutoDismissed = false;
+  
+  // Auto-close when timer reaches 0 (only if we haven't already dismissed)
+  $: if (remainingTime <= 0 && !hasAutoDismissed && cardId) {
+    hasAutoDismissed = true;
     onDismiss();
   }
 
@@ -49,7 +52,7 @@
 <div class="reveal-overlay" role="dialog" aria-modal="true" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onDismiss()}>
   <div class="reveal-modal">
     <div class="timer-container">
-      <div class="timer-ring" style="--progress: {(remainingTime / TOTAL_TIME) * 100}%">
+      <div class="timer-ring" style="--progress: {(remainingTime / PAUSE_TIMER_SECONDS) * 100}%">
         <span class="timer-text">{remainingTime}</span>
       </div>
     </div>

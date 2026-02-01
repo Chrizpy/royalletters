@@ -3,7 +3,7 @@
   import QRCode from 'qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
-  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove, gamePaused, isGamePaused, resumeGame, updateModalTimer } from '../stores/game';
+  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove, gamePaused, isGamePaused, resumeGame, updateModalTimer, PAUSE_TIMER_SECONDS } from '../stores/game';
   import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload, type PauseTimerTickPayload, type ModalDismissPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
@@ -106,8 +106,8 @@
       clearInterval(pauseTimerInterval);
     }
     
-    pauseTimerRemaining = 10;
-    updateModalTimer(10);  // Update local store for host display
+    pauseTimerRemaining = PAUSE_TIMER_SECONDS;
+    updateModalTimer(PAUSE_TIMER_SECONDS);  // Update local store for host display
     
     // Send initial tick
     sendTimerTick(reason, targetPlayerId, pauseTimerRemaining);
