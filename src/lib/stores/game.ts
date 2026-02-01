@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { GameEngine } from '../engine/game';
+import { decideAIMove, isActivePlayerAI, getActiveAIPlayerId } from '../engine/ai';
 import type { GameState, GameAction, ActionResult, Ruleset } from '../types';
 
 // Game engine instance (singleton for the session)
@@ -17,7 +18,7 @@ export const revealedCard = writable<{ cardId: string; playerName: string; viewe
 /**
  * Initialize the game engine with players
  */
-export function initGame(players: Array<{ id: string; name: string; isHost?: boolean }>, ruleset: Ruleset = 'classic') {
+export function initGame(players: Array<{ id: string; name: string; isHost?: boolean; isAI?: boolean }>, ruleset: Ruleset = 'classic') {
   engine = new GameEngine();
   engine.init({ players, ruleset });
   gameState.set(engine.getState());
@@ -117,4 +118,38 @@ export function resetGame() {
   engine = null;
   gameState.set(null);
   gameStarted.set(false);
+}
+
+/**
+ * Check if it's currently an AI player's turn
+ */
+export function checkIfAITurn(): boolean {
+  const state = get(gameState);
+  if (!state) return false;
+  return isActivePlayerAI(state);
+}
+
+/**
+ * Get AI move for the current active AI player
+ * Returns null if not an AI's turn or no valid move
+ */
+export function getAIMove(): GameAction | null {
+  const state = get(gameState);
+  if (!state) return null;
+  
+  const aiPlayerId = getActiveAIPlayerId(state);
+  if (!aiPlayerId) return null;
+  
+  return decideAIMove(state, aiPlayerId);
+}
+
+/**
+ * Execute AI move if it's an AI's turn
+ * Returns the result of the action, or undefined if not applicable
+ */
+export function executeAIMove(): ActionResult | undefined {
+  const move = getAIMove();
+  if (!move) return undefined;
+  
+  return applyAction(move);
 }
