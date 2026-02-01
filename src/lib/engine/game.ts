@@ -208,11 +208,20 @@ export class GameEngine {
       // If no valid targets exist, the card can be played with no effect (no target required)
       if (validTargets.length === 0) {
         // Card will be played with no effect - this is allowed per Love Letter rules
+        // If a targetPlayerId was still provided, reject it since there are no valid targets
+        if (action.targetPlayerId) {
+          return { valid: false, error: 'Invalid target - player is eliminated or protected' };
+        }
         return { valid: true };
       }
 
       if (!action.targetPlayerId) {
         return { valid: false, error: 'Target player required' };
+      }
+
+      // Verify the provided target is in the valid targets list
+      if (!validTargets.some(p => p.id === action.targetPlayerId)) {
+        return { valid: false, error: 'Invalid target - player is eliminated or protected' };
       }
 
       const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId);

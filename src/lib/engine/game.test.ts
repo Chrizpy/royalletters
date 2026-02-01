@@ -704,6 +704,76 @@ describe('Card Effect Tests', () => {
       expect(newState.players[0].hand).toContain('baron');
       expect(newState.players[1].hand).toHaveLength(0);
     });
+
+    it('should reject targeting eliminated player', () => {
+      const state = game.getState();
+      state.players[0].hand = ['king', 'guard'];
+      state.players[1].hand = [];
+      state.players[1].status = 'ELIMINATED';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        targetPlayerId: 'p2',
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Invalid target');
+      // Alice's hand should be unchanged
+      expect(result.newState.players[0].hand).toContain('king');
+      expect(result.newState.players[0].hand).toContain('guard');
+    });
+
+    it('should reject targeting protected player', () => {
+      const state = game.getState();
+      state.players[0].hand = ['king', 'guard'];
+      state.players[1].hand = ['baron'];
+      state.players[1].status = 'PROTECTED';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        targetPlayerId: 'p2',
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Invalid target');
+      // Both hands should be unchanged
+      expect(result.newState.players[0].hand).toContain('king');
+      expect(result.newState.players[1].hand).toContain('baron');
+    });
+
+    it('should have no effect when all other players are protected and no target specified', () => {
+      const state = game.getState();
+      state.players[0].hand = ['king', 'guard'];
+      state.players[1].hand = ['baron'];
+      state.players[1].status = 'PROTECTED';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        // No targetPlayerId - correct behavior when no valid targets
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('no effect');
+      // Alice keeps her remaining card, Bob keeps his card
+      expect(newState.players[0].hand).toContain('guard');
+      expect(newState.players[1].hand).toContain('baron');
+    });
   });
 
   describe('Countess Tests', () => {
