@@ -200,9 +200,9 @@
    */
   function scheduleAIMove() {
     setTimeout(() => {
-      // If game is paused, wait and check again
+      // If game is paused, wait and check again after a short delay
       if (isGamePaused()) {
-        scheduleAIMove();  // Re-schedule to check again later
+        setTimeout(scheduleAIMove, 500);  // Check again in 500ms when paused
         return;
       }
       processAITurn();
@@ -215,7 +215,7 @@
   function processAITurn() {
     // Double-check pause state
     if (isGamePaused()) {
-      scheduleAIMove();
+      setTimeout(scheduleAIMove, 500);  // Wait and re-check
       return;
     }
     

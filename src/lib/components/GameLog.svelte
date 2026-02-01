@@ -3,6 +3,9 @@
 
   export let logs: LogEntry[] = [];
   
+  // Threshold in pixels for determining if user is "near bottom" of scroll container
+  const SCROLL_NEAR_BOTTOM_THRESHOLD = 50;
+  
   let isOpen = false;
   let logsContainer: HTMLDivElement;
   let previousLogCount = 0;
@@ -25,8 +28,8 @@
   function handleScroll() {
     if (!logsContainer) return;
     
-    // Check if user is at or near the bottom (within 50px)
-    const isNearBottom = logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight < 50;
+    // Check if user is at or near the bottom
+    const isNearBottom = logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight < SCROLL_NEAR_BOTTOM_THRESHOLD;
     userHasScrolledUp = !isNearBottom;
   }
 
