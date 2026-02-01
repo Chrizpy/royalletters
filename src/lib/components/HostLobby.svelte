@@ -482,7 +482,7 @@
   .name-section label {
     display: block;
     font-weight: 500;
-    color: #333;
+    color: #000;
     margin-bottom: 0.5rem;
   }
 
@@ -510,7 +510,7 @@
   .ruleset-section label {
     display: block;
     font-weight: 500;
-    color: #333;
+    color: #000;
     margin-bottom: 0.5rem;
   }
 
