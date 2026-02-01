@@ -495,6 +495,7 @@
     font-family: inherit;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
+    background: white;
     color: #333;
   }
 

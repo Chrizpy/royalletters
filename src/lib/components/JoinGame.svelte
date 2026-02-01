@@ -405,6 +405,7 @@
     font-family: inherit;
     box-sizing: border-box;
     transition: border-color 0.3s ease;
+    background: white;
     color: #333;
   }
 
@@ -446,6 +447,7 @@
     border-radius: 8px;
     font-size: 1rem;
     font-family: monospace;
+    background: white;
     color: #333;
   }
 
