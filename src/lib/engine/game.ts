@@ -84,6 +84,7 @@ export class GameEngine {
       hand: [],
       discardPile: [],
       status: 'PLAYING',  // Reset ALL players to PLAYING for new round
+      eliminationReason: undefined,  // Clear elimination reason for new round
     }));
 
     // Create and shuffle deck using the configured ruleset
@@ -381,13 +382,16 @@ export class GameEngine {
     const guess = action.targetCardGuess!;
 
     if (targetPlayer.hand.includes(guess)) {
+      const guessCardDef = getCardDefinition(guess);
+      const guessName = guessCardDef?.name || guess;
       // Move the eliminated player's card(s) to their discard pile
       while (targetPlayer.hand.length > 0) {
         const card = targetPlayer.hand.shift()!;
         targetPlayer.discardPile.push(card);
       }
       targetPlayer.status = 'ELIMINATED';
-      this.addLog(`${targetPlayer.name} was eliminated (had ${guess})`, targetPlayer.id);
+      targetPlayer.eliminationReason = `${activePlayer.name} correctly guessed you had ${guessName}`;
+      this.addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, targetPlayer.id);
       return {
         success: true,
         message: `Correct guess! ${targetPlayer.name} is eliminated`,
@@ -395,7 +399,9 @@ export class GameEngine {
         newState: this.state,
       };
     } else {
-      this.addLog(`${activePlayer.name} guessed incorrectly`, activePlayer.id);
+      const guessCardDef = getCardDefinition(guess);
+      const guessName = guessCardDef?.name || guess;
+      this.addLog(`${activePlayer.name} guessed ${guessName} (incorrectly)`, activePlayer.id);
       return {
         success: true,
         message: 'Incorrect guess',
@@ -436,12 +442,15 @@ export class GameEngine {
     const targetValue = getCardValue(targetCard, this.state.ruleset);
 
     if (activeValue < targetValue) {
+      const activeCardDef = getCardDefinition(activeCard);
+      const targetCardDef = getCardDefinition(targetCard);
       // Move the eliminated player's card(s) to their discard pile
       while (activePlayer.hand.length > 0) {
         const card = activePlayer.hand.shift()!;
         activePlayer.discardPile.push(card);
       }
       activePlayer.status = 'ELIMINATED';
+      activePlayer.eliminationReason = `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`;
       this.addLog(`${activePlayer.name} was eliminated (lower card)`, activePlayer.id);
       return {
         success: true,
@@ -450,12 +459,15 @@ export class GameEngine {
         newState: this.state,
       };
     } else if (targetValue < activeValue) {
+      const activeCardDef = getCardDefinition(activeCard);
+      const targetCardDef = getCardDefinition(targetCard);
       // Move the eliminated player's card(s) to their discard pile
       while (targetPlayer.hand.length > 0) {
         const card = targetPlayer.hand.shift()!;
         targetPlayer.discardPile.push(card);
       }
       targetPlayer.status = 'ELIMINATED';
+      targetPlayer.eliminationReason = `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`;
       this.addLog(`${targetPlayer.name} was eliminated (lower card)`, targetPlayer.id);
       return {
         success: true,
@@ -494,6 +506,7 @@ export class GameEngine {
       // If Princess was discarded, target is eliminated
       if (discardedCard === 'princess') {
         targetPlayer.status = 'ELIMINATED';
+        targetPlayer.eliminationReason = `${activePlayer.name} forced you to discard Princess`;
         this.addLog(`${targetPlayer.name} was eliminated (discarded Princess)`, targetPlayer.id);
         return {
           success: true,
@@ -573,6 +586,7 @@ export class GameEngine {
   private applyLoseIfDiscarded(activePlayer: PlayerState): ActionResult {
     // If Princess is discarded (played), player is eliminated
     activePlayer.status = 'ELIMINATED';
+    activePlayer.eliminationReason = 'You played the Princess';
     this.addLog(`${activePlayer.name} was eliminated (played Princess)`, activePlayer.id);
     return {
       success: true,
