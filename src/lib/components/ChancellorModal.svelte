@@ -5,7 +5,6 @@
   export let playerHand: string[];
   export let cardsToReturnCount: number;
   export let onConfirmReturn: (cardsToReturn: string[]) => void;
-  export let onCancel: (() => void) | undefined = undefined;
   
   let selectedIndices: number[] = [];
   
@@ -32,17 +31,11 @@
     const cardsToReturn = selectedIndices.map(i => playerHand[i]);
     onConfirmReturn(cardsToReturn);
   }
-  
-  function handleCancel() {
-    if (onCancel) {
-      onCancel();
-    }
-  }
 </script>
 
-<div class="chancellor-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={handleCancel} on:keydown={(e) => e.key === 'Escape' && handleCancel()}>
-  <div class="chancellor-modal" on:click|stopPropagation>
-    <h3>📜 Chancellor Effect</h3>
+<div class="chancellor-overlay" role="dialog" aria-modal="true" aria-labelledby="chancellor-title" tabindex="-1">
+  <div class="chancellor-modal">
+    <h3 id="chancellor-title">📜 Chancellor Effect</h3>
     <p class="subtitle">Select {cardsToReturnCount} card{cardsToReturnCount !== 1 ? 's' : ''} to return to the deck bottom.</p>
     
     {#if cardsToReturnCount > 1}
