@@ -28,7 +28,7 @@ npm install
 npm test
 ```
 
-The test suite includes 59 tests covering:
+The test suite includes 73 tests covering:
 - RNG determinism
 - Deck creation and shuffling
 - Game initialization and round management
@@ -90,6 +90,7 @@ src/
     │   ├── messages.ts           # P2P message protocol
     │   └── *.test.ts             # Network layer tests
     ├── stores/
+    │   ├── chat.ts               # Chat messages store
     │   ├── game.ts               # Game state store
     │   └── network.ts            # Network state store
     └── types.ts                  # TypeScript type definitions
@@ -136,7 +137,7 @@ game.setState(state);
 - **Deterministic**: Same seed always produces same game sequence
 - **Serializable**: Full state can be converted to/from JSON for P2P sync
 - **Type-safe**: Complete TypeScript type definitions
-- **Well-tested**: 59 passing tests with full coverage of game logic and networking
+- **Well-tested**: 73 passing tests with full coverage of game logic and networking
 - **Mobile-First**: Optimized for mobile browsers with native app-like experience
 - **P2P Networking**: WebRTC-based communication for low-latency gameplay
 
