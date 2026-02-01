@@ -62,41 +62,38 @@
 <style>
   .game-feed {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    bottom: 45%;
+    left: 1rem;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.25rem;
     pointer-events: none;
     z-index: 20;
+    max-width: 280px;
   }
 
   .feed-item {
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.9rem;
+    color: #ffd93d;
+    padding: 0.15rem 0;
+    font-size: 0.85rem;
     font-weight: 500;
-    text-align: center;
-    backdrop-filter: blur(4px);
+    text-align: left;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     animation: feed-fade 4s ease-out forwards;
-    max-width: 90vw;
     word-wrap: break-word;
   }
 
   @keyframes feed-fade {
     0% {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateX(-10px);
     }
     10% {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(0);
     }
-    80% {
+    75% {
       opacity: 1;
     }
     100% {
@@ -106,9 +103,13 @@
 
   /* Mobile responsive styles */
   @media (max-width: 480px) {
+    .game-feed {
+      max-width: 200px;
+      left: 0.5rem;
+    }
+
     .feed-item {
-      font-size: 0.8rem;
-      padding: 0.4rem 0.8rem;
+      font-size: 0.75rem;
     }
   }
 </style>
