@@ -6,7 +6,6 @@
     message: string;
     timestamp: number;
     timeoutId: ReturnType<typeof setTimeout>;
-    fadeTimeoutId?: ReturnType<typeof setTimeout>;
     isFadingOut: boolean;
   }
 
@@ -30,6 +29,7 @@
 
   // Start fade out animation, then remove
   function startFadeOut(itemId: number) {
+    // First set the flag to trigger the fade animation
     feedItems = feedItems.map(f => 
       f.id === itemId ? { ...f, isFadingOut: true } : f
     );
@@ -58,14 +58,15 @@
     };
     feedItems = [...feedItems, item];
     
-    // Keep only the most recent items visible
-    if (feedItems.length > MAX_VISIBLE_ITEMS) {
-      const itemsToRemove = feedItems.slice(0, feedItems.length - MAX_VISIBLE_ITEMS);
-      itemsToRemove.forEach(i => {
-        clearTimeout(i.timeoutId);
-        if (i.fadeTimeoutId) clearTimeout(i.fadeTimeoutId);
-      });
-      feedItems = feedItems.slice(-MAX_VISIBLE_ITEMS);
+    // If we exceed max items, fade out the oldest ones
+    while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
+      const oldestNonFading = feedItems.find(f => !f.isFadingOut);
+      if (oldestNonFading) {
+        clearTimeout(oldestNonFading.timeoutId);
+        startFadeOut(oldestNonFading.id);
+      } else {
+        break;
+      }
     }
   }
 
@@ -149,8 +150,9 @@
     text-align: left;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
     word-wrap: break-word;
-    animation: slide-in 0.3s ease-out forwards;
+    animation: slide-in 0.3s ease-out;
     transition: opacity 1s ease-out;
+    opacity: 1;
   }
 
   .feed-item.fading {
@@ -159,6 +161,7 @@
 
   .feed-item.fade-out {
     opacity: 0 !important;
+    transition: opacity 1s ease-out !important;
   }
 
   @keyframes slide-in {
