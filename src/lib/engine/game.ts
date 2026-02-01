@@ -736,7 +736,7 @@ export class GameEngine {
   
   /**
    * Check for Spy bonus at end of round
-   * If exactly one player has a Spy in their discard pile, they gain a token
+   * If exactly one non-eliminated player has a Spy in their discard pile, they gain a token
    */
   private checkSpyBonus(): void {
     // Only applies to 2019 ruleset
@@ -744,12 +744,13 @@ export class GameEngine {
       return;
     }
     
-    // Find all players who have Spy in their discard pile
+    // Find all non-eliminated players who have Spy in their discard pile
+    // Eliminated players' spies don't count for the bonus
     const playersWithSpy = this.state.players.filter(p => 
-      p.discardPile.includes('spy')
+      p.discardPile.includes('spy') && p.status !== 'ELIMINATED'
     );
     
-    // If exactly one player has a Spy, they get a bonus token
+    // If exactly one non-eliminated player has a Spy, they get a bonus token
     if (playersWithSpy.length === 1) {
       const spyPlayer = playersWithSpy[0];
       spyPlayer.tokens++;

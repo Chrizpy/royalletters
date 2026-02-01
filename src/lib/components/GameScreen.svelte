@@ -24,7 +24,7 @@
   let selectingGuess: boolean = false;
   let pendingCardId: string | null = null;
   let pendingTargetId: string | null = null;
-  let chancellorSelectedCards: string[] = [];
+  let chancellorSelectedIndices: number[] = [];  // Track by index to handle duplicate cards
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -42,24 +42,32 @@
     return map[playerCount] || 4;
   }
   
-  function toggleChancellorCard(cardId: string) {
+  function toggleChancellorCard(cardIndex: number) {
     if (!isChancellorPhase) return;
     
-    const index = chancellorSelectedCards.indexOf(cardId);
-    if (index === -1) {
+    const indexInSelection = chancellorSelectedIndices.indexOf(cardIndex);
+    if (indexInSelection === -1) {
       // Only allow selecting 2 cards
-      if (chancellorSelectedCards.length < 2) {
-        chancellorSelectedCards = [...chancellorSelectedCards, cardId];
+      if (chancellorSelectedIndices.length < 2) {
+        chancellorSelectedIndices = [...chancellorSelectedIndices, cardIndex];
       }
     } else {
-      chancellorSelectedCards = chancellorSelectedCards.filter(c => c !== cardId);
+      chancellorSelectedIndices = chancellorSelectedIndices.filter(i => i !== cardIndex);
     }
   }
   
   function confirmChancellorReturn() {
-    if (chancellorSelectedCards.length !== 2 || !onChancellorReturn) return;
-    onChancellorReturn(chancellorSelectedCards);
-    chancellorSelectedCards = [];
+    if (chancellorSelectedIndices.length !== 2 || !onChancellorReturn || !localPlayer) return;
+    // Validate indices are still valid for current hand
+    const hand = localPlayer.hand;
+    if (chancellorSelectedIndices.some(i => i < 0 || i >= hand.length)) {
+      chancellorSelectedIndices = [];
+      return;
+    }
+    // Convert indices back to card IDs for the callback
+    const cardsToReturn = chancellorSelectedIndices.map(i => hand[i]);
+    onChancellorReturn(cardsToReturn);
+    chancellorSelectedIndices = [];
   }
 
   function selectCard(cardId: string) {
@@ -251,21 +259,21 @@
             First selected → very bottom | Second selected → above it
           </p>
           <div class="chancellor-selected-list">
-            {#if chancellorSelectedCards.length > 1}
+            {#if chancellorSelectedIndices.length > 1 && localPlayer}
               <div class="selected-card-item">
                 <span class="position-badge">⬆️ 2nd</span>
-                <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[1])?.name}</span>
+                <span class="selected-card-name">{getCardDefinition(localPlayer.hand[chancellorSelectedIndices[1]])?.name}</span>
               </div>
             {/if}
-            {#if chancellorSelectedCards.length > 0}
+            {#if chancellorSelectedIndices.length > 0 && localPlayer}
               <div class="selected-card-item bottom-card">
                 <span class="position-badge">⬇️ Bottom</span>
-                <span class="selected-card-name">{getCardDefinition(chancellorSelectedCards[0])?.name}</span>
+                <span class="selected-card-name">{getCardDefinition(localPlayer.hand[chancellorSelectedIndices[0]])?.name}</span>
               </div>
             {/if}
           </div>
-          <p class="selected-count">Selected: {chancellorSelectedCards.length}/2</p>
-          {#if chancellorSelectedCards.length === 2}
+          <p class="selected-count">Selected: {chancellorSelectedIndices.length}/2</p>
+          {#if chancellorSelectedIndices.length === 2}
             <button class="confirm-chancellor-btn" on:click={confirmChancellorReturn}>
               Confirm Return
             </button>
@@ -298,9 +306,9 @@
       {#each localPlayer?.hand || [] as cardId, index}
         <Card 
           {cardId}
-          isSelected={isChancellorPhase ? chancellorSelectedCards.includes(cardId) : selectedCard === cardId}
+          isSelected={isChancellorPhase ? chancellorSelectedIndices.includes(index) : selectedCard === cardId}
           isPlayable={canPlay || isChancellorPhase}
-          onClick={() => isChancellorPhase ? toggleChancellorCard(cardId) : selectCard(cardId)}
+          onClick={() => isChancellorPhase ? toggleChancellorCard(index) : selectCard(cardId)}
           delay={index * 100}
         />
       {/each}
