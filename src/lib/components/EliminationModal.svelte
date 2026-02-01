@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PlayerState } from '../types';
+  import { resumeGame } from '../stores/game';
 
   export let player: PlayerState | undefined;
 
@@ -17,6 +18,8 @@
 
   function dismiss() {
     dismissed = true;
+    // Resume the game when the eliminated player dismisses the modal
+    resumeGame();
   }
 </script>
 

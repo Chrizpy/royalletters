@@ -15,6 +15,76 @@ export const gameStarted = writable<boolean>(false);
 // Revealed card (for Priest effect) - includes viewer to ensure only the right player sees it
 export const revealedCard = writable<{ cardId: string; playerName: string; viewerPlayerId: string } | null>(null);
 
+// Game pause state - used to pause when showing modals (Priest reveal, Elimination)
+export interface GamePauseState {
+  isPaused: boolean;
+  reason: 'priest_reveal' | 'elimination' | null;
+  pausedAt: number | null;  // Timestamp when paused
+  timeoutId: ReturnType<typeof setTimeout> | null;  // Auto-resume timeout
+}
+
+export const gamePaused = writable<GamePauseState>({
+  isPaused: false,
+  reason: null,
+  pausedAt: null,
+  timeoutId: null,
+});
+
+// Pause timeout duration (10 seconds)
+const PAUSE_TIMEOUT_MS = 10000;
+
+/**
+ * Pause the game for a specific reason
+ * Will auto-resume after 10 seconds
+ */
+export function pauseGame(reason: 'priest_reveal' | 'elimination', onResume?: () => void): void {
+  const currentPause = get(gamePaused);
+  
+  // Clear any existing timeout
+  if (currentPause.timeoutId) {
+    clearTimeout(currentPause.timeoutId);
+  }
+  
+  // Set up auto-resume timeout
+  const timeoutId = setTimeout(() => {
+    resumeGame();
+    if (onResume) onResume();
+  }, PAUSE_TIMEOUT_MS);
+  
+  gamePaused.set({
+    isPaused: true,
+    reason,
+    pausedAt: Date.now(),
+    timeoutId,
+  });
+}
+
+/**
+ * Resume the game (called when modal is dismissed or timeout expires)
+ */
+export function resumeGame(): void {
+  const currentPause = get(gamePaused);
+  
+  // Clear any existing timeout
+  if (currentPause.timeoutId) {
+    clearTimeout(currentPause.timeoutId);
+  }
+  
+  gamePaused.set({
+    isPaused: false,
+    reason: null,
+    pausedAt: null,
+    timeoutId: null,
+  });
+}
+
+/**
+ * Check if the game is currently paused
+ */
+export function isGamePaused(): boolean {
+  return get(gamePaused).isPaused;
+}
+
 /**
  * Initialize the game engine with players
  */
@@ -56,6 +126,7 @@ export function drawCard() {
 
 /**
  * Apply a player action (play card)
+ * Returns the result with additional pause info for the host to handle AI scheduling
  */
 export function applyAction(action: GameAction): ActionResult | undefined {
   if (!engine) return;
@@ -64,6 +135,7 @@ export function applyAction(action: GameAction): ActionResult | undefined {
   const newState = engine.getState();
   
   // Handle Priest reveal - store the revealed card info with who should see it
+  // Also pause the game so everyone can see the reveal
   if (result.revealedCard) {
     const targetPlayer = newState.players.find(p => p.id === action.targetPlayerId);
     revealedCard.set({
@@ -71,6 +143,13 @@ export function applyAction(action: GameAction): ActionResult | undefined {
       playerName: targetPlayer?.name || 'Unknown',
       viewerPlayerId: action.playerId  // Only the player who played Priest should see this
     });
+    // Pause the game for the Priest reveal
+    pauseGame('priest_reveal');
+  }
+  
+  // Handle elimination - pause the game so the eliminated player sees their modal
+  if (result.eliminatedPlayerId) {
+    pauseGame('elimination');
   }
   
   // Auto-draw for next player if needed
@@ -83,10 +162,11 @@ export function applyAction(action: GameAction): ActionResult | undefined {
 }
 
 /**
- * Clear the revealed card (after user acknowledges)
+ * Clear the revealed card (after user acknowledges) and resume the game
  */
 export function clearRevealedCard() {
   revealedCard.set(null);
+  resumeGame();
 }
 
 /**

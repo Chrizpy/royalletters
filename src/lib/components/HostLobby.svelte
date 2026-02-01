@@ -3,7 +3,7 @@
   import QRCode from 'qrcode';
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
-  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove } from '../stores/game';
+  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove, gamePaused, isGamePaused } from '../stores/game';
   import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
@@ -19,6 +19,7 @@
   let hostName = 'Host';
   let selectedRuleset: Ruleset = 'classic';
   let aiCounter = 1;  // Counter for AI player names
+  let aiMoveDelayMs = 1000;  // Default AI move delay (configurable)
 
   // Max players depends on ruleset: classic = 4, 2019 = 6
   $: maxPlayers = selectedRuleset === '2019' ? 6 : 4;
@@ -195,17 +196,29 @@
   /**
    * Schedule AI move if it's an AI player's turn
    * Uses setTimeout to allow state updates to propagate and create natural pacing
+   * Also checks if the game is paused and waits if necessary
    */
   function scheduleAIMove() {
     setTimeout(() => {
+      // If game is paused, wait and check again
+      if (isGamePaused()) {
+        scheduleAIMove();  // Re-schedule to check again later
+        return;
+      }
       processAITurn();
-    }, 1000);  // 1 second delay for AI moves to feel natural
+    }, aiMoveDelayMs);
   }
   
   /**
    * Process AI turn if it's an AI player's turn
    */
   function processAITurn() {
+    // Double-check pause state
+    if (isGamePaused()) {
+      scheduleAIMove();
+      return;
+    }
+    
     if (!checkIfAITurn()) return;
     
     const result = executeAIMove();
@@ -367,6 +380,31 @@
               Includes Spy and Chancellor cards with new mechanics!
             {:else}
               The original Love Letter experience.
+            {/if}
+          </p>
+        </div>
+        
+        <div class="ai-timing-section">
+          <label for="ai-delay">AI Move Speed:</label>
+          <div class="ai-delay-controls">
+            <input 
+              id="ai-delay" 
+              type="range" 
+              min="500" 
+              max="5000" 
+              step="250"
+              bind:value={aiMoveDelayMs}
+              class="ai-delay-slider"
+            />
+            <span class="ai-delay-value">{(aiMoveDelayMs / 1000).toFixed(1)}s</span>
+          </div>
+          <p class="ai-timing-hint">
+            {#if aiMoveDelayMs <= 1000}
+              Fast - AI moves quickly
+            {:else if aiMoveDelayMs <= 2500}
+              Normal - Comfortable pace
+            {:else}
+              Slow - More time to watch
             {/if}
           </p>
         </div>
@@ -535,6 +573,69 @@
   }
 
   .ruleset-hint {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+  }
+
+  .ai-timing-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .ai-timing-section label {
+    display: block;
+    font-weight: 500;
+    color: #000;
+    margin-bottom: 0.5rem;
+  }
+
+  .ai-delay-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .ai-delay-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .ai-delay-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+  }
+
+  .ai-delay-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+  }
+
+  .ai-delay-value {
+    font-weight: 600;
+    color: #667eea;
+    min-width: 40px;
+    text-align: right;
+  }
+
+  .ai-timing-hint {
     margin-top: 0.5rem;
     font-size: 0.85rem;
     color: #666;

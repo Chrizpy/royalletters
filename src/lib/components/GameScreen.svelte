@@ -38,6 +38,8 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  // Calculate how many cards need to be returned in Chancellor phase (hand size - 1)
+  $: chancellorCardsToReturnCount = isChancellorPhase && localPlayer ? localPlayer.hand.length - 1 : 2;
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
@@ -49,8 +51,8 @@
     
     const indexInSelection = chancellorSelectedIndices.indexOf(cardIndex);
     if (indexInSelection === -1) {
-      // Only allow selecting 2 cards
-      if (chancellorSelectedIndices.length < 2) {
+      // Only allow selecting up to the required number of cards
+      if (chancellorSelectedIndices.length < chancellorCardsToReturnCount) {
         chancellorSelectedIndices = [...chancellorSelectedIndices, cardIndex];
       }
     } else {
@@ -59,7 +61,7 @@
   }
   
   function confirmChancellorReturn() {
-    if (chancellorSelectedIndices.length !== 2 || !onChancellorReturn || !localPlayer) return;
+    if (chancellorSelectedIndices.length !== chancellorCardsToReturnCount || !onChancellorReturn || !localPlayer) return;
     // Validate indices are still valid for current hand
     const hand = localPlayer.hand;
     if (chancellorSelectedIndices.some(i => i < 0 || i >= hand.length)) {
@@ -256,10 +258,12 @@
       <div class="chancellor-modal">
         <div class="chancellor-content">
           <h3>📜 Chancellor Effect</h3>
-          <p>Select 2 cards to return to the deck bottom.</p>
-          <p class="chancellor-order-hint">
-            First selected → very bottom | Second selected → above it
-          </p>
+          <p>Select {chancellorCardsToReturnCount} card{chancellorCardsToReturnCount !== 1 ? 's' : ''} to return to the deck bottom.</p>
+          {#if chancellorCardsToReturnCount > 1}
+            <p class="chancellor-order-hint">
+              First selected → very bottom | Second selected → above it
+            </p>
+          {/if}
           <div class="chancellor-selected-list">
             {#if chancellorSelectedIndices.length > 1 && localPlayer}
               <div class="selected-card-item">
@@ -274,8 +278,8 @@
               </div>
             {/if}
           </div>
-          <p class="selected-count">Selected: {chancellorSelectedIndices.length}/2</p>
-          {#if chancellorSelectedIndices.length === 2}
+          <p class="selected-count">Selected: {chancellorSelectedIndices.length}/{chancellorCardsToReturnCount}</p>
+          {#if chancellorSelectedIndices.length === chancellorCardsToReturnCount}
             <button class="confirm-chancellor-btn" on:click={confirmChancellorReturn}>
               Confirm Return
             </button>

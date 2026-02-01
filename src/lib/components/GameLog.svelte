@@ -5,20 +5,47 @@
   
   let isOpen = false;
   let logsContainer: HTMLDivElement;
+  let previousLogCount = 0;
+  let userHasScrolledUp = false;
 
-  $: if (logsContainer && logs.length && isOpen) {
-    // Auto-scroll to bottom when new logs appear
+  // Only auto-scroll when new logs are added and user hasn't scrolled up
+  $: if (logsContainer && logs.length > previousLogCount && isOpen && !userHasScrolledUp) {
     setTimeout(() => {
-      logsContainer.scrollTop = logsContainer.scrollHeight;
+      if (logsContainer) {
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+      }
     }, 100);
+  }
+
+  // Track log count changes
+  $: if (logs.length !== previousLogCount) {
+    previousLogCount = logs.length;
+  }
+
+  function handleScroll() {
+    if (!logsContainer) return;
+    
+    // Check if user is at or near the bottom (within 50px)
+    const isNearBottom = logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight < 50;
+    userHasScrolledUp = !isNearBottom;
   }
 
   function toggleOpen() {
     isOpen = !isOpen;
+    if (isOpen) {
+      // Reset scroll state when opening, and scroll to bottom
+      userHasScrolledUp = false;
+      setTimeout(() => {
+        if (logsContainer) {
+          logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+      }, 100);
+    }
   }
 
   function close() {
     isOpen = false;
+    userHasScrolledUp = false;
   }
 
   function formatTime(timestamp: number): string {
@@ -44,7 +71,7 @@
         <button class="close-btn" on:click={close} aria-label="Close log">✕</button>
       </div>
       
-      <div class="log-content" bind:this={logsContainer}>
+      <div class="log-content" bind:this={logsContainer} on:scroll={handleScroll}>
         {#each logs as log}
           <div class="log-entry">
             <span class="log-time">{formatTime(log.timestamp)}</span>

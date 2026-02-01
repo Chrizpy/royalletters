@@ -1475,7 +1475,7 @@ describe('2019 Ruleset Tests', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.message).toContain('2 cards');
+      expect(result.message).toContain('Must return exactly 2');
     });
   });
 

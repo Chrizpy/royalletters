@@ -149,6 +149,7 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
 
 /**
  * Choose a target player for targeted cards
+ * Prioritizes players with the most tokens (they're closest to winning)
  */
 function chooseTarget(
   state: GameState,
@@ -167,9 +168,10 @@ function chooseTarget(
   const otherTargets = validTargets.filter((p) => p.id !== playerId);
   
   if (otherTargets.length > 0) {
-    // For Baron: prefer targeting players we think have lower value cards
-    // For now, just target randomly-ish (first opponent)
-    return otherTargets[0].id;
+    // Prioritize targeting the player with the most tokens (closest to winning)
+    // Sort by tokens descending, then take the first one
+    const sortedByTokens = [...otherTargets].sort((a, b) => b.tokens - a.tokens);
+    return sortedByTokens[0].id;
   }
   
   // If Prince and no other targets, can target self
@@ -237,9 +239,12 @@ export function decideAIMove(state: GameState, playerId: string): GameAction | n
  */
 function decideChancellorReturn(state: GameState, playerId: string): GameAction | null {
   const player = state.players.find((p) => p.id === playerId);
-  if (!player || player.hand.length < 3) {
+  if (!player || player.hand.length < 2) {
     return null;
   }
+  
+  // Number of cards to return = hand size - 1 (keep exactly 1 card)
+  const cardsToReturnCount = player.hand.length - 1;
   
   // Strategy: keep the highest value card (for round-end comparison)
   // Sort hand by value descending
@@ -249,9 +254,8 @@ function decideChancellorReturn(state: GameState, playerId: string): GameAction 
     return bValue - aValue;
   });
   
-  // Keep the highest value card, return the other two
-  const cardToKeep = sortedHand[0];
-  const cardsToReturn = sortedHand.slice(1, 3);
+  // Keep the highest value card, return the rest (up to cardsToReturnCount)
+  const cardsToReturn = sortedHand.slice(1, 1 + cardsToReturnCount);
   
   return {
     type: 'CHANCELLOR_RETURN',
