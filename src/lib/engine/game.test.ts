@@ -829,7 +829,7 @@ describe('Game End Tests', () => {
     });
 
     const state = game.getState();
-    state.players[0].tokens = 7; // 2 player game requires 7 tokens
+    state.players[0].tokens = 6; // 2 player game requires 6 tokens
     game.setState(state);
 
     game.checkGameEnd();
@@ -880,6 +880,53 @@ describe('Game End Tests', () => {
 
     expect(newState.phase).toBe('GAME_END');
     expect(newState.winnerId).toBe('p3');
+  });
+
+  it('should end game when player reaches token goal (5 players)', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+        { id: 'p4', name: 'David' },
+        { id: 'p5', name: 'Eve' },
+      ],
+    });
+
+    const state = game.getState();
+    state.players[3].tokens = 3; // 5 player game requires 3 tokens
+    game.setState(state);
+
+    game.checkGameEnd();
+    const newState = game.getState();
+
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerId).toBe('p4');
+  });
+
+  it('should end game when player reaches token goal (6 players)', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+        { id: 'p4', name: 'David' },
+        { id: 'p5', name: 'Eve' },
+        { id: 'p6', name: 'Frank' },
+      ],
+    });
+
+    const state = game.getState();
+    state.players[4].tokens = 3; // 6 player game requires 3 tokens
+    game.setState(state);
+
+    game.checkGameEnd();
+    const newState = game.getState();
+
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerId).toBe('p5');
   });
 });
 

@@ -12,9 +12,11 @@ import type {
 import { createDeck, shuffle, getCardDefinition, getCardValue } from './deck';
 
 const TOKENS_TO_WIN_MAP: Record<number, number> = {
-  2: 7,
+  2: 6,
   3: 5,
   4: 4,
+  5: 3,
+  6: 3,
 };
 
 export class GameEngine {

@@ -19,6 +19,9 @@
   let hostName = 'Host';
   let selectedRuleset: Ruleset = 'classic';
 
+  // Max players depends on ruleset: classic = 4, 2019 = 6
+  $: maxPlayers = selectedRuleset === '2019' ? 6 : 4;
+
   // Subscribe to game started state
   $: inGame = $gameStarted;
 
@@ -313,7 +316,7 @@
         </div>
         
         <div class="players-section">
-          <h3>Players ({players.length + 1}/4)</h3>
+          <h3>Players ({players.length + 1}/{maxPlayers})</h3>
           <div class="player-list">
             <div class="player-item host">
               <span class="player-icon">👑</span>

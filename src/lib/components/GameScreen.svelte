@@ -38,7 +38,7 @@
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
 
   function getTokensToWin(playerCount: number): number {
-    const map: Record<number, number> = { 2: 7, 3: 5, 4: 4 };
+    const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
     return map[playerCount] || 4;
   }
   
