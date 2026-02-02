@@ -8,10 +8,55 @@
   export let onClick: () => void = () => {};
   export let delay: number = 0;
 
+  // Flip state
+  let isFlipped = false;
+  
+  // Touch tracking for swipe detection
+  let touchStartX: number | null = null;
+  let touchEndX: number | null = null;
+  const SWIPE_THRESHOLD = 50;
+
   $: card = getCardDefinition(cardId);
   $: ruleset = $gameState?.ruleset || 'classic';
   $: cardValue = getCardValue(cardId, ruleset);
   $: cardColor = getCardColor(cardId);
+
+  function handleTouchStart(e: TouchEvent) {
+    touchStartX = e.touches[0].clientX;
+    touchEndX = null;
+  }
+
+  function handleTouchEnd(e: TouchEvent) {
+    touchEndX = e.changedTouches[0].clientX;
+    handleSwipe();
+  }
+
+  function handleSwipe() {
+    if (touchStartX === null || touchEndX === null) return;
+    
+    const distance = Math.abs(touchEndX - touchStartX);
+    if (distance > SWIPE_THRESHOLD) {
+      isFlipped = !isFlipped;
+    }
+    
+    // Reset touch tracking
+    touchStartX = null;
+    touchEndX = null;
+  }
+
+  function handleContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    isFlipped = !isFlipped;
+  }
+
+  function handleClick() {
+    // If flipped, flip back instead of selecting
+    if (isFlipped) {
+      isFlipped = false;
+      return;
+    }
+    onClick();
+  }
 
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
@@ -50,15 +95,31 @@
   class="card"
   class:selected={isSelected}
   class:playable={isPlayable}
+  class:flipped={isFlipped}
   style="--card-color: {cardColor}; --delay: {delay}ms;"
-  on:click={onClick}
-  disabled={!isPlayable}
+  on:click={handleClick}
+  on:contextmenu={handleContextMenu}
+  on:touchstart={handleTouchStart}
+  on:touchend={handleTouchEnd}
+  disabled={!isPlayable && !isFlipped}
 >
-  <div class="card-inner">
-    <div class="card-value">{cardValue}</div>
-    <div class="card-emoji">{getCardEmoji(cardId)}</div>
-    <div class="card-name">{card?.name || 'Unknown'}</div>
-    <div class="card-description">{card?.description || ''}</div>
+  <div class="card-3d-wrapper">
+    <!-- FRONT FACE -->
+    <div class="card-face card-front">
+      <div class="card-inner">
+        <div class="card-value">{cardValue}</div>
+        <div class="card-emoji">{getCardEmoji(cardId)}</div>
+        <div class="card-name">{card?.name || 'Unknown'}</div>
+        <div class="card-description">{card?.description || ''}</div>
+      </div>
+    </div>
+
+    <!-- BACK FACE -->
+    <div class="card-face card-back">
+      <div class="card-back-design">
+        <span>👑</span>
+      </div>
+    </div>
   </div>
   {#if isPlayable}
     <div class="playable-glow"></div>
@@ -93,6 +154,60 @@
   .card:disabled {
     cursor: not-allowed;
     opacity: 0.7;
+  }
+
+  /* Allow clicking on flipped cards even when "disabled" */
+  .card.flipped {
+    cursor: pointer;
+    opacity: 1;
+  }
+
+  /* 3D Flip Wrapper */
+  .card-3d-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+
+  /* Apply rotation when flipped */
+  .card.flipped .card-3d-wrapper {
+    transform: rotateY(180deg);
+  }
+
+  /* Common Face Styles */
+  .card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Front Face */
+  .card-front {
+    transform: rotateY(0deg);
+  }
+
+  /* Back Face */
+  .card-back {
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  }
+
+  .card-back-design span {
+    font-size: 3rem;
+    filter: grayscale(100%);
+    opacity: 0.5;
   }
 
   .card:not(:disabled):hover {
@@ -231,6 +346,14 @@
     .playable-glow {
       inset: -2px;
       border-radius: 12px;
+    }
+
+    .card-face {
+      border-radius: 10px;
+    }
+
+    .card-back-design span {
+      font-size: 2rem;
     }
   }
 </style>
