@@ -22,11 +22,13 @@
   $: cardColor = getCardColor(cardId);
 
   function handleTouchStart(e: TouchEvent) {
+    if (e.touches.length === 0) return;
     touchStartX = e.touches[0].clientX;
     touchEndX = null;
   }
 
   function handleTouchEnd(e: TouchEvent) {
+    if (e.changedTouches.length === 0) return;
     touchEndX = e.changedTouches[0].clientX;
     handleSwipe();
   }
