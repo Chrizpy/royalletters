@@ -206,6 +206,14 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
   }
 
+  .card-back-design {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .card-back-design span {
     font-size: 3rem;
     filter: grayscale(100%);
