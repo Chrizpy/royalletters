@@ -43,8 +43,8 @@
   }
 
   // Condense messages into concise one-liners
-  // Returns empty string for messages that should be filtered out
-  function condenseMessage(message: string): string {
+  // Returns empty string for messages that should be filtered out or merged
+  function condenseMessage(message: string, nextMessage?: string): string {
     // Pattern: "Player discarded CardName" (from Prince effect) -> filter out (implied)
     // Exception: keep "discarded princess" (important for elimination context)
     const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
@@ -58,10 +58,12 @@
       return `${elimMatch[1]} eliminated`;
     }
 
-    // Pattern: "Player guessed CardName (incorrectly)" -> "Player guessed CardName"
+    // Pattern: "Player guessed CardName (incorrectly)" 
+    // If preceded by "Player played Guard", merge them
     const guessMatch = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
     if (guessMatch) {
-      return `${guessMatch[1]} guessed ${guessMatch[2]}`;
+      // This will be handled by the "played Guard" pattern below
+      return ''; // Filter out, will be merged
     }
 
     // Pattern: "Player and Player traded hands" -> "Player ↔ Player"  
@@ -95,9 +97,57 @@
       return `${fizzleMatch[1]} fizzled`;
     }
 
+    // Pattern: "Player played Guard" - check if followed by guess
+    const guardMatch = message.match(/^(.+?) played Guard$/);
+    if (guardMatch && nextMessage) {
+      const nextGuessMatch = nextMessage.match(/^.+? guessed (.+?) \(incorrectly\)$/);
+      if (nextGuessMatch) {
+        return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[1]}`;
+      }
+    }
+
+    // Pattern: "Player played Baron" - check if followed by elimination or tie
+    const baronMatch = message.match(/^(.+?) played Baron$/);
+    if (baronMatch && nextMessage) {
+      const elim = nextMessage.match(/^(.+?) was eliminated \(lower card\)$/);
+      if (elim) {
+        if (elim[1] === baronMatch[1]) {
+          return `${baronMatch[1]} played Baron and lost`;
+        } else {
+          return `${baronMatch[1]} played Baron on ${elim[1]} and won`;
+        }
+      }
+      if (nextMessage === 'Comparison was a tie') {
+        return `${baronMatch[1]} played Baron and tied`;
+      }
+    }
+
+    // Pattern: "Player played Priest" - extract target from saw message
+    const priestMatch = message.match(/^(.+?) played Priest$/);
+    if (priestMatch && nextMessage) {
+      const sawNext = nextMessage.match(/^.+? saw (.+?)'s hand$/);
+      if (sawNext) {
+        return `${priestMatch[1]} played Priest on ${sawNext[1]}`;
+      }
+    }
+
+    // Pattern: "Player played King" - check for trade
+    const kingMatch = message.match(/^(.+?) played King$/);
+    if (kingMatch && nextMessage) {
+      const tradeNext = nextMessage.match(/^.+? and (.+?) traded hands$/);
+      if (tradeNext) {
+        return `${kingMatch[1]} ↔ ${tradeNext[1]}`;
+      }
+    }
+
+    // Pattern: "Player played Prince" - already filtered discards, just show play
+    if (message.match(/^(.+?) played Prince$/)) {
+      return message; // Keep as-is, discards are filtered
+    }
+
     // Patterns to keep as-is (already concise)
     const keepAsIsPatterns = [
-      /played/,              // "Player played CardName"
+      /played/,              // "Player played CardName" (for cards not handled above)
       /is protected/,        // "Player is protected"
       /won the round/,       // "Player won the round!"
       /won the game/,        // "Player won the game!"
@@ -125,48 +175,44 @@
     }, FADE_OUT_DURATION_MS);
   }
 
-  // Add a single item to the feed
-  function addItemToFeed(log: LogEntry) {
-    const condensed = condenseMessage(log.message);
-    
-    // Skip if message was condensed to empty string (intentionally filtered)
-    if (!condensed) {
-      return;
-    }
-    
-    const itemId = nextId++;
-    
-    // Schedule fade out after display time
-    const timeoutId = setTimeout(() => {
-      startFadeOut(itemId);
-    }, FEED_DISPLAY_TIME_MS);
-    
-    const item: FeedItem = {
-      id: itemId,
-      message: condensed,
-      timestamp: Date.now(),
-      timeoutId,
-      isFadingOut: false
-    };
-    feedItems = [...feedItems, item];
-    
-    // If we exceed max items, fade out the oldest ones
-    while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
-      const oldestNonFading = feedItems.find(f => !f.isFadingOut);
-      if (oldestNonFading) {
-        clearTimeout(oldestNonFading.timeoutId);
-        startFadeOut(oldestNonFading.id);
-      } else {
-        break;
-      }
-    }
-  }
-
   // Process pending items one at a time
   function processPendingItems() {
     if (pendingItems.length > 0) {
-      const next = pendingItems.shift()!;
-      addItemToFeed(next.log);
+      const current = pendingItems.shift()!;
+      const nextMessage = pendingItems.length > 0 ? pendingItems[0].log.message : undefined;
+      
+      const condensed = condenseMessage(current.log.message, nextMessage);
+      
+      // Skip if message was condensed to empty string (intentionally filtered or merged)
+      if (condensed) {
+        const itemId = nextId++;
+        
+        // Schedule fade out after display time
+        const timeoutId = setTimeout(() => {
+          startFadeOut(itemId);
+        }, FEED_DISPLAY_TIME_MS);
+        
+        const item: FeedItem = {
+          id: itemId,
+          message: condensed,
+          timestamp: Date.now(),
+          timeoutId,
+          isFadingOut: false
+        };
+        feedItems = [...feedItems, item];
+        
+        // If we exceed max items, fade out the oldest ones
+        while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
+          const oldestNonFading = feedItems.find(f => !f.isFadingOut);
+          if (oldestNonFading) {
+            clearTimeout(oldestNonFading.timeoutId);
+            startFadeOut(oldestNonFading.id);
+          } else {
+            break;
+          }
+        }
+      }
+      
       pendingItems = pendingItems; // Trigger reactivity
     }
     
