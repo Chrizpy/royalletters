@@ -32,6 +32,7 @@
   let effectAnimationTimeout: number | null = null;
   let prevActivePlayerIndex: number | undefined = undefined;
   let lastPlayedCards: Record<string, string> = {};
+  let prevRoundCount: number = 0;
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -44,6 +45,12 @@
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
   
+  // Clear lastPlayedCards when a new round starts
+  $: if (gameState?.roundCount !== undefined && gameState.roundCount !== prevRoundCount) {
+    lastPlayedCards = {};
+    prevRoundCount = gameState.roundCount;
+  }
+  
   // Track card effects for animations
   $: if (gameState?.logs && gameState.logs.length > 0) {
     const lastLog = gameState.logs[gameState.logs.length - 1];
@@ -52,8 +59,8 @@
     if (lastLog.actorId && lastLog.cardId) {
       const message = lastLog.message.toLowerCase();
       
-      // Store the last played card for this player
-      lastPlayedCards[lastLog.actorId] = lastLog.cardId;
+      // Store the last played card for this player (using assignment for reactivity)
+      lastPlayedCards = { ...lastPlayedCards, [lastLog.actorId]: lastLog.cardId };
       
       // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
       let targetPlayerId: string | null = null;
