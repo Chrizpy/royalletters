@@ -104,19 +104,29 @@
     // Pattern: "Player played Guard" - check next message for target
     const guardMatch = message.match(/^(.+?) played Guard$/);
     if (guardMatch && nextMessage) {
-      // Check for guess (incorrect guess)
+      // Check for guess (incorrect guess) - we don't have target info for incorrect guesses
+      // The game engine doesn't log the target name in incorrect guesses
       const nextGuessMatch = nextMessage.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
       if (nextGuessMatch) {
-        // The guesser might be different from the player (shouldn't happen, but check)
-        // Normally it should be the same player, but we don't have explicit target info
-        // We'll just show: "Player played Guard and guessed CardName"
+        // Show without target since game logs don't provide it for incorrect guesses
         return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[2]}`;
       }
       
-      // Check for elimination (correct guess)
+      // Check for elimination (correct guess) - this has the target
       const nextElimMatch = nextMessage.match(/^(.+?) was eliminated \(had (.+?)\)$/);
       if (nextElimMatch) {
         return `${guardMatch[1]} played Guard on ${nextElimMatch[1]} and guessed ${nextElimMatch[2]}`;
+      }
+    }
+    
+    // Pattern: "Player played Spy" - check if this is a duplicate
+    // The game engine logs "Player played Spy" twice (once generic, once in applySpyBonus)
+    // We want to filter out the second one
+    const spyMatch = message.match(/^(.+?) played Spy$/);
+    if (spyMatch && nextMessage) {
+      // If the next message is also "X played Spy" from the same player, skip this one
+      if (nextMessage === message) {
+        return ''; // Filter out the duplicate
       }
     }
 
