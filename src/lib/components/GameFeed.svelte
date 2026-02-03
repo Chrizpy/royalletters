@@ -27,6 +27,181 @@
   let lastLogCount = 0;
   let processingInterval: ReturnType<typeof setInterval> | null = null;
 
+  // Filter function to exclude verbose messages
+  function shouldShowInFeed(message: string): boolean {
+    const excludePatterns = [
+      /drew.*card/i,          // Matches "drew a card", "drew 1 card", "drew 2 cards", etc.
+      /returned.*card/i,      // Matches "returned 1 card", "returned 2 cards", etc.
+      /Round.*started/i,      // Round start messages
+      /Game initialized/i,    // Game initialization
+      /Burned face-up/i,      // Burned card info
+      /gained a token from Spy bonus/i,  // Spy bonus messages
+      /drew a new card/i,     // "Drew a new card" from Prince effect
+    ];
+    
+    return !excludePatterns.some(pattern => pattern.test(message));
+  }
+
+  // Condense messages into concise one-liners
+  // Returns empty string for messages that should be filtered out or merged
+  function condenseMessage(message: string, nextMessage?: string): string {
+    // Pattern: "Player discarded CardName" (from Prince effect) -> filter out (will be merged with Prince play)
+    // Exception: keep "discarded princess" (important for elimination context)
+    const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
+    if (discardMatch && discardMatch[2].toLowerCase() !== 'princess') {
+      return ''; // Empty string signals this message should be filtered
+    }
+
+    // Pattern: "Player was eliminated (reason)" -> check if it's from a guess (will be merged with Guard)
+    const elimMatch = message.match(/^(.+?) was eliminated \(had (.+?)\)$/);
+    if (elimMatch) {
+      return ''; // Will be merged with Guard play
+    }
+    
+    // Pattern: "Player was eliminated (other reasons)" -> "Player eliminated"
+    const elimOtherMatch = message.match(/^(.+?) was eliminated/);
+    if (elimOtherMatch) {
+      return `${elimOtherMatch[1]} eliminated`;
+    }
+
+    // Pattern: "Player guessed Target had CardName (incorrectly)" OR "Player guessed CardName (incorrectly)"
+    // -> filter (will be merged with Guard)
+    const guessMatch = message.match(/^(.+?) guessed (.+?) had (.+?) \(incorrectly\)$/);
+    const guessMatchOld = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
+    if (guessMatch || guessMatchOld) {
+      return ''; // Filter out, will be merged with Guard
+    }
+
+    // Pattern: "Player and Player traded hands" -> filter (will be merged with King)
+    const tradeMatch = message.match(/^(.+?) and (.+?) traded hands$/);
+    if (tradeMatch) {
+      return ''; // Filter out, will be merged with King
+    }
+
+    // Pattern: "Player saw Player's hand" -> filter (will be merged with Priest)
+    const sawMatch = message.match(/^(.+?) saw (.+?)'s hand$/);
+    if (sawMatch) {
+      return ''; // Filter out, will be merged with Priest
+    }
+
+    // Pattern: "Player swapped their card with the burned card" -> "Player swapped with burned card"
+    if (message.includes('swapped their card with the burned card')) {
+      const swapMatch = message.match(/^(.+?) swapped/);
+      if (swapMatch) {
+        return `${swapMatch[1]} swapped with burned card`;
+      }
+    }
+
+    // Pattern: "Comparison was a tie" -> filter (will be merged with Baron)
+    if (message === 'Comparison was a tie') {
+      return ''; // Filter out, will be merged with Baron
+    }
+
+    // Pattern: "CardName had no effect (no valid targets)" -> "CardName fizzled"
+    const fizzleMatch = message.match(/^(.+?) had no effect/);
+    if (fizzleMatch) {
+      return `${fizzleMatch[1]} fizzled`;
+    }
+
+    // Pattern: "Player played Guard" - check next message for target
+    const guardMatch = message.match(/^(.+?) played Guard$/);
+    if (guardMatch && nextMessage) {
+      // Check for guess with target (new format): "Player guessed Target had Card (incorrectly)"
+      const nextGuessWithTargetMatch = nextMessage.match(/^.+? guessed (.+?) had (.+?) \(incorrectly\)$/);
+      if (nextGuessWithTargetMatch) {
+        return `${guardMatch[1]} played Guard on ${nextGuessWithTargetMatch[1]} and guessed ${nextGuessWithTargetMatch[2]}`;
+      }
+      
+      // Check for guess without target (old format): "Player guessed Card (incorrectly)"
+      const nextGuessMatch = nextMessage.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
+      if (nextGuessMatch) {
+        // Show without target since game logs don't provide it for incorrect guesses (old format)
+        return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[2]}`;
+      }
+      
+      // Check for elimination (correct guess) - this has the target
+      const nextElimMatch = nextMessage.match(/^(.+?) was eliminated \(had (.+?)\)$/);
+      if (nextElimMatch) {
+        return `${guardMatch[1]} played Guard on ${nextElimMatch[1]} and guessed ${nextElimMatch[2]}`;
+      }
+    }
+    
+    // Pattern: "Player played Spy" - check if this is a duplicate
+    // The game engine logs "Player played Spy" twice (once generic, once in applySpyBonus)
+    // We want to filter out the second one
+    const spyMatch = message.match(/^(.+?) played Spy$/);
+    if (spyMatch && nextMessage) {
+      // If the next message is also "X played Spy" from the same player, skip this one
+      if (nextMessage === message) {
+        return ''; // Filter out the duplicate
+      }
+    }
+
+    // Pattern: "Player played Baron" - check next for result
+    const baronMatch = message.match(/^(.+?) played Baron$/);
+    if (baronMatch && nextMessage) {
+      const elim = nextMessage.match(/^(.+?) was eliminated \(lower card\)$/);
+      if (elim) {
+        if (elim[1] === baronMatch[1]) {
+          return `${baronMatch[1]} played Baron and lost`;
+        } else {
+          return `${baronMatch[1]} played Baron on ${elim[1]} and won`;
+        }
+      }
+      if (nextMessage === 'Comparison was a tie') {
+        return `${baronMatch[1]} played Baron and tied`;
+      }
+    }
+
+    // Pattern: "Player played Priest" - extract target from saw message
+    const priestMatch = message.match(/^(.+?) played Priest$/);
+    if (priestMatch && nextMessage) {
+      const sawNext = nextMessage.match(/^.+? saw (.+?)'s hand$/);
+      if (sawNext) {
+        return `${priestMatch[1]} played Priest on ${sawNext[1]}`;
+      }
+    }
+
+    // Pattern: "Player played King" - extract target from trade
+    const kingMatch = message.match(/^(.+?) played King$/);
+    if (kingMatch && nextMessage) {
+      const tradeNext = nextMessage.match(/^.+? and (.+?) traded hands$/);
+      if (tradeNext) {
+        return `${kingMatch[1]} ↔ ${tradeNext[1]}`;
+      }
+    }
+
+    // Pattern: "Player played Prince" - extract target from discard
+    const princeMatch = message.match(/^(.+?) played Prince$/);
+    if (princeMatch && nextMessage) {
+      const discardNext = nextMessage.match(/^(.+?) discarded/);
+      if (discardNext) {
+        return `${princeMatch[1]} played Prince on ${discardNext[1]}`;
+      }
+    }
+
+    // Pattern: "Player played Spy" - keep as-is (bonus message already filtered)
+    if (message.match(/^(.+?) played Spy$/)) {
+      return message;
+    }
+
+    // Patterns to keep as-is (already concise)
+    const keepAsIsPatterns = [
+      /played/,              // "Player played CardName" (for cards not handled above)
+      /is protected/,        // "Player is protected"
+      /won the round/,       // "Player won the round!"
+      /won the game/,        // "Player won the game!"
+      /Round ended/          // "Round ended in a tie"
+    ];
+    
+    if (keepAsIsPatterns.some(pattern => pattern.test(message))) {
+      return message;
+    }
+
+    // Default: return as is
+    return message;
+  }
+
   // Start fade out animation, then remove
   function startFadeOut(itemId: number) {
     // First set the flag to trigger the fade animation
@@ -40,41 +215,44 @@
     }, FADE_OUT_DURATION_MS);
   }
 
-  // Add a single item to the feed
-  function addItemToFeed(log: LogEntry) {
-    const itemId = nextId++;
-    
-    // Schedule fade out after display time
-    const timeoutId = setTimeout(() => {
-      startFadeOut(itemId);
-    }, FEED_DISPLAY_TIME_MS);
-    
-    const item: FeedItem = {
-      id: itemId,
-      message: log.message,
-      timestamp: Date.now(),
-      timeoutId,
-      isFadingOut: false
-    };
-    feedItems = [...feedItems, item];
-    
-    // If we exceed max items, fade out the oldest ones
-    while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
-      const oldestNonFading = feedItems.find(f => !f.isFadingOut);
-      if (oldestNonFading) {
-        clearTimeout(oldestNonFading.timeoutId);
-        startFadeOut(oldestNonFading.id);
-      } else {
-        break;
-      }
-    }
-  }
-
   // Process pending items one at a time
   function processPendingItems() {
     if (pendingItems.length > 0) {
-      const next = pendingItems.shift()!;
-      addItemToFeed(next.log);
+      const current = pendingItems.shift()!;
+      const nextMessage = pendingItems.length > 0 ? pendingItems[0].log.message : undefined;
+      
+      const condensed = condenseMessage(current.log.message, nextMessage);
+      
+      // Skip if message was condensed to empty string (intentionally filtered or merged)
+      if (condensed) {
+        const itemId = nextId++;
+        
+        // Schedule fade out after display time
+        const timeoutId = setTimeout(() => {
+          startFadeOut(itemId);
+        }, FEED_DISPLAY_TIME_MS);
+        
+        const item: FeedItem = {
+          id: itemId,
+          message: condensed,
+          timestamp: Date.now(),
+          timeoutId,
+          isFadingOut: false
+        };
+        feedItems = [...feedItems, item];
+        
+        // If we exceed max items, fade out the oldest ones
+        while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
+          const oldestNonFading = feedItems.find(f => !f.isFadingOut);
+          if (oldestNonFading) {
+            clearTimeout(oldestNonFading.timeoutId);
+            startFadeOut(oldestNonFading.id);
+          } else {
+            break;
+          }
+        }
+      }
+      
       pendingItems = pendingItems; // Trigger reactivity
     }
     
@@ -86,10 +264,25 @@
 
   // Watch for new logs and queue them for staggered display
   $: {
+    // Reset feed if logs were completely cleared or reset to initial state (when starting a new game)
+    const isGameReset = logs.length === 0 || (logs.length === 1 && logs[0].message === 'Game initialized');
+    if (isGameReset && lastLogCount > 0) {
+      feedItems.forEach(item => clearTimeout(item.timeoutId));
+      feedItems = [];
+      pendingItems = [];
+      if (processingInterval) {
+        clearInterval(processingInterval);
+        processingInterval = null;
+      }
+      lastLogCount = 0;
+    }
+    
     if (logs.length > lastLogCount) {
-      // Queue new log entries
+      // Queue new log entries (only if they should be shown)
       for (let i = lastLogCount; i < logs.length; i++) {
-        pendingItems = [...pendingItems, { log: logs[i], addedAt: Date.now() }];
+        if (shouldShowInFeed(logs[i].message)) {
+          pendingItems = [...pendingItems, { log: logs[i], addedAt: Date.now() }];
+        }
       }
       
       // Start processing if not already running

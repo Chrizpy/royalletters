@@ -339,8 +339,8 @@
     </div>
   </div>
 
-  <!-- Game Feed overlay for log messages - REMOVED for cleaner UI -->
-  <!-- <GameFeed logs={gameState.logs} /> -->
+  <!-- Game Feed overlay for log messages -->
+  <GameFeed logs={gameState.logs} />
 
   <!-- Game menu (log + chat) -->
   <GameMenu logs={gameState.logs} {onSendChat} />
