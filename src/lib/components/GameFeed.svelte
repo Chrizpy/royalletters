@@ -19,12 +19,14 @@
   const FEED_DISPLAY_TIME_MS = 5000;
   const FADE_OUT_DURATION_MS = 1000;
   const MAX_VISIBLE_ITEMS = 8;
+  const MIN_VISIBLE_ITEMS = 3; // Keep at least this many items visible without fading
   const STAGGER_DELAY_MS = 300; // Delay between each message appearing
 
   let feedItems: FeedItem[] = [];
   let pendingItems: PendingItem[] = [];
   let nextId = 0;
   let lastLogCount = 0;
+  let lastFirstLogTimestamp: number | null = null; // Track the first log's timestamp to detect new games
   let processingInterval: ReturnType<typeof setInterval> | null = null;
 
   // Filter function to exclude verbose messages
@@ -204,6 +206,12 @@
 
   // Start fade out animation, then remove
   function startFadeOut(itemId: number) {
+    // Check if fading this item would leave us with fewer than MIN_VISIBLE_ITEMS
+    const nonFadingItems = feedItems.filter(f => !f.isFadingOut);
+    if (nonFadingItems.length <= MIN_VISIBLE_ITEMS) {
+      return; // Don't fade out if we would go below minimum
+    }
+    
     // First set the flag to trigger the fade animation
     feedItems = feedItems.map(f => 
       f.id === itemId ? { ...f, isFadingOut: true } : f
@@ -227,7 +235,8 @@
       if (condensed) {
         const itemId = nextId++;
         
-        // Schedule fade out after display time
+        // Schedule fade out after display time, but only if we have more than MIN_VISIBLE_ITEMS
+        // The startFadeOut function will also check this at execution time
         const timeoutId = setTimeout(() => {
           startFadeOut(itemId);
         }, FEED_DISPLAY_TIME_MS);
@@ -241,8 +250,11 @@
         };
         feedItems = [...feedItems, item];
         
-        // If we exceed max items, fade out the oldest ones
+        // If we exceed max items, fade out the oldest ones (respecting MIN_VISIBLE_ITEMS)
         while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
+          const nonFadingItems = feedItems.filter(f => !f.isFadingOut);
+          if (nonFadingItems.length <= MIN_VISIBLE_ITEMS) break;
+          
           const oldestNonFading = feedItems.find(f => !f.isFadingOut);
           if (oldestNonFading) {
             clearTimeout(oldestNonFading.timeoutId);
@@ -264,9 +276,18 @@
 
   // Watch for new logs and queue them for staggered display
   $: {
-    // Reset feed if logs were completely cleared or reset to initial state (when starting a new game)
-    const isGameReset = logs.length === 0 || (logs.length === 1 && logs[0].message === 'Game initialized');
-    if (isGameReset && lastLogCount > 0) {
+    // Detect if this is a new game by checking if the first log's timestamp changed
+    const currentFirstLogTimestamp = logs.length > 0 ? logs[0].timestamp : null;
+    const isNewGame = currentFirstLogTimestamp !== null && 
+                      lastFirstLogTimestamp !== null && 
+                      currentFirstLogTimestamp !== lastFirstLogTimestamp;
+    
+    // Reset feed if logs were completely cleared, reset to initial state, or a new game started
+    const isGameReset = logs.length === 0 || 
+                        (logs.length === 1 && logs[0].message === 'Game initialized') ||
+                        isNewGame;
+    
+    if (isGameReset && (lastLogCount > 0 || isNewGame)) {
       feedItems.forEach(item => clearTimeout(item.timeoutId));
       feedItems = [];
       pendingItems = [];
@@ -276,6 +297,9 @@
       }
       lastLogCount = 0;
     }
+    
+    // Update the first log timestamp tracker
+    lastFirstLogTimestamp = currentFirstLogTimestamp;
     
     if (logs.length > lastLogCount) {
       // Queue new log entries (only if they should be shown)
