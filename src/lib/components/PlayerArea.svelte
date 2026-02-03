@@ -90,7 +90,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1.25rem 1.5rem;
+    padding: 0;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 16px;
@@ -173,10 +173,14 @@
     justify-content: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
+    margin: 1rem;
+    margin-right: 0.5rem;
   }
 
   .player-details {
     flex: 1;
+    padding: 1rem 0;
+    padding-right: 1rem;
   }
 
   .player-name {

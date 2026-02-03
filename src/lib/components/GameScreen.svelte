@@ -72,24 +72,36 @@
         }
       }
       
-      // Set animation state and clear after delay
+      // Set animation state - borders persist until cleared by next action
+      // For Handmaid, the border persists on the protected player until their next turn
       cardEffectAnimation = {
         actorId: lastLog.actorId,
         targetId: targetPlayerId,
         cardId: lastLog.cardId
       };
       
-      // Clear previous timeout
+      // Clear previous timeout (no longer using timeout to auto-clear)
       if (effectAnimationTimeout) {
         clearTimeout(effectAnimationTimeout);
+        effectAnimationTimeout = null;
       }
-      
-      // Clear animation after 3 seconds (longer to ensure visibility)
-      effectAnimationTimeout = window.setTimeout(() => {
-        cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
-      }, 3000);
     }
   }
+  
+  // Clear non-Handmaid animations when active player changes
+  $: if (gameState?.activePlayerIndex !== undefined && prevActivePlayerIndex !== gameState.activePlayerIndex) {
+    // Check if the current animation is for Handmaid (card ID 'handmaid')
+    if (cardEffectAnimation.cardId !== 'handmaid') {
+      // Clear animation for non-Handmaid cards when turn changes
+      cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+    } else if (cardEffectAnimation.actorId && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
+      // Clear Handmaid animation when it's the protected player's turn again
+      cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+    }
+    prevActivePlayerIndex = gameState.activePlayerIndex;
+  }
+  
+  let prevActivePlayerIndex = gameState?.activePlayerIndex;
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
@@ -423,7 +435,7 @@
   .opponents-area {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    gap: 1.5rem;
     margin-bottom: 1rem;
     max-width: 600px;
     margin-left: auto;
