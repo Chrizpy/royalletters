@@ -90,11 +90,11 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 16px;
-    min-width: 180px;
+    min-width: 200px;
     cursor: default;
     transition: all 0.3s ease;
     color: white;
@@ -113,24 +113,28 @@
 
   .player-area.card-effect-actor {
     border-color: var(--effect-border-color, #667eea);
-    box-shadow: 0 0 25px var(--effect-border-color, rgba(102, 126, 234, 0.6));
-    animation: effect-pulse 1s ease-in-out 2;
+    border-width: 3px;
+    box-shadow: 0 0 30px var(--effect-border-color, rgba(102, 126, 234, 0.8));
+    animation: effect-pulse 1.5s ease-in-out 2;
   }
 
   .player-area.card-effect-target {
     border-color: var(--effect-border-color, #e74c3c);
-    box-shadow: 0 0 25px var(--effect-border-color, rgba(231, 76, 60, 0.6));
-    animation: effect-pulse 1s ease-in-out 2;
+    border-width: 3px;
+    box-shadow: 0 0 30px var(--effect-border-color, rgba(231, 76, 60, 0.8));
+    animation: effect-pulse 1.5s ease-in-out 2;
   }
 
   @keyframes effect-pulse {
     0%, 100% { 
-      box-shadow: 0 0 15px var(--effect-border-color, rgba(102, 126, 234, 0.4));
+      box-shadow: 0 0 20px var(--effect-border-color, rgba(102, 126, 234, 0.5));
       transform: scale(1);
+      border-width: 3px;
     }
     50% { 
-      box-shadow: 0 0 35px var(--effect-border-color, rgba(102, 126, 234, 0.8));
-      transform: scale(1.02);
+      box-shadow: 0 0 40px var(--effect-border-color, rgba(102, 126, 234, 1));
+      transform: scale(1.03);
+      border-width: 4px;
     }
   }
 

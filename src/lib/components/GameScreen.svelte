@@ -84,10 +84,10 @@
         clearTimeout(effectAnimationTimeout);
       }
       
-      // Clear animation after 2 seconds
+      // Clear animation after 3 seconds (longer to ensure visibility)
       effectAnimationTimeout = window.setTimeout(() => {
         cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
-      }, 2000);
+      }, 3000);
     }
   }
 
@@ -328,8 +328,8 @@
     </div>
   </div>
 
-  <!-- Game Feed overlay for log messages -->
-  <GameFeed logs={gameState.logs} />
+  <!-- Game Feed overlay for log messages - REMOVED for cleaner UI -->
+  <!-- <GameFeed logs={gameState.logs} /> -->
 
   <!-- Game menu (log + chat) -->
   <GameMenu logs={gameState.logs} {onSendChat} />
