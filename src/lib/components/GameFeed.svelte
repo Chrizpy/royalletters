@@ -64,9 +64,11 @@
       return `${elimOtherMatch[1]} eliminated`;
     }
 
-    // Pattern: "Player guessed CardName (incorrectly)" -> filter (will be merged with Guard)
-    const guessMatch = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
-    if (guessMatch) {
+    // Pattern: "Player guessed Target had CardName (incorrectly)" OR "Player guessed CardName (incorrectly)"
+    // -> filter (will be merged with Guard)
+    const guessMatch = message.match(/^(.+?) guessed (.+?) had (.+?) \(incorrectly\)$/);
+    const guessMatchOld = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
+    if (guessMatch || guessMatchOld) {
       return ''; // Filter out, will be merged with Guard
     }
 
@@ -104,11 +106,16 @@
     // Pattern: "Player played Guard" - check next message for target
     const guardMatch = message.match(/^(.+?) played Guard$/);
     if (guardMatch && nextMessage) {
-      // Check for guess (incorrect guess) - we don't have target info for incorrect guesses
-      // The game engine doesn't log the target name in incorrect guesses
+      // Check for guess with target (new format): "Player guessed Target had Card (incorrectly)"
+      const nextGuessWithTargetMatch = nextMessage.match(/^.+? guessed (.+?) had (.+?) \(incorrectly\)$/);
+      if (nextGuessWithTargetMatch) {
+        return `${guardMatch[1]} played Guard on ${nextGuessWithTargetMatch[1]} and guessed ${nextGuessWithTargetMatch[2]}`;
+      }
+      
+      // Check for guess without target (old format): "Player guessed Card (incorrectly)"
       const nextGuessMatch = nextMessage.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
       if (nextGuessMatch) {
-        // Show without target since game logs don't provide it for incorrect guesses
+        // Show without target since game logs don't provide it for incorrect guesses (old format)
         return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[2]}`;
       }
       

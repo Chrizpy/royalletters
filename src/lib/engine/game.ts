@@ -405,7 +405,7 @@ export class GameEngine {
     } else {
       const guessCardDef = getCardDefinition(guess);
       const guessName = guessCardDef?.name || guess;
-      this.addLog(`${activePlayer.name} guessed ${guessName} (incorrectly)`, activePlayer.id);
+      this.addLog(`${activePlayer.name} guessed ${targetPlayer.name} had ${guessName} (incorrectly)`, activePlayer.id);
       return {
         success: true,
         message: 'Incorrect guess',
