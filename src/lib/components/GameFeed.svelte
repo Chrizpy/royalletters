@@ -45,26 +45,27 @@
   // Condense messages into concise one-liners
   function condenseMessage(message: string): string {
     // Pattern: "Player discarded CardName" (from Prince effect) -> skip, it's implied
-    // BUT keep "discarded Princess" elimination messages
+    // BUT keep "discarded princess" elimination messages  
     const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
-    if (discardMatch && !message.includes('Princess')) {
+    if (discardMatch && discardMatch[2].toLowerCase() !== 'princess') {
       // Filter out non-Princess discards (they're implied by Prince play)
       return '';
     }
 
-    // Pattern: "Player played CardName" -> keep as is
-    if (message.includes('played')) {
-      return message;
-    }
-
-    // Pattern: "Player is protected" -> keep as is
-    if (message.includes('is protected')) {
-      return message;
-    }
-
-    // Pattern: "Player and Player traded hands" -> could shorten to "Player ↔ Player"
-    // but keeping readable format
-    if (message.includes('traded hands')) {
+    // Patterns to keep as-is (already concise)
+    const keepAsIsPatterns = [
+      /played/,
+      /is protected/,
+      /traded hands/,
+      /saw.*hand/,
+      /tie/,
+      /had no effect/,
+      /won the round/,
+      /won the game/,
+      /Round ended/
+    ];
+    
+    if (keepAsIsPatterns.some(pattern => pattern.test(message))) {
       return message;
     }
 
