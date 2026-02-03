@@ -30,22 +30,15 @@
   // Filter function to exclude verbose messages
   function shouldShowInFeed(message: string): boolean {
     const excludePatterns = [
-      'drew a card',
-      'drew card',
-      'drew 1 card',
-      'drew 2 cards',
-      'drew 3 cards',
-      'returned 1 card',
-      'returned 2 cards',
-      'returned 3 cards',
-      'Round',
-      'started',
-      'Game initialized',
-      'Burned face-up',
-      'gained a token from Spy bonus'
+      /drew.*card/i,        // Matches "drew a card", "drew 1 card", "drew 2 cards", etc.
+      /returned.*card/i,    // Matches "returned 1 card", "returned 2 cards", etc.
+      /Round.*started/i,
+      /Game initialized/i,
+      /Burned face-up/i,
+      /gained a token from Spy bonus/i
     ];
     
-    return !excludePatterns.some(pattern => message.includes(pattern));
+    return !excludePatterns.some(pattern => pattern.test(message));
   }
 
   // Start fade out animation, then remove
@@ -107,8 +100,8 @@
 
   // Watch for new logs and queue them for staggered display
   $: {
-    // Reset feed if logs were cleared (e.g., on play again)
-    if (logs.length < lastLogCount) {
+    // Reset feed if logs were completely cleared (e.g., on play again or new round)
+    if (logs.length === 0 && lastLogCount > 0) {
       feedItems.forEach(item => clearTimeout(item.timeoutId));
       feedItems = [];
       pendingItems = [];
