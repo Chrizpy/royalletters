@@ -45,37 +45,41 @@
   // Condense messages into concise one-liners
   // Returns empty string for messages that should be filtered out or merged
   function condenseMessage(message: string, nextMessage?: string): string {
-    // Pattern: "Player discarded CardName" (from Prince effect) -> filter out (implied)
+    // Pattern: "Player discarded CardName" (from Prince effect) -> filter out (will be merged with Prince play)
     // Exception: keep "discarded princess" (important for elimination context)
     const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
     if (discardMatch && discardMatch[2].toLowerCase() !== 'princess') {
       return ''; // Empty string signals this message should be filtered
     }
 
-    // Pattern: "Player was eliminated (reason)" -> "Player eliminated"
-    const elimMatch = message.match(/^(.+?) was eliminated/);
+    // Pattern: "Player was eliminated (reason)" -> check if it's from a guess (will be merged with Guard)
+    const elimMatch = message.match(/^(.+?) was eliminated \(had (.+?)\)$/);
     if (elimMatch) {
-      return `${elimMatch[1]} eliminated`;
+      return ''; // Will be merged with Guard play
+    }
+    
+    // Pattern: "Player was eliminated (other reasons)" -> "Player eliminated"
+    const elimOtherMatch = message.match(/^(.+?) was eliminated/);
+    if (elimOtherMatch) {
+      return `${elimOtherMatch[1]} eliminated`;
     }
 
-    // Pattern: "Player guessed CardName (incorrectly)" 
-    // If preceded by "Player played Guard", merge them
+    // Pattern: "Player guessed CardName (incorrectly)" -> filter (will be merged with Guard)
     const guessMatch = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
     if (guessMatch) {
-      // This will be handled by the "played Guard" pattern below
-      return ''; // Filter out, will be merged
+      return ''; // Filter out, will be merged with Guard
     }
 
-    // Pattern: "Player and Player traded hands" -> "Player ↔ Player"  
+    // Pattern: "Player and Player traded hands" -> filter (will be merged with King)
     const tradeMatch = message.match(/^(.+?) and (.+?) traded hands$/);
     if (tradeMatch) {
-      return `${tradeMatch[1]} ↔ ${tradeMatch[2]}`;
+      return ''; // Filter out, will be merged with King
     }
 
-    // Pattern: "Player saw Player's hand" -> "Player saw Player's card"
+    // Pattern: "Player saw Player's hand" -> filter (will be merged with Priest)
     const sawMatch = message.match(/^(.+?) saw (.+?)'s hand$/);
     if (sawMatch) {
-      return `${sawMatch[1]} saw ${sawMatch[2]}'s card`;
+      return ''; // Filter out, will be merged with Priest
     }
 
     // Pattern: "Player swapped their card with the burned card" -> "Player swapped with burned card"
@@ -86,9 +90,9 @@
       }
     }
 
-    // Pattern: "Comparison was a tie" -> "Tie"
+    // Pattern: "Comparison was a tie" -> filter (will be merged with Baron)
     if (message === 'Comparison was a tie') {
-      return 'Tie';
+      return ''; // Filter out, will be merged with Baron
     }
 
     // Pattern: "CardName had no effect (no valid targets)" -> "CardName fizzled"
@@ -97,16 +101,26 @@
       return `${fizzleMatch[1]} fizzled`;
     }
 
-    // Pattern: "Player played Guard" - check if followed by guess
+    // Pattern: "Player played Guard" - check next message for target
     const guardMatch = message.match(/^(.+?) played Guard$/);
     if (guardMatch && nextMessage) {
-      const nextGuessMatch = nextMessage.match(/^.+? guessed (.+?) \(incorrectly\)$/);
+      // Check for guess (incorrect guess)
+      const nextGuessMatch = nextMessage.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
       if (nextGuessMatch) {
-        return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[1]}`;
+        // The guesser might be different from the player (shouldn't happen, but check)
+        // Normally it should be the same player, but we don't have explicit target info
+        // We'll just show: "Player played Guard and guessed CardName"
+        return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[2]}`;
+      }
+      
+      // Check for elimination (correct guess)
+      const nextElimMatch = nextMessage.match(/^(.+?) was eliminated \(had (.+?)\)$/);
+      if (nextElimMatch) {
+        return `${guardMatch[1]} played Guard on ${nextElimMatch[1]} and guessed ${nextElimMatch[2]}`;
       }
     }
 
-    // Pattern: "Player played Baron" - check if followed by elimination or tie
+    // Pattern: "Player played Baron" - check next for result
     const baronMatch = message.match(/^(.+?) played Baron$/);
     if (baronMatch && nextMessage) {
       const elim = nextMessage.match(/^(.+?) was eliminated \(lower card\)$/);
@@ -131,7 +145,7 @@
       }
     }
 
-    // Pattern: "Player played King" - check for trade
+    // Pattern: "Player played King" - extract target from trade
     const kingMatch = message.match(/^(.+?) played King$/);
     if (kingMatch && nextMessage) {
       const tradeNext = nextMessage.match(/^.+? and (.+?) traded hands$/);
@@ -140,9 +154,18 @@
       }
     }
 
-    // Pattern: "Player played Prince" - already filtered discards, just show play
-    if (message.match(/^(.+?) played Prince$/)) {
-      return message; // Keep as-is, discards are filtered
+    // Pattern: "Player played Prince" - extract target from discard
+    const princeMatch = message.match(/^(.+?) played Prince$/);
+    if (princeMatch && nextMessage) {
+      const discardNext = nextMessage.match(/^(.+?) discarded/);
+      if (discardNext) {
+        return `${princeMatch[1]} played Prince on ${discardNext[1]}`;
+      }
+    }
+
+    // Pattern: "Player played Spy" - keep as-is (bonus message already filtered)
+    if (message.match(/^(.+?) played Spy$/)) {
+      return message;
     }
 
     // Patterns to keep as-is (already concise)
