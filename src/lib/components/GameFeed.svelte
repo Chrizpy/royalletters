@@ -75,40 +75,10 @@
       return `${elimMatch[1]} eliminated`;
     }
 
-    // Pattern: "Player guessed CardName (incorrectly)" -> keep concise
+    // Pattern: "Player guessed CardName (incorrectly)" -> remove "(incorrectly)"
     const guessMatch = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
     if (guessMatch) {
       return `${guessMatch[1]} guessed ${guessMatch[2]}`;
-    }
-
-    // Pattern: "Player saw Player's hand" -> keep as is
-    if (message.includes("saw") && message.includes("hand")) {
-      return message;
-    }
-
-    // Pattern: "Comparison was a tie" -> keep as is
-    if (message.includes('tie')) {
-      return message;
-    }
-
-    // Pattern: "CardName had no effect" -> keep as is
-    if (message.includes('had no effect')) {
-      return message;
-    }
-
-    // Pattern: "Player won the round!" -> keep as is
-    if (message.includes('won the round')) {
-      return message;
-    }
-
-    // Pattern: "Player won the game!" -> keep as is
-    if (message.includes('won the game')) {
-      return message;
-    }
-
-    // Pattern: "Round ended in a tie" -> keep as is
-    if (message.includes('Round ended')) {
-      return message;
     }
 
     // Default: return as is
