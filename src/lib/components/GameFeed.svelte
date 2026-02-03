@@ -100,7 +100,7 @@
 
   // Watch for new logs and queue them for staggered display
   $: {
-    // Reset feed if logs were completely cleared (e.g., on play again or new round)
+    // Reset feed if logs were completely cleared (when starting a new game via "Play Again")
     if (logs.length === 0 && lastLogCount > 0) {
       feedItems.forEach(item => clearTimeout(item.timeoutId));
       feedItems = [];
