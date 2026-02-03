@@ -30,26 +30,26 @@
   // Filter function to exclude verbose messages
   function shouldShowInFeed(message: string): boolean {
     const excludePatterns = [
-      /drew.*card/i,        // Matches "drew a card", "drew 1 card", "drew 2 cards", etc.
-      /returned.*card/i,    // Matches "returned 1 card", "returned 2 cards", etc.
-      /Round.*started/i,
-      /Game initialized/i,
-      /Burned face-up/i,
-      /gained a token from Spy bonus/i,
-      /drew a new card/i,   // Matches "drew a new card" from Prince effect
+      /drew.*card/i,          // Matches "drew a card", "drew 1 card", "drew 2 cards", etc.
+      /returned.*card/i,      // Matches "returned 1 card", "returned 2 cards", etc.
+      /Round.*started/i,      // Round start messages
+      /Game initialized/i,    // Game initialization
+      /Burned face-up/i,      // Burned card info
+      /gained a token from Spy bonus/i,  // Spy bonus messages
+      /drew a new card/i,     // "Drew a new card" from Prince effect
     ];
     
     return !excludePatterns.some(pattern => pattern.test(message));
   }
 
   // Condense messages into concise one-liners
+  // Returns empty string for messages that should be filtered out
   function condenseMessage(message: string): string {
-    // Pattern: "Player discarded CardName" (from Prince effect) -> skip, it's implied
-    // BUT keep "discarded princess" elimination messages  
+    // Pattern: "Player discarded CardName" (from Prince effect) -> filter out (implied)
+    // Exception: keep "discarded princess" (important for elimination context)
     const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
     if (discardMatch && discardMatch[2].toLowerCase() !== 'princess') {
-      // Filter out non-Princess discards (they're implied by Prince play)
-      return '';
+      return ''; // Empty string signals this message should be filtered
     }
 
     // Patterns to keep as-is (already concise)
@@ -102,7 +102,7 @@
   function addItemToFeed(log: LogEntry) {
     const condensed = condenseMessage(log.message);
     
-    // Skip if message was condensed to empty string
+    // Skip if message was condensed to empty string (intentionally filtered)
     if (!condensed) {
       return;
     }
