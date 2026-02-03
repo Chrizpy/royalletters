@@ -35,10 +35,82 @@
       /Round.*started/i,
       /Game initialized/i,
       /Burned face-up/i,
-      /gained a token from Spy bonus/i
+      /gained a token from Spy bonus/i,
+      /drew a new card/i,   // Matches "drew a new card" from Prince effect
     ];
     
     return !excludePatterns.some(pattern => pattern.test(message));
+  }
+
+  // Condense messages into concise one-liners
+  function condenseMessage(message: string): string {
+    // Pattern: "Player discarded CardName" -> extract for Prince effect
+    const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
+    if (discardMatch) {
+      // This is shown after "played Prince", we'll skip it since it's implied
+      return ''; // Will be filtered out
+    }
+
+    // Pattern: "Player played CardName" -> keep as is
+    if (message.includes('played')) {
+      return message;
+    }
+
+    // Pattern: "Player is protected" -> keep as is
+    if (message.includes('is protected')) {
+      return message;
+    }
+
+    // Pattern: "Player and Player traded hands" -> shorten
+    const tradeMatch = message.match(/^(.+?) and (.+?) traded hands$/);
+    if (tradeMatch) {
+      return `${tradeMatch[1]} and ${tradeMatch[2]} traded hands`;
+    }
+
+    // Pattern: "Player was eliminated (reason)" -> "Player eliminated"
+    const elimMatch = message.match(/^(.+?) was eliminated/);
+    if (elimMatch) {
+      return `${elimMatch[1]} eliminated`;
+    }
+
+    // Pattern: "Player guessed CardName (incorrectly)" -> keep concise
+    const guessMatch = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
+    if (guessMatch) {
+      return `${guessMatch[1]} guessed ${guessMatch[2]}`;
+    }
+
+    // Pattern: "Player saw Player's hand" -> keep as is
+    if (message.includes("saw") && message.includes("hand")) {
+      return message;
+    }
+
+    // Pattern: "Comparison was a tie" -> keep as is
+    if (message.includes('tie')) {
+      return message;
+    }
+
+    // Pattern: "CardName had no effect" -> keep as is
+    if (message.includes('had no effect')) {
+      return message;
+    }
+
+    // Pattern: "Player won the round!" -> keep as is
+    if (message.includes('won the round')) {
+      return message;
+    }
+
+    // Pattern: "Player won the game!" -> keep as is
+    if (message.includes('won the game')) {
+      return message;
+    }
+
+    // Pattern: "Round ended in a tie" -> keep as is
+    if (message.includes('Round ended')) {
+      return message;
+    }
+
+    // Default: return as is
+    return message;
   }
 
   // Start fade out animation, then remove
@@ -56,6 +128,13 @@
 
   // Add a single item to the feed
   function addItemToFeed(log: LogEntry) {
+    const condensed = condenseMessage(log.message);
+    
+    // Skip if message was condensed to empty string
+    if (!condensed) {
+      return;
+    }
+    
     const itemId = nextId++;
     
     // Schedule fade out after display time
@@ -65,7 +144,7 @@
     
     const item: FeedItem = {
       id: itemId,
-      message: log.message,
+      message: condensed,
       timestamp: Date.now(),
       timeoutId,
       isFadingOut: false
