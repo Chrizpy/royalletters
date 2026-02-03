@@ -160,8 +160,16 @@
     </div>
   </div>
 
-  <!-- Opponents area -->
+  <!-- Players area (includes local player and opponents) -->
   <div class="opponents-area">
+    {#if localPlayer}
+      <PlayerArea 
+        player={localPlayer} 
+        isActive={gameState.players[gameState.activePlayerIndex]?.id === localPlayer.id}
+        isTargetable={false}
+        onSelect={() => {}}
+      />
+    {/if}
     {#each opponents as opponent}
       <PlayerArea 
         player={opponent} 
@@ -233,35 +241,6 @@
 
   <!-- Local player hand -->
   <div class="player-hand-area">
-    <div class="player-info">
-      <span class="player-name">You ({localPlayer?.name})</span>
-      <div class="tokens">
-        {#each Array(localPlayer?.tokens || 0) as _, i}
-          <span class="token">💎</span>
-        {/each}
-        {#if !localPlayer?.tokens}
-          <span class="no-tokens">0 tokens</span>
-        {/if}
-      </div>
-      {#if localPlayer?.status === 'PROTECTED'}
-        <span class="status-badge protected">Protected</span>
-      {:else if localPlayer?.status === 'ELIMINATED'}
-        <span class="status-badge eliminated">Eliminated</span>
-      {/if}
-    </div>
-
-    <!-- Discard pile moved above the hand to prevent UI jumping -->
-    <div class="discard-pile" class:has-cards={localPlayer?.discardPile && localPlayer.discardPile.length > 0}>
-      <span class="discard-label">Discarded:</span>
-      {#if localPlayer?.discardPile && localPlayer.discardPile.length > 0}
-        {#each localPlayer.discardPile as cardId}
-          <span class="discarded-card">{getCardDefinition(cardId)?.name}</span>
-        {/each}
-      {:else}
-        <span class="no-discards">None</span>
-      {/if}
-    </div>
-
     <div class="hand">
       {#each localPlayer?.hand || [] as cardId, index}
         <Card 
@@ -547,59 +526,9 @@
 
   /* Player hand area */
   .player-hand-area {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0) 0%, rgba(26, 26, 46, 0.95) 20%, #1a1a2e 100%);
     padding: 1rem;
     margin: 0 -1rem -1rem -1rem;
-    backdrop-filter: blur(10px);
-  }
-
-  .player-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .player-name {
-    font-weight: 600;
-    font-size: 1.1rem;
-  }
-
-  .tokens {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .token {
-    font-size: 1.2rem;
-    animation: token-shine 2s ease-in-out infinite;
-  }
-
-  @keyframes token-shine {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.3); }
-  }
-
-  .no-tokens {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-
-  .status-badge.protected {
-    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
-  }
-
-  .status-badge.eliminated {
-    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
   }
 
   .hand {
@@ -615,34 +544,6 @@
     justify-content: center;
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
-  }
-
-  .discard-pile {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: 32px;
-  }
-
-  .discard-label {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .no-discards {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.4);
-    font-style: italic;
-  }
-
-  .discarded-card {
-    padding: 0.25rem 0.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    font-size: 0.8rem;
   }
 
   /* Mobile responsive styles */
@@ -716,42 +617,11 @@
     .player-hand-area {
       padding: 0.75rem;
       padding-bottom: 5rem; /* Space for FAB button */
-      border-radius: 12px;
-    }
-
-    .player-info {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .player-name {
-      font-size: 1rem;
-    }
-
-    .token {
-      font-size: 1rem;
     }
 
     .hand {
       gap: 0.5rem;
       min-height: 120px;
-    }
-
-    .discard-pile {
-      flex-wrap: wrap;
-      gap: 0.25rem;
-      margin-bottom: 0.5rem;
-      padding-bottom: 0.5rem;
-    }
-
-    .discard-label {
-      font-size: 0.8rem;
-      width: 100%;
-    }
-
-    .discarded-card {
-      font-size: 0.75rem;
     }
   }
 
