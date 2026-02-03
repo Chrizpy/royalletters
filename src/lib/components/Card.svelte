@@ -198,12 +198,16 @@
   /* Back Face */
   .card-back {
     transform: rotateY(180deg);
-    background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
+    background: linear-gradient(135deg, #2c3e50 0%, color-mix(in srgb, #2c3e50 70%, black) 100%);
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 12px;
+    box-shadow: 
+      0 4px 15px rgba(0, 0, 0, 0.3),
+      inset 0 2px 4px rgba(255, 255, 255, 0.2),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2);
     border: 2px solid rgba(255,255,255,0.2);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
   }
 
   .card-back-design {
