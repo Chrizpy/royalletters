@@ -52,33 +52,60 @@
       return ''; // Empty string signals this message should be filtered
     }
 
-    // Patterns to keep as-is (already concise)
-    const keepAsIsPatterns = [
-      /played/,
-      /is protected/,
-      /traded hands/,
-      /saw.*hand/,
-      /tie/,
-      /had no effect/,
-      /won the round/,
-      /won the game/,
-      /Round ended/
-    ];
-    
-    if (keepAsIsPatterns.some(pattern => pattern.test(message))) {
-      return message;
-    }
-
     // Pattern: "Player was eliminated (reason)" -> "Player eliminated"
     const elimMatch = message.match(/^(.+?) was eliminated/);
     if (elimMatch) {
       return `${elimMatch[1]} eliminated`;
     }
 
-    // Pattern: "Player guessed CardName (incorrectly)" -> remove "(incorrectly)"
+    // Pattern: "Player guessed CardName (incorrectly)" -> "Player guessed CardName"
     const guessMatch = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
     if (guessMatch) {
       return `${guessMatch[1]} guessed ${guessMatch[2]}`;
+    }
+
+    // Pattern: "Player and Player traded hands" -> "Player ↔ Player"  
+    const tradeMatch = message.match(/^(.+?) and (.+?) traded hands$/);
+    if (tradeMatch) {
+      return `${tradeMatch[1]} ↔ ${tradeMatch[2]}`;
+    }
+
+    // Pattern: "Player saw Player's hand" -> "Player saw Player's card"
+    const sawMatch = message.match(/^(.+?) saw (.+?)'s hand$/);
+    if (sawMatch) {
+      return `${sawMatch[1]} saw ${sawMatch[2]}'s card`;
+    }
+
+    // Pattern: "Player swapped their card with the burned card" -> "Player swapped with burned card"
+    if (message.includes('swapped their card with the burned card')) {
+      const swapMatch = message.match(/^(.+?) swapped/);
+      if (swapMatch) {
+        return `${swapMatch[1]} swapped with burned card`;
+      }
+    }
+
+    // Pattern: "Comparison was a tie" -> "Tie"
+    if (message === 'Comparison was a tie') {
+      return 'Tie';
+    }
+
+    // Pattern: "CardName had no effect (no valid targets)" -> "CardName fizzled"
+    const fizzleMatch = message.match(/^(.+?) had no effect/);
+    if (fizzleMatch) {
+      return `${fizzleMatch[1]} fizzled`;
+    }
+
+    // Patterns to keep as-is (already concise)
+    const keepAsIsPatterns = [
+      /played/,              // "Player played CardName"
+      /is protected/,        // "Player is protected"
+      /won the round/,       // "Player won the round!"
+      /won the game/,        // "Player won the game!"
+      /Round ended/          // "Round ended in a tie"
+    ];
+    
+    if (keepAsIsPatterns.some(pattern => pattern.test(message))) {
+      return message;
     }
 
     // Default: return as is
