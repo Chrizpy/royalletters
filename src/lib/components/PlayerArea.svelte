@@ -161,25 +161,29 @@
   }
 
   .mini-card {
-    width: 40px;
-    height: 55px;
-    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
+    width: 50px;
+    height: 70px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: space-between;
     font-size: 0.8rem;
+    padding: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .card-icon {
-    font-size: 1rem;
+    font-size: 1.2rem;
   }
 
   .count {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: white;
+    align-self: flex-start;
   }
 
   .discard-preview {
@@ -188,21 +192,25 @@
     right: 10px;
     display: flex;
     flex-wrap: wrap;
-    gap: 2px;
-    max-width: 120px;
+    gap: 3px;
+    max-width: 150px;
     justify-content: flex-end;
   }
 
   .discarded-mini {
-    width: 20px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    width: 28px;
+    height: 40px;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 600;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 0.15rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 
   .active-indicator {
@@ -277,22 +285,22 @@
     }
 
     .mini-card {
-      width: 30px;
-      height: 42px;
+      width: 42px;
+      height: 60px;
     }
 
     .card-icon {
-      font-size: 0.8rem;
+      font-size: 1rem;
     }
 
     .count {
-      font-size: 0.6rem;
+      font-size: 0.75rem;
     }
 
     .discarded-mini {
-      width: 16px;
-      height: 22px;
-      font-size: 0.6rem;
+      width: 24px;
+      height: 34px;
+      font-size: 0.65rem;
     }
 
     .active-indicator {

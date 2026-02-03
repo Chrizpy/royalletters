@@ -377,11 +377,13 @@
 
   /* Opponents area */
   .opponents-area {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
     margin-bottom: 1rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* Center area */
@@ -396,9 +398,10 @@
   }
 
   .deck-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    position: fixed;
+    bottom: 280px;
+    right: 1rem;
+    z-index: 10;
   }
 
   .deck {
@@ -544,12 +547,12 @@
 
   /* Player hand area */
   .player-hand-area {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 20px 20px 0 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
     padding: 1rem;
     margin: 0 -1rem -1rem -1rem;
     backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .player-info {
@@ -667,6 +670,12 @@
     .opponents-area {
       gap: 0.5rem;
       margin-bottom: 0.5rem;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .deck-area {
+      bottom: 220px;
+      right: 0.5rem;
     }
 
     .deck-card {
@@ -707,6 +716,7 @@
     .player-hand-area {
       padding: 0.75rem;
       padding-bottom: 5rem; /* Space for FAB button */
+      border-radius: 12px;
     }
 
     .player-info {
@@ -749,6 +759,11 @@
   @media (min-width: 481px) and (max-width: 768px) {
     .game-screen {
       padding: 0.75rem;
+    }
+
+    .deck-area {
+      bottom: 260px;
+      right: 0.75rem;
     }
 
     .player-hand-area {
