@@ -44,11 +44,12 @@
 
   // Condense messages into concise one-liners
   function condenseMessage(message: string): string {
-    // Pattern: "Player discarded CardName" -> extract for Prince effect
+    // Pattern: "Player discarded CardName" (from Prince effect) -> skip, it's implied
+    // BUT keep "discarded Princess" elimination messages
     const discardMatch = message.match(/^(.+?) discarded (.+?)$/);
-    if (discardMatch) {
-      // This is shown after "played Prince", we'll skip it since it's implied
-      return ''; // Will be filtered out
+    if (discardMatch && !message.includes('Princess')) {
+      // Filter out non-Princess discards (they're implied by Prince play)
+      return '';
     }
 
     // Pattern: "Player played CardName" -> keep as is
@@ -61,10 +62,10 @@
       return message;
     }
 
-    // Pattern: "Player and Player traded hands" -> shorten
-    const tradeMatch = message.match(/^(.+?) and (.+?) traded hands$/);
-    if (tradeMatch) {
-      return `${tradeMatch[1]} and ${tradeMatch[2]} traded hands`;
+    // Pattern: "Player and Player traded hands" -> could shorten to "Player ↔ Player"
+    // but keeping readable format
+    if (message.includes('traded hands')) {
+      return message;
     }
 
     // Pattern: "Player was eliminated (reason)" -> "Player eliminated"
