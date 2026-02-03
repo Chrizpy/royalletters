@@ -9,6 +9,7 @@
   export let isCardEffectActor: boolean = false;
   export let isCardEffectTarget: boolean = false;
   export let cardEffectId: string | null = null;
+  export let lastPlayedCardId: string | null = null;
 
   function getCardColor(cardId: string): string {
     const colors: Record<string, string> = {
@@ -27,6 +28,7 @@
   }
   
   $: effectBorderColor = cardEffectId ? getCardColor(cardEffectId) : null;
+  $: activeGlowColor = lastPlayedCardId ? getCardColor(lastPlayedCardId) : '#667eea';
 </script>
 
 <button 
@@ -37,7 +39,7 @@
   class:card-effect-target={isCardEffectTarget}
   class:eliminated={player.status === 'ELIMINATED'}
   class:protected={player.status === 'PROTECTED'}
-  style={effectBorderColor ? `--effect-border-color: ${effectBorderColor}` : ''}
+  style="{effectBorderColor ? `--effect-border-color: ${effectBorderColor};` : ''}{isActive ? `--active-glow-color: ${activeGlowColor};` : ''}"
   on:click={() => isTargetable && onSelect()}
   disabled={!isTargetable}
 >
@@ -107,8 +109,8 @@
   }
 
   .player-area.active {
-    border-color: #667eea;
-    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+    border-color: var(--active-glow-color, #667eea);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--active-glow-color, #667eea) 40%, transparent);
   }
 
   .player-area.card-effect-actor {

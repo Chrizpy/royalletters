@@ -31,6 +31,7 @@
   let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
   let effectAnimationTimeout: number | null = null;
   let prevActivePlayerIndex: number | undefined = undefined;
+  let lastPlayedCards: Record<string, string> = {};
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -50,6 +51,9 @@
     // Check if this is a card play action (has actorId and cardId)
     if (lastLog.actorId && lastLog.cardId) {
       const message = lastLog.message.toLowerCase();
+      
+      // Store the last played card for this player
+      lastPlayedCards[lastLog.actorId] = lastLog.cardId;
       
       // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
       let targetPlayerId: string | null = null;
@@ -241,6 +245,7 @@
         isCardEffectActor={cardEffectAnimation.actorId === localPlayer.id}
         isCardEffectTarget={cardEffectAnimation.targetId === localPlayer.id}
         cardEffectId={cardEffectAnimation.cardId}
+        lastPlayedCardId={lastPlayedCards[localPlayer.id] || null}
       />
     {/if}
     {#each opponents as opponent}
@@ -252,6 +257,7 @@
         isCardEffectActor={cardEffectAnimation.actorId === opponent.id}
         isCardEffectTarget={cardEffectAnimation.targetId === opponent.id}
         cardEffectId={cardEffectAnimation.cardId}
+        lastPlayedCardId={lastPlayedCards[opponent.id] || null}
       />
     {/each}
   </div>
