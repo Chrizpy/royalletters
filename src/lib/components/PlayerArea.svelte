@@ -93,8 +93,8 @@
     padding: 0;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    min-width: 160px;
+    border-radius: 16px;
+    min-width: 200px;
     cursor: default;
     transition: all 0.3s ease;
     color: white;
@@ -165,26 +165,25 @@
   }
 
   .player-avatar {
-    font-size: 1.75rem;
-    width: 44px;
-    height: 44px;
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    margin: 0.75rem 0.5rem 0.75rem 0.75rem;
+    margin: 1rem 0.5rem 1rem 1rem;
   }
 
   .player-details {
     flex: 1;
-    padding: 0.75rem 0.75rem 0.75rem 0;
+    padding: 1rem 1rem 1rem 0;
   }
 
   .player-name {
     font-weight: 600;
-    margin-bottom: 0.2rem;
-    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
   }
 
   .player-tokens {
@@ -203,28 +202,28 @@
 
   .discard-preview {
     position: absolute;
-    bottom: -6px;
-    right: 8px;
+    bottom: -8px;
+    right: 10px;
     display: flex;
-    height: 34px;
+    height: 40px;
   }
 
   .discarded-mini {
-    width: 24px;
-    height: 34px;
+    width: 28px;
+    height: 40px;
     background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
+    border-radius: 4px;
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
-    padding: 0.125rem;
-    font-size: 0.7rem;
+    padding: 0.15rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
     position: absolute;
-    right: calc(var(--stack-index) * 10px);
+    right: calc(var(--stack-index) * 12px);
     transition: all 0.3s ease;
   }
 
@@ -256,20 +255,16 @@
   /* Mobile responsive styles */
   @media (max-width: 480px) {
     .player-area {
+      padding: 0.5rem 0.75rem;
       min-width: 140px;
-      gap: 0.6rem;
-      border-radius: 10px;
+      gap: 0.5rem;
+      border-radius: 12px;
     }
 
     .player-avatar {
       font-size: 1.5rem;
       width: 36px;
       height: 36px;
-      margin: 0.6rem 0.4rem 0.6rem 0.6rem;
-    }
-    
-    .player-details {
-      padding: 0.6rem 0.6rem 0.6rem 0;
     }
 
     .player-name {
@@ -285,10 +280,10 @@
     }
 
     .discarded-mini {
-      width: 22px;
-      height: 30px;
+      width: 24px;
+      height: 34px;
       font-size: 0.65rem;
-      right: calc(var(--stack-index) * 8px);
+      right: calc(var(--stack-index) * 10px);
     }
 
     .target-text {
