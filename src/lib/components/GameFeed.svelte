@@ -251,10 +251,9 @@
         feedItems = [...feedItems, item];
         
         // If we exceed max items, fade out the oldest ones (respecting MIN_VISIBLE_ITEMS)
+        // Note: feedItems are ordered by insertion time (oldest first), and filter preserves order
         let nonFadingItems = feedItems.filter(f => !f.isFadingOut);
         while (nonFadingItems.length > MAX_VISIBLE_ITEMS) {
-          if (nonFadingItems.length <= MIN_VISIBLE_ITEMS) break;
-          
           const oldestNonFading = nonFadingItems[0];
           if (oldestNonFading) {
             clearTimeout(oldestNonFading.timeoutId);
