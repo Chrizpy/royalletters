@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import Card from './Card.svelte';
   import PlayerArea from './PlayerArea.svelte';
   import TargetSelector from './TargetSelector.svelte';
@@ -27,6 +28,9 @@
   let selectingGuess: boolean = false;
   let pendingCardId: string | null = null;
   let pendingTargetId: string | null = null;
+  let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
+  let effectAnimationTimeout: number | null = null;
+  let prevActivePlayerIndex: number | undefined = undefined;
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -38,6 +42,65 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  
+  // Track card effects for animations
+  $: if (gameState?.logs && gameState.logs.length > 0) {
+    const lastLog = gameState.logs[gameState.logs.length - 1];
+    
+    // Check if this is a card play action (has actorId and cardId)
+    if (lastLog.actorId && lastLog.cardId) {
+      const message = lastLog.message.toLowerCase();
+      
+      // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
+      let targetPlayerId: string | null = null;
+      
+      // Find target player by checking if their name appears after certain keywords
+      for (const player of gameState.players) {
+        const playerName = player.name.toLowerCase();
+        
+        // Skip if this is the actor
+        if (player.id === lastLog.actorId) continue;
+        
+        // Check various message patterns that indicate targeting
+        if (message.includes(`${playerName} was eliminated`) ||
+            message.includes(`${playerName} discarded`) ||
+            message.includes(`saw ${playerName}'s hand`) ||
+            message.includes(`and ${playerName} traded`) ||
+            message.includes(`guessed ${playerName}`) ||
+            message.match(new RegExp(`(on|to|with)\\s+${playerName}`, 'i'))) {
+          targetPlayerId = player.id;
+          break;
+        }
+      }
+      
+      // Set animation state - borders persist until cleared by next action
+      // For Handmaid, the border persists on the protected player until their next turn
+      cardEffectAnimation = {
+        actorId: lastLog.actorId,
+        targetId: targetPlayerId,
+        cardId: lastLog.cardId
+      };
+      
+      // Clear previous timeout (no longer using timeout to auto-clear)
+      if (effectAnimationTimeout) {
+        clearTimeout(effectAnimationTimeout);
+        effectAnimationTimeout = null;
+      }
+    }
+  }
+  
+  // Clear non-Handmaid animations when active player changes
+  $: if (gameState?.activePlayerIndex !== undefined && prevActivePlayerIndex !== gameState.activePlayerIndex) {
+    // Check if the current animation is for Handmaid (card ID 'handmaid')
+    if (cardEffectAnimation.cardId !== 'handmaid') {
+      // Clear animation for non-Handmaid cards when turn changes
+      cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+    } else if (cardEffectAnimation.actorId && gameState.players.length > gameState.activePlayerIndex && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
+      // Clear Handmaid animation when it's the protected player's turn again
+      cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+    }
+    prevActivePlayerIndex = gameState.activePlayerIndex;
+  }
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
@@ -119,6 +182,13 @@
   function handleStartRound() {
     onStartRound();
   }
+  
+  // Cleanup on component destroy
+  onDestroy(() => {
+    if (effectAnimationTimeout) {
+      clearTimeout(effectAnimationTimeout);
+    }
+  });
 
   function getValidTargets(): PlayerState[] {
     if (!pendingCardId || !gameState) return [];
@@ -160,14 +230,28 @@
     </div>
   </div>
 
-  <!-- Opponents area -->
+  <!-- Players area (includes local player and opponents) -->
   <div class="opponents-area">
+    {#if localPlayer}
+      <PlayerArea 
+        player={localPlayer} 
+        isActive={gameState.players[gameState.activePlayerIndex]?.id === localPlayer.id}
+        isTargetable={false}
+        onSelect={() => {}}
+        isCardEffectActor={cardEffectAnimation.actorId === localPlayer.id}
+        isCardEffectTarget={cardEffectAnimation.targetId === localPlayer.id}
+        cardEffectId={cardEffectAnimation.cardId}
+      />
+    {/if}
     {#each opponents as opponent}
       <PlayerArea 
         player={opponent} 
         isActive={gameState.players[gameState.activePlayerIndex]?.id === opponent.id}
         isTargetable={selectingTarget && getValidTargets().some(t => t.id === opponent.id)}
         onSelect={() => selectTarget(opponent.id)}
+        isCardEffectActor={cardEffectAnimation.actorId === opponent.id}
+        isCardEffectTarget={cardEffectAnimation.targetId === opponent.id}
+        cardEffectId={cardEffectAnimation.cardId}
       />
     {/each}
   </div>
@@ -233,35 +317,6 @@
 
   <!-- Local player hand -->
   <div class="player-hand-area">
-    <div class="player-info">
-      <span class="player-name">You ({localPlayer?.name})</span>
-      <div class="tokens">
-        {#each Array(localPlayer?.tokens || 0) as _, i}
-          <span class="token">💎</span>
-        {/each}
-        {#if !localPlayer?.tokens}
-          <span class="no-tokens">0 tokens</span>
-        {/if}
-      </div>
-      {#if localPlayer?.status === 'PROTECTED'}
-        <span class="status-badge protected">Protected</span>
-      {:else if localPlayer?.status === 'ELIMINATED'}
-        <span class="status-badge eliminated">Eliminated</span>
-      {/if}
-    </div>
-
-    <!-- Discard pile moved above the hand to prevent UI jumping -->
-    <div class="discard-pile" class:has-cards={localPlayer?.discardPile && localPlayer.discardPile.length > 0}>
-      <span class="discard-label">Discarded:</span>
-      {#if localPlayer?.discardPile && localPlayer.discardPile.length > 0}
-        {#each localPlayer.discardPile as cardId}
-          <span class="discarded-card">{getCardDefinition(cardId)?.name}</span>
-        {/each}
-      {:else}
-        <span class="no-discards">None</span>
-      {/if}
-    </div>
-
     <div class="hand">
       {#each localPlayer?.hand || [] as cardId, index}
         <Card 
@@ -284,8 +339,8 @@
     </div>
   </div>
 
-  <!-- Game Feed overlay for log messages -->
-  <GameFeed logs={gameState.logs} />
+  <!-- Game Feed overlay for log messages - REMOVED for cleaner UI -->
+  <!-- <GameFeed logs={gameState.logs} /> -->
 
   <!-- Game menu (log + chat) -->
   <GameMenu logs={gameState.logs} {onSendChat} />
@@ -377,11 +432,13 @@
 
   /* Opponents area */
   .opponents-area {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
     margin-bottom: 1rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* Center area */
@@ -396,9 +453,10 @@
   }
 
   .deck-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    position: fixed;
+    bottom: 280px;
+    right: 1rem;
+    z-index: 10;
   }
 
   .deck {
@@ -544,59 +602,9 @@
 
   /* Player hand area */
   .player-hand-area {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 20px 20px 0 0;
+    background: linear-gradient(180deg, rgba(26, 26, 46, 0) 0%, rgba(26, 26, 46, 0.95) 20%, #1a1a2e 100%);
     padding: 1rem;
     margin: 0 -1rem -1rem -1rem;
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-
-  .player-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .player-name {
-    font-weight: 600;
-    font-size: 1.1rem;
-  }
-
-  .tokens {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .token {
-    font-size: 1.2rem;
-    animation: token-shine 2s ease-in-out infinite;
-  }
-
-  @keyframes token-shine {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(1.3); }
-  }
-
-  .no-tokens {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.5);
-  }
-
-  .status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-
-  .status-badge.protected {
-    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
-  }
-
-  .status-badge.eliminated {
-    background: linear-gradient(135deg, #d63031 0%, #e17055 100%);
   }
 
   .hand {
@@ -612,34 +620,7 @@
     justify-content: center;
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
-  }
-
-  .discard-pile {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: 32px;
-  }
-
-  .discard-label {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  .no-discards {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.4);
-    font-style: italic;
-  }
-
-  .discarded-card {
-    padding: 0.25rem 0.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    font-size: 0.8rem;
+    margin-top: 3rem;
   }
 
   /* Mobile responsive styles */
@@ -667,6 +648,12 @@
     .opponents-area {
       gap: 0.5rem;
       margin-bottom: 0.5rem;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .deck-area {
+      bottom: 220px;
+      right: 0.5rem;
     }
 
     .deck-card {
@@ -709,39 +696,9 @@
       padding-bottom: 5rem; /* Space for FAB button */
     }
 
-    .player-info {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .player-name {
-      font-size: 1rem;
-    }
-
-    .token {
-      font-size: 1rem;
-    }
-
     .hand {
       gap: 0.5rem;
       min-height: 120px;
-    }
-
-    .discard-pile {
-      flex-wrap: wrap;
-      gap: 0.25rem;
-      margin-bottom: 0.5rem;
-      padding-bottom: 0.5rem;
-    }
-
-    .discard-label {
-      font-size: 0.8rem;
-      width: 100%;
-    }
-
-    .discarded-card {
-      font-size: 0.75rem;
     }
   }
 
@@ -749,6 +706,11 @@
   @media (min-width: 481px) and (max-width: 768px) {
     .game-screen {
       padding: 0.75rem;
+    }
+
+    .deck-area {
+      bottom: 260px;
+      right: 0.75rem;
     }
 
     .player-hand-area {

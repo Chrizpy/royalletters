@@ -6,14 +6,38 @@
   export let isActive: boolean = false;
   export let isTargetable: boolean = false;
   export let onSelect: () => void = () => {};
+  export let isCardEffectActor: boolean = false;
+  export let isCardEffectTarget: boolean = false;
+  export let cardEffectId: string | null = null;
+
+  function getCardColor(cardId: string): string {
+    const colors: Record<string, string> = {
+      'spy': '#2c3e50',
+      'guard': '#e74c3c',
+      'priest': '#9b59b6',
+      'baron': '#3498db',
+      'handmaid': '#1abc9c',
+      'prince': '#f39c12',
+      'chancellor': '#8e44ad',
+      'king': '#e67e22',
+      'countess': '#e91e63',
+      'princess': '#ff69b4'
+    };
+    return colors[cardId] || '#95a5a6';
+  }
+  
+  $: effectBorderColor = cardEffectId ? getCardColor(cardEffectId) : null;
 </script>
 
 <button 
   class="player-area"
   class:active={isActive}
   class:targetable={isTargetable}
+  class:card-effect-actor={isCardEffectActor}
+  class:card-effect-target={isCardEffectTarget}
   class:eliminated={player.status === 'ELIMINATED'}
   class:protected={player.status === 'PROTECTED'}
+  style={effectBorderColor ? `--effect-border-color: ${effectBorderColor}` : ''}
   on:click={() => isTargetable && onSelect()}
   disabled={!isTargetable}
 >
@@ -39,27 +63,18 @@
     </div>
   </div>
 
-  <div class="card-count">
-    {#if player.status !== 'ELIMINATED'}
-      <div class="mini-card">
-        <span class="card-icon">🎴</span>
-        <span class="count">{player.hand.length}</span>
-      </div>
-    {/if}
-  </div>
-
   {#if player.discardPile.length > 0}
     <div class="discard-preview">
-      {#each player.discardPile as cardId}
-        <span class="discarded-mini" title={getCardDefinition(cardId)?.name}>
+      {#each player.discardPile as cardId, index}
+        <span 
+          class="discarded-mini" 
+          title={getCardDefinition(cardId)?.name}
+          style="--card-color: {getCardColor(cardId)}; --stack-index: {index};"
+        >
           {getCardDefinition(cardId)?.value}
         </span>
       {/each}
     </div>
-  {/if}
-
-  {#if isActive}
-    <div class="active-indicator">Playing...</div>
   {/if}
 
   {#if isTargetable}
@@ -75,11 +90,11 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
+    padding: 0;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 16px;
-    min-width: 180px;
+    min-width: 200px;
     cursor: default;
     transition: all 0.3s ease;
     color: white;
@@ -94,6 +109,33 @@
   .player-area.active {
     border-color: #667eea;
     box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .player-area.card-effect-actor {
+    border-color: var(--effect-border-color, #667eea);
+    border-width: 3px;
+    box-shadow: 0 0 30px var(--effect-border-color, rgba(102, 126, 234, 0.8));
+    animation: effect-pulse 1.5s ease-in-out 2;
+  }
+
+  .player-area.card-effect-target {
+    border-color: var(--effect-border-color, #e74c3c);
+    border-width: 3px;
+    box-shadow: 0 0 30px var(--effect-border-color, rgba(231, 76, 60, 0.8));
+    animation: effect-pulse 1.5s ease-in-out 2;
+  }
+
+  @keyframes effect-pulse {
+    0%, 100% { 
+      box-shadow: 0 0 20px var(--effect-border-color, rgba(102, 126, 234, 0.5));
+      transform: scale(1);
+      border-width: 3px;
+    }
+    50% { 
+      box-shadow: 0 0 40px var(--effect-border-color, rgba(102, 126, 234, 1));
+      transform: scale(1.03);
+      border-width: 4px;
+    }
   }
 
   .player-area.targetable {
@@ -131,10 +173,12 @@
     justify-content: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
+    margin: 1rem 0.5rem 1rem 1rem;
   }
 
   .player-details {
     flex: 1;
+    padding: 1rem 1rem 1rem 0;
   }
 
   .player-name {
@@ -156,72 +200,31 @@
     color: rgba(255, 255, 255, 0.5);
   }
 
-  .card-count {
-    position: relative;
-  }
-
-  .mini-card {
-    width: 40px;
-    height: 55px;
-    background: linear-gradient(135deg, #2d3436 0%, #636e72 100%);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-  }
-
-  .card-icon {
-    font-size: 1rem;
-  }
-
-  .count {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.7);
-  }
-
   .discard-preview {
     position: absolute;
     bottom: -8px;
     right: 10px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    max-width: 120px;
-    justify-content: flex-end;
+    height: 40px;
   }
 
   .discarded-mini {
-    width: 20px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
+    width: 28px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 600;
-  }
-
-  .active-indicator {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 0.15rem;
     font-size: 0.75rem;
-    font-weight: 600;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    position: absolute;
+    right: calc(var(--stack-index) * 12px);
+    transition: all 0.3s ease;
   }
 
   .target-overlay {
@@ -276,29 +279,11 @@
       font-size: 0.65rem;
     }
 
-    .mini-card {
-      width: 30px;
-      height: 42px;
-    }
-
-    .card-icon {
-      font-size: 0.8rem;
-    }
-
-    .count {
-      font-size: 0.6rem;
-    }
-
     .discarded-mini {
-      width: 16px;
-      height: 22px;
-      font-size: 0.6rem;
-    }
-
-    .active-indicator {
+      width: 24px;
+      height: 34px;
       font-size: 0.65rem;
-      padding: 0.2rem 0.5rem;
-      top: -8px;
+      right: calc(var(--stack-index) * 10px);
     }
 
     .target-text {
