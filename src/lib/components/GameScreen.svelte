@@ -544,6 +544,7 @@
     justify-content: center;
     color: rgba(255, 255, 255, 0.5);
     font-style: italic;
+    margin-top: 3rem;
   }
 
   /* Mobile responsive styles */

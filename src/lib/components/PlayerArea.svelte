@@ -6,6 +6,22 @@
   export let isActive: boolean = false;
   export let isTargetable: boolean = false;
   export let onSelect: () => void = () => {};
+
+  function getCardColor(cardId: string): string {
+    const colors: Record<string, string> = {
+      'spy': '#2c3e50',
+      'guard': '#e74c3c',
+      'priest': '#9b59b6',
+      'baron': '#3498db',
+      'handmaid': '#1abc9c',
+      'prince': '#f39c12',
+      'chancellor': '#8e44ad',
+      'king': '#e67e22',
+      'countess': '#e91e63',
+      'princess': '#ff69b4'
+    };
+    return colors[cardId] || '#95a5a6';
+  }
 </script>
 
 <button 
@@ -39,19 +55,14 @@
     </div>
   </div>
 
-  <div class="card-count">
-    {#if player.status !== 'ELIMINATED'}
-      <div class="mini-card">
-        <span class="card-icon">🎴</span>
-        <span class="count">{player.hand.length}</span>
-      </div>
-    {/if}
-  </div>
-
   {#if player.discardPile.length > 0}
     <div class="discard-preview">
-      {#each player.discardPile as cardId}
-        <span class="discarded-mini" title={getCardDefinition(cardId)?.name}>
+      {#each player.discardPile as cardId, index}
+        <span 
+          class="discarded-mini" 
+          title={getCardDefinition(cardId)?.name}
+          style="--card-color: {getCardColor(cardId)}; --stack-index: {index};"
+        >
           {getCardDefinition(cardId)?.value}
         </span>
       {/each}
@@ -156,51 +167,18 @@
     color: rgba(255, 255, 255, 0.5);
   }
 
-  .card-count {
-    position: relative;
-  }
-
-  .mini-card {
-    width: 50px;
-    height: 70px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    padding: 0.25rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .card-icon {
-    font-size: 1.2rem;
-  }
-
-  .count {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: white;
-    align-self: flex-start;
-  }
-
   .discard-preview {
     position: absolute;
     bottom: -8px;
     right: 10px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    max-width: 150px;
-    justify-content: flex-end;
+    height: 40px;
   }
 
   .discarded-mini {
     width: 28px;
     height: 40px;
-    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 4px;
     display: flex;
@@ -211,6 +189,9 @@
     font-weight: 700;
     color: white;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    position: absolute;
+    right: calc(var(--stack-index) * 12px);
+    transition: all 0.3s ease;
   }
 
   .active-indicator {
@@ -284,23 +265,11 @@
       font-size: 0.65rem;
     }
 
-    .mini-card {
-      width: 42px;
-      height: 60px;
-    }
-
-    .card-icon {
-      font-size: 1rem;
-    }
-
-    .count {
-      font-size: 0.75rem;
-    }
-
     .discarded-mini {
       width: 24px;
       height: 34px;
       font-size: 0.65rem;
+      right: calc(var(--stack-index) * 10px);
     }
 
     .active-indicator {
