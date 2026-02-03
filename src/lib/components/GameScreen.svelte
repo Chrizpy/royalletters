@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import Card from './Card.svelte';
   import PlayerArea from './PlayerArea.svelte';
   import TargetSelector from './TargetSelector.svelte';
@@ -170,6 +171,13 @@
   function handleStartRound() {
     onStartRound();
   }
+  
+  // Cleanup on component destroy
+  onDestroy(() => {
+    if (effectAnimationTimeout) {
+      clearTimeout(effectAnimationTimeout);
+    }
+  });
 
   function getValidTargets(): PlayerState[] {
     if (!pendingCardId || !gameState) return [];
