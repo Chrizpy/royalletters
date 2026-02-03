@@ -187,7 +187,6 @@
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     border-radius: 12px;
-    overflow: hidden;
   }
 
   /* Front Face */
