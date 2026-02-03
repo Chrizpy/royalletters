@@ -6,6 +6,9 @@
   export let isActive: boolean = false;
   export let isTargetable: boolean = false;
   export let onSelect: () => void = () => {};
+  export let isCardEffectActor: boolean = false;
+  export let isCardEffectTarget: boolean = false;
+  export let cardEffectId: string | null = null;
 
   function getCardColor(cardId: string): string {
     const colors: Record<string, string> = {
@@ -22,14 +25,19 @@
     };
     return colors[cardId] || '#95a5a6';
   }
+  
+  $: effectBorderColor = cardEffectId ? getCardColor(cardEffectId) : null;
 </script>
 
 <button 
   class="player-area"
   class:active={isActive}
   class:targetable={isTargetable}
+  class:card-effect-actor={isCardEffectActor}
+  class:card-effect-target={isCardEffectTarget}
   class:eliminated={player.status === 'ELIMINATED'}
   class:protected={player.status === 'PROTECTED'}
+  style={effectBorderColor ? `--effect-border-color: ${effectBorderColor}` : ''}
   on:click={() => isTargetable && onSelect()}
   disabled={!isTargetable}
 >
@@ -69,10 +77,6 @@
     </div>
   {/if}
 
-  {#if isActive}
-    <div class="active-indicator">Playing...</div>
-  {/if}
-
   {#if isTargetable}
     <div class="target-overlay">
       <span class="target-text">Select Target</span>
@@ -105,6 +109,29 @@
   .player-area.active {
     border-color: #667eea;
     box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+
+  .player-area.card-effect-actor {
+    border-color: var(--effect-border-color, #667eea);
+    box-shadow: 0 0 25px var(--effect-border-color, rgba(102, 126, 234, 0.6));
+    animation: effect-pulse 1s ease-in-out 2;
+  }
+
+  .player-area.card-effect-target {
+    border-color: var(--effect-border-color, #e74c3c);
+    box-shadow: 0 0 25px var(--effect-border-color, rgba(231, 76, 60, 0.6));
+    animation: effect-pulse 1s ease-in-out 2;
+  }
+
+  @keyframes effect-pulse {
+    0%, 100% { 
+      box-shadow: 0 0 15px var(--effect-border-color, rgba(102, 126, 234, 0.4));
+      transform: scale(1);
+    }
+    50% { 
+      box-shadow: 0 0 35px var(--effect-border-color, rgba(102, 126, 234, 0.8));
+      transform: scale(1.02);
+    }
   }
 
   .player-area.targetable {
@@ -183,7 +210,7 @@
     border-radius: 4px;
     display: flex;
     align-items: flex-end;
-    justify-content: flex-start;
+    justify-content: flex-end;
     padding: 0.15rem;
     font-size: 0.75rem;
     font-weight: 700;
@@ -192,25 +219,6 @@
     position: absolute;
     right: calc(var(--stack-index) * 12px);
     transition: all 0.3s ease;
-  }
-
-  .active-indicator {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
   }
 
   .target-overlay {
@@ -270,12 +278,6 @@
       height: 34px;
       font-size: 0.65rem;
       right: calc(var(--stack-index) * 10px);
-    }
-
-    .active-indicator {
-      font-size: 0.65rem;
-      padding: 0.2rem 0.5rem;
-      top: -8px;
     }
 
     .target-text {

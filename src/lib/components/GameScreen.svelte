@@ -27,6 +27,8 @@
   let selectingGuess: boolean = false;
   let pendingCardId: string | null = null;
   let pendingTargetId: string | null = null;
+  let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
+  let effectAnimationTimeout: number | null = null;
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -38,6 +40,55 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  
+  // Track card effects for animations
+  $: if (gameState?.logs && gameState.logs.length > 0) {
+    const lastLog = gameState.logs[gameState.logs.length - 1];
+    
+    // Check if this is a card play action (has actorId and cardId)
+    if (lastLog.actorId && lastLog.cardId) {
+      const message = lastLog.message.toLowerCase();
+      
+      // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
+      let targetPlayerId: string | null = null;
+      
+      // Find target player by checking if their name appears after certain keywords
+      for (const player of gameState.players) {
+        const playerName = player.name.toLowerCase();
+        
+        // Skip if this is the actor
+        if (player.id === lastLog.actorId) continue;
+        
+        // Check various message patterns that indicate targeting
+        if (message.includes(`${playerName} was eliminated`) ||
+            message.includes(`${playerName} discarded`) ||
+            message.includes(`saw ${playerName}'s hand`) ||
+            message.includes(`and ${playerName} traded`) ||
+            message.includes(`guessed ${playerName}`) ||
+            message.match(new RegExp(`(on|to|with)\\s+${playerName}`, 'i'))) {
+          targetPlayerId = player.id;
+          break;
+        }
+      }
+      
+      // Set animation state and clear after delay
+      cardEffectAnimation = {
+        actorId: lastLog.actorId,
+        targetId: targetPlayerId,
+        cardId: lastLog.cardId
+      };
+      
+      // Clear previous timeout
+      if (effectAnimationTimeout) {
+        clearTimeout(effectAnimationTimeout);
+      }
+      
+      // Clear animation after 2 seconds
+      effectAnimationTimeout = window.setTimeout(() => {
+        cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+      }, 2000);
+    }
+  }
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
@@ -168,6 +219,9 @@
         isActive={gameState.players[gameState.activePlayerIndex]?.id === localPlayer.id}
         isTargetable={false}
         onSelect={() => {}}
+        isCardEffectActor={cardEffectAnimation.actorId === localPlayer.id}
+        isCardEffectTarget={cardEffectAnimation.targetId === localPlayer.id}
+        cardEffectId={cardEffectAnimation.cardId}
       />
     {/if}
     {#each opponents as opponent}
@@ -176,6 +230,9 @@
         isActive={gameState.players[gameState.activePlayerIndex]?.id === opponent.id}
         isTargetable={selectingTarget && getValidTargets().some(t => t.id === opponent.id)}
         onSelect={() => selectTarget(opponent.id)}
+        isCardEffectActor={cardEffectAnimation.actorId === opponent.id}
+        isCardEffectTarget={cardEffectAnimation.targetId === opponent.id}
+        cardEffectId={cardEffectAnimation.cardId}
       />
     {/each}
   </div>
