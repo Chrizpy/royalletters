@@ -27,6 +27,27 @@
   let lastLogCount = 0;
   let processingInterval: ReturnType<typeof setInterval> | null = null;
 
+  // Filter function to exclude verbose messages
+  function shouldShowInFeed(message: string): boolean {
+    const excludePatterns = [
+      'drew a card',
+      'drew card',
+      'drew 1 card',
+      'drew 2 cards',
+      'drew 3 cards',
+      'returned 1 card',
+      'returned 2 cards',
+      'returned 3 cards',
+      'Round',
+      'started',
+      'Game initialized',
+      'Burned face-up',
+      'gained a token from Spy bonus'
+    ];
+    
+    return !excludePatterns.some(pattern => message.includes(pattern));
+  }
+
   // Start fade out animation, then remove
   function startFadeOut(itemId: number) {
     // First set the flag to trigger the fade animation
@@ -86,10 +107,24 @@
 
   // Watch for new logs and queue them for staggered display
   $: {
+    // Reset feed if logs were cleared (e.g., on play again)
+    if (logs.length < lastLogCount) {
+      feedItems.forEach(item => clearTimeout(item.timeoutId));
+      feedItems = [];
+      pendingItems = [];
+      if (processingInterval) {
+        clearInterval(processingInterval);
+        processingInterval = null;
+      }
+      lastLogCount = 0;
+    }
+    
     if (logs.length > lastLogCount) {
-      // Queue new log entries
+      // Queue new log entries (only if they should be shown)
       for (let i = lastLogCount; i < logs.length; i++) {
-        pendingItems = [...pendingItems, { log: logs[i], addedAt: Date.now() }];
+        if (shouldShowInFeed(logs[i].message)) {
+          pendingItems = [...pendingItems, { log: logs[i], addedAt: Date.now() }];
+        }
       }
       
       // Start processing if not already running

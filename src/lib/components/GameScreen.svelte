@@ -31,8 +31,6 @@
   let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
   let effectAnimationTimeout: number | null = null;
   let prevActivePlayerIndex: number | undefined = undefined;
-  let lastPlayedCards: Record<string, string> = {};
-  let prevRoundCount: number = 0;
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -45,12 +43,6 @@
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
   
-  // Clear lastPlayedCards when a new round starts
-  $: if (gameState?.roundCount !== undefined && gameState.roundCount !== prevRoundCount) {
-    lastPlayedCards = {};
-    prevRoundCount = gameState.roundCount;
-  }
-  
   // Track card effects for animations
   $: if (gameState?.logs && gameState.logs.length > 0) {
     const lastLog = gameState.logs[gameState.logs.length - 1];
@@ -58,9 +50,6 @@
     // Check if this is a card play action (has actorId and cardId)
     if (lastLog.actorId && lastLog.cardId) {
       const message = lastLog.message.toLowerCase();
-      
-      // Store the last played card for this player (using assignment for reactivity)
-      lastPlayedCards = { ...lastPlayedCards, [lastLog.actorId]: lastLog.cardId };
       
       // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
       let targetPlayerId: string | null = null;
@@ -252,7 +241,6 @@
         isCardEffectActor={cardEffectAnimation.actorId === localPlayer.id}
         isCardEffectTarget={cardEffectAnimation.targetId === localPlayer.id}
         cardEffectId={cardEffectAnimation.cardId}
-        lastPlayedCardId={lastPlayedCards[localPlayer.id] || null}
       />
     {/if}
     {#each opponents as opponent}
@@ -264,7 +252,6 @@
         isCardEffectActor={cardEffectAnimation.actorId === opponent.id}
         isCardEffectTarget={cardEffectAnimation.targetId === opponent.id}
         cardEffectId={cardEffectAnimation.cardId}
-        lastPlayedCardId={lastPlayedCards[opponent.id] || null}
       />
     {/each}
   </div>
@@ -352,8 +339,8 @@
     </div>
   </div>
 
-  <!-- Game Feed overlay for log messages - REMOVED for cleaner UI -->
-  <!-- <GameFeed logs={gameState.logs} /> -->
+  <!-- Game Feed overlay for log messages -->
+  <GameFeed logs={gameState.logs} />
 
   <!-- Game menu (log + chat) -->
   <GameMenu logs={gameState.logs} {onSendChat} />
