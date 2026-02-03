@@ -30,6 +30,7 @@
   let pendingTargetId: string | null = null;
   let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
   let effectAnimationTimeout: number | null = null;
+  let prevActivePlayerIndex: number | undefined = undefined;
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -94,14 +95,12 @@
     if (cardEffectAnimation.cardId !== 'handmaid') {
       // Clear animation for non-Handmaid cards when turn changes
       cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
-    } else if (cardEffectAnimation.actorId && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
+    } else if (cardEffectAnimation.actorId && gameState.players.length > gameState.activePlayerIndex && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
       // Clear Handmaid animation when it's the protected player's turn again
       cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
     }
     prevActivePlayerIndex = gameState.activePlayerIndex;
   }
-  
-  let prevActivePlayerIndex = gameState?.activePlayerIndex;
 
   function getTokensToWin(playerCount: number): number {
     const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };

@@ -173,14 +173,12 @@
     justify-content: center;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
-    margin: 1rem;
-    margin-right: 0.5rem;
+    margin: 1rem 0.5rem 1rem 1rem;
   }
 
   .player-details {
     flex: 1;
-    padding: 1rem 0;
-    padding-right: 1rem;
+    padding: 1rem 1rem 1rem 0;
   }
 
   .player-name {
