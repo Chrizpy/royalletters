@@ -100,8 +100,9 @@
 
   // Watch for new logs and queue them for staggered display
   $: {
-    // Reset feed if logs were completely cleared (when starting a new game via "Play Again")
-    if (logs.length === 0 && lastLogCount > 0) {
+    // Reset feed if logs were completely cleared or reset to initial state (when starting a new game)
+    const isGameReset = logs.length === 0 || (logs.length === 1 && logs[0].message === 'Game initialized');
+    if (isGameReset && lastLogCount > 1) {
       feedItems.forEach(item => clearTimeout(item.timeoutId));
       feedItems = [];
       pendingItems = [];
