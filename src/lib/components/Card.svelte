@@ -193,6 +193,7 @@
   /* Front Face */
   .card-front {
     transform: rotateY(0deg);
+    display: flex;
   }
 
   /* Back Face */
