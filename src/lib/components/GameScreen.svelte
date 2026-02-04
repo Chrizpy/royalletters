@@ -112,6 +112,8 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  // During Chancellor resolution, display the deck count as it will be after cards are returned
+  // (current deck + cards to be returned, which is hand.length - 1 since player keeps 1 card)
   $: displayedDeckCount = gameState?.phase === 'CHANCELLOR_RESOLVING' 
     ? (gameState?.deck.length || 0) + ((gameState?.players[gameState?.activePlayerIndex]?.hand.length || 0) - 1)
     : gameState?.deck.length || 0;
