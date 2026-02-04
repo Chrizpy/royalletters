@@ -6,6 +6,8 @@
   export let playerName: string;
   export let onComplete: () => void;
 
+  const ANIMATION_DURATION_MS = 2000; // Total animation duration (0.6s fly-in + 0.8s hold + 0.6s fly-out)
+  
   let animationComplete = false;
 
   $: card = getCardDefinition(cardId);
@@ -47,7 +49,7 @@
     const timer = setTimeout(() => {
       animationComplete = true;
       onComplete();
-    }, 2000); // Animation lasts 2 seconds
+    }, ANIMATION_DURATION_MS);
 
     return () => clearTimeout(timer);
   });

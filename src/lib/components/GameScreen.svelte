@@ -51,6 +51,9 @@
     // Check the latest log for a card play
     const lastLog = gameState.logs[gameState.logs.length - 1];
     
+    // Update the processed count first to avoid re-triggering
+    lastProcessedLogCount = gameState.logs.length;
+    
     if (lastLog.actorId && lastLog.cardId && lastLog.message.includes('played')) {
       // Find the player who played the card
       const player = gameState.players.find(p => p.id === lastLog.actorId);
@@ -62,8 +65,6 @@
         };
       }
     }
-    
-    lastProcessedLogCount = gameState.logs.length;
   }
   
   // Track card effects for animations
