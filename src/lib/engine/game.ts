@@ -788,6 +788,7 @@ export class GameEngine {
       }
       
       // Set lastRoundWinnerId to first winner (for turn order in next round)
+      // When there's a tie, the first winner in player order starts the next round
       this.state.lastRoundWinnerId = winners[0].id;
       
       // Log appropriate message

@@ -33,6 +33,18 @@
   let prevActivePlayerIndex: number | undefined = undefined;
 
   /**
+   * Format multiple names with proper Oxford comma grammar
+   * Examples: "Alice", "Alice and Bob", "Alice, Bob, and Charlie"
+   */
+  function formatWinnerNames(names: (string | undefined)[]): string {
+    const validNames = names.filter(n => n) as string[];
+    if (validNames.length === 0) return '';
+    if (validNames.length === 1) return validNames[0];
+    if (validNames.length === 2) return `${validNames[0]} and ${validNames[1]}`;
+    return validNames.slice(0, -1).join(', ') + ', and ' + validNames[validNames.length - 1];
+  }
+
+  /**
    * Reorder all players for clockwise display in a 2-column grid.
    * The grid fills left-to-right, but we want visual clockwise order starting from local player:
    * - Top-left: local player (always first)
@@ -335,13 +347,8 @@
         <div class="winner-text">
           {#if gameState.winnerIds.length === 1}
             {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} wins!
-          {:else if gameState.winnerIds.length === 2}
-            {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} and {gameState.players.find(p => p.id === gameState.winnerIds[1])?.name} win!
           {:else}
-            {(() => {
-              const names = gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name);
-              return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
-            })()} win!
+            {formatWinnerNames(gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name))} win!
           {/if}
         </div>
         {#if isHost && onPlayAgain}
