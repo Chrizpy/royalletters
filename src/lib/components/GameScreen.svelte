@@ -9,6 +9,7 @@
   import GameFeed from './GameFeed.svelte';
   import EliminationModal from './EliminationModal.svelte';
   import ChancellorModal from './ChancellorModal.svelte';
+  import DeckInfoModal from './DeckInfoModal.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
@@ -31,6 +32,7 @@
   let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
   let effectAnimationTimeout: number | null = null;
   let prevActivePlayerIndex: number | undefined = undefined;
+  let showDeckInfoModal = false;
 
   /**
    * Reorder all players for clockwise display in a 2-column grid.
@@ -232,8 +234,12 @@
   }
 
   function handleDraw() {
+    // If it's the player's turn to draw, draw a card
     if (gameState?.phase === 'TURN_START' && isMyTurn) {
       drawCard();
+    } else {
+      // Otherwise, show the deck info modal
+      showDeckInfoModal = true;
     }
   }
 
@@ -410,6 +416,14 @@
       playerHand={localPlayer.hand}
       cardsToReturnCount={localPlayer.hand.length - 1}
       onConfirmReturn={handleChancellorReturn}
+    />
+  {/if}
+
+  <!-- Deck info modal - show when clicking on deck -->
+  {#if showDeckInfoModal}
+    <DeckInfoModal
+      {gameState}
+      onClose={() => showDeckInfoModal = false}
     />
   {/if}
 </div>
