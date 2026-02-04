@@ -10,6 +10,9 @@
   export let isCardEffectTarget: boolean = false;
   export let cardEffectId: string | null = null;
 
+  let previousDiscardPileLength = 0;
+  let newlyAddedCardIndex = -1;
+
   function getCardColor(cardId: string): string {
     const colors: Record<string, string> = {
       'spy': '#2c3e50',
@@ -27,6 +30,22 @@
   }
   
   $: effectBorderColor = cardEffectId ? getCardColor(cardEffectId) : null;
+  
+  // Track when a new card is added to discard pile
+  $: if (player.discardPile.length > previousDiscardPileLength) {
+    // A new card was added - it's the last one in the array
+    newlyAddedCardIndex = player.discardPile.length - 1;
+    previousDiscardPileLength = player.discardPile.length;
+    
+    // Clear the animation flag after the animation completes
+    setTimeout(() => {
+      newlyAddedCardIndex = -1;
+    }, 600); // Match animation duration
+  } else if (player.discardPile.length < previousDiscardPileLength) {
+    // Discard pile was cleared (new round)
+    previousDiscardPileLength = player.discardPile.length;
+    newlyAddedCardIndex = -1;
+  }
 </script>
 
 <button 
@@ -68,6 +87,7 @@
       {#each player.discardPile as cardId, index}
         <span 
           class="discarded-mini" 
+          class:newly-played={index === newlyAddedCardIndex}
           title={getCardDefinition(cardId)?.name}
           style="--card-color: {getCardColor(cardId)}; --stack-index: {index};"
         >
@@ -225,6 +245,27 @@
     position: absolute;
     right: calc(var(--stack-index) * 12px);
     transition: all 0.3s ease;
+  }
+
+  .discarded-mini.newly-played {
+    animation: card-play 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes card-play {
+    0% {
+      transform: translateY(-50px) scale(1.5) rotate(-10deg);
+      opacity: 0;
+      box-shadow: 0 10px 30px rgba(255, 255, 255, 0.5);
+    }
+    50% {
+      transform: translateY(-25px) scale(1.3) rotate(-5deg);
+      box-shadow: 0 8px 25px rgba(255, 255, 255, 0.4);
+    }
+    100% {
+      transform: translateY(0) scale(1) rotate(0deg);
+      opacity: 1;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
   }
 
   .target-overlay {
