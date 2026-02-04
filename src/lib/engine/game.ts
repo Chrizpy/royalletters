@@ -36,6 +36,7 @@ export class GameEngine {
       phase: 'LOBBY',
       pendingAction: null,
       winnerId: null,
+      lastRoundWinnerId: null,
       logs: [],
       rngSeed: '',
       roundCount: 0,
@@ -119,7 +120,14 @@ export class GameEngine {
     }
 
     // Set first active player
+    // Default to player 0, but if there was a winner in the last round, they start
     this.state.activePlayerIndex = 0;
+    if (this.state.lastRoundWinnerId) {
+      const winnerIndex = this.state.players.findIndex(p => p.id === this.state.lastRoundWinnerId);
+      if (winnerIndex !== -1) {
+        this.state.activePlayerIndex = winnerIndex;
+      }
+    }
     this.state.phase = 'TURN_START';
     
     // Clear any chancellor state from previous round
@@ -777,6 +785,7 @@ export class GameEngine {
       const winner = winners[0];
       winner.tokens++;
       winner.status = 'WON_ROUND';
+      this.state.lastRoundWinnerId = winner.id;  // Store the round winner
       this.addLog(`${winner.name} won the round!`, winner.id);
     } else {
       this.addLog('Round ended in a tie');

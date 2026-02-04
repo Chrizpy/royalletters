@@ -59,6 +59,7 @@ export interface GameState {
   phase: GamePhase;
   pendingAction: PendingAction | null;
   winnerId: string | null;
+  lastRoundWinnerId: string | null;  // ID of the player who won the last round
   logs: LogEntry[];
   rngSeed: string;
   roundCount: number;
