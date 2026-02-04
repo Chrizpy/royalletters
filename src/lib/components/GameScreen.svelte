@@ -9,6 +9,7 @@
   import GameFeed from './GameFeed.svelte';
   import EliminationModal from './EliminationModal.svelte';
   import ChancellorModal from './ChancellorModal.svelte';
+  import CardPlayAnimation from './CardPlayAnimation.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
@@ -31,6 +32,8 @@
   let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
   let effectAnimationTimeout: number | null = null;
   let prevActivePlayerIndex: number | undefined = undefined;
+  let playAnimation: { cardId: string; playerName: string } | null = null;
+  let lastProcessedLogCount = 0;
 
   // Get state from store for reactivity
   $: gameState = $gameStateStore;
@@ -42,6 +45,26 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  
+  // Trigger card play animation when a new card is played
+  $: if (gameState?.logs && gameState.logs.length > lastProcessedLogCount) {
+    // Check the latest log for a card play
+    const lastLog = gameState.logs[gameState.logs.length - 1];
+    
+    if (lastLog.actorId && lastLog.cardId && lastLog.message.includes('played')) {
+      // Find the player who played the card
+      const player = gameState.players.find(p => p.id === lastLog.actorId);
+      if (player) {
+        // Trigger the animation
+        playAnimation = {
+          cardId: lastLog.cardId,
+          playerName: player.name
+        };
+      }
+    }
+    
+    lastProcessedLogCount = gameState.logs.length;
+  }
   
   // Track card effects for animations
   $: if (gameState?.logs && gameState.logs.length > 0) {
@@ -181,6 +204,10 @@
 
   function handleStartRound() {
     onStartRound();
+  }
+  
+  function handleAnimationComplete() {
+    playAnimation = null;
   }
   
   // Cleanup on component destroy
@@ -363,6 +390,15 @@
       playerHand={localPlayer.hand}
       cardsToReturnCount={localPlayer.hand.length - 1}
       onConfirmReturn={handleChancellorReturn}
+    />
+  {/if}
+  
+  <!-- Card play animation - shown when a player plays a card -->
+  {#if playAnimation}
+    <CardPlayAnimation
+      cardId={playAnimation.cardId}
+      playerName={playAnimation.playerName}
+      onComplete={handleAnimationComplete}
     />
   {/if}
 </div>
