@@ -120,19 +120,13 @@ export class GameEngine {
     }
 
     // Set first active player
-    // If there was a winner in the last round, they start this round
-    // Otherwise, default to player 0
+    // Default to player 0, but if there was a winner in the last round, they start
+    this.state.activePlayerIndex = 0;
     if (this.state.lastRoundWinnerId) {
       const winnerIndex = this.state.players.findIndex(p => p.id === this.state.lastRoundWinnerId);
       if (winnerIndex !== -1) {
         this.state.activePlayerIndex = winnerIndex;
-      } else {
-        // Winner not found (shouldn't happen), default to 0
-        this.state.activePlayerIndex = 0;
       }
-    } else {
-      // First round, start with player 0
-      this.state.activePlayerIndex = 0;
     }
     this.state.phase = 'TURN_START';
     
