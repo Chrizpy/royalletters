@@ -234,19 +234,8 @@
   }
 
   function handleDraw() {
-    // Only open modal if it's NOT the player's active turn (when they need to draw or play)
-    // During TURN_START, the draw happens automatically via the game engine
-    // During WAITING_FOR_ACTION when it's my turn, I'm choosing which card to play
-    // So only show the modal when it's NOT my turn or when the game is not in active play phases
-    const isActiveTurn = isMyTurn && (gameState?.phase === 'TURN_START' || gameState?.phase === 'WAITING_FOR_ACTION' || gameState?.phase === 'WAITING_FOR_TARGET');
-    
-    if (isActiveTurn) {
-      // During active turn, drawing is handled automatically by the game engine
-      // Don't open the modal - let the player focus on their turn
-      return;
-    }
-    
-    // Otherwise, show the deck info modal
+    // Always show the deck info modal when clicking the deck
+    // Players can check remaining cards at any time, even during their turn
     showDeckInfoModal = true;
   }
 
