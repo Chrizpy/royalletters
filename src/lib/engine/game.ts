@@ -480,7 +480,7 @@ export class GameEngine {
         newState: this.state,
       };
     } else {
-      this.addLog('Comparison was a tie', activePlayer.id);
+      this.addLog(`${activePlayer.name} and ${targetPlayer.name} compared cards (tie)`, activePlayer.id);
       return {
         success: true,
         message: 'Tie - no one eliminated',

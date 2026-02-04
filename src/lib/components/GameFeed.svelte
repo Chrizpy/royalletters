@@ -92,8 +92,8 @@
       }
     }
 
-    // Pattern: "Comparison was a tie" -> filter (will be merged with Baron)
-    if (message === 'Comparison was a tie') {
+    // Pattern: "Comparison was a tie" OR "Player and Player compared cards (tie)" -> filter (will be merged with Baron)
+    if (message === 'Comparison was a tie' || message.match(/^(.+?) and (.+?) compared cards \(tie\)$/)) {
       return ''; // Filter out, will be merged with Baron
     }
 
@@ -148,6 +148,12 @@
           return `${baronMatch[1]} played Baron on ${elim[1]} and won`;
         }
       }
+      // Check for new tie format: "Player and Player compared cards (tie)"
+      const tieMatchNew = nextMessage.match(/^.+? and (.+?) compared cards \(tie\)$/);
+      if (tieMatchNew) {
+        return `${baronMatch[1]} played Baron on ${tieMatchNew[1]} and tied`;
+      }
+      // Check for old tie format: "Comparison was a tie"
       if (nextMessage === 'Comparison was a tie') {
         return `${baronMatch[1]} played Baron and tied`;
       }

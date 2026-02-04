@@ -498,6 +498,12 @@ describe('Card Effect Tests', () => {
       expect(result.success).toBe(true);
       expect(newState.players[0].status).not.toBe('ELIMINATED');
       expect(newState.players[1].status).not.toBe('ELIMINATED');
+      
+      // Verify log message includes both players
+      const tieLog = newState.logs.find(log => log.message.includes('compared cards (tie)'));
+      expect(tieLog).toBeDefined();
+      expect(tieLog?.message).toContain('Alice');
+      expect(tieLog?.message).toContain('Bob');
     });
   });
 
