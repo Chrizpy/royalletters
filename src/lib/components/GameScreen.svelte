@@ -112,6 +112,9 @@
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  $: displayedDeckCount = gameState?.phase === 'CHANCELLOR_RESOLVING' 
+    ? (gameState?.deck.length || 0) + ((gameState?.players[gameState?.activePlayerIndex]?.hand.length || 0) - 1)
+    : gameState?.deck.length || 0;
   
   // Track card effects for animations
   $: if (gameState?.logs && gameState.logs.length > 0) {
@@ -321,7 +324,7 @@
       <div class="deck" class:can-draw={gameState.phase === 'TURN_START' && isMyTurn}>
         <button class="deck-card" on:click={handleDraw} aria-label="Draw a card">
           <span class="deck-icon">📚</span>
-          <span class="deck-count">{gameState.deck.length}</span>
+          <span class="deck-count">{displayedDeckCount}</span>
         </button>
         {#if gameState.phase === 'TURN_START' && isMyTurn}
           <div class="draw-prompt">Click to draw!</div>
