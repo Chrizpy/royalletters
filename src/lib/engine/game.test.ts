@@ -1514,4 +1514,159 @@ describe('2019 Ruleset Tests', () => {
       expect(result.eliminatedPlayerId).toBe('p2');
     });
   });
+
+  describe('Round Winner Starts Next Round Tests', () => {
+    let game: GameEngine;
+
+    beforeEach(() => {
+      game = new GameEngine();
+    });
+
+    it('should start first round with player 0', () => {
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+      });
+      game.startRound();
+      const state = game.getState();
+
+      // First round should start with player 0
+      expect(state.activePlayerIndex).toBe(0);
+      expect(state.lastRoundWinnerId).toBeNull();
+    });
+
+    it('should start second round with the previous round winner', () => {
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+      });
+      
+      // Start first round
+      game.startRound();
+      
+      // Simulate round end with Bob (player 1) winning
+      const state = game.getState();
+      state.players[0].hand = ['guard'];
+      state.players[1].hand = ['princess'];
+      state.players[2].hand = ['baron'];
+      state.deck = [];
+      game.setState(state);
+      
+      game.checkRoundEnd();
+      const afterRound1 = game.getState();
+      
+      // Bob should have won
+      expect(afterRound1.players[1].tokens).toBe(1);
+      expect(afterRound1.players[1].status).toBe('WON_ROUND');
+      expect(afterRound1.lastRoundWinnerId).toBe('p2');
+      
+      // Start second round
+      game.startRound();
+      const round2State = game.getState();
+      
+      // Round 2 should start with Bob (player 1)
+      expect(round2State.activePlayerIndex).toBe(1);
+    });
+
+    it('should start third round with the second round winner', () => {
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+        ],
+      });
+      
+      // Round 1: Bob wins
+      game.startRound();
+      let state = game.getState();
+      state.players[0].hand = ['guard'];
+      state.players[1].hand = ['princess'];
+      state.players[2].hand = ['baron'];
+      state.deck = [];
+      game.setState(state);
+      game.checkRoundEnd();
+      
+      // Round 2: Charlie wins
+      game.startRound();
+      state = game.getState();
+      state.players[0].hand = ['guard'];
+      state.players[1].hand = ['baron'];
+      state.players[2].hand = ['king'];
+      state.deck = [];
+      game.setState(state);
+      game.checkRoundEnd();
+      
+      const afterRound2 = game.getState();
+      expect(afterRound2.lastRoundWinnerId).toBe('p3');
+      
+      // Round 3 should start with Charlie (player 2)
+      game.startRound();
+      const round3State = game.getState();
+      expect(round3State.activePlayerIndex).toBe(2);
+    });
+
+    it('should default to player 0 if there was a tie in previous round', () => {
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+      });
+      
+      // Round 1 with a tie
+      game.startRound();
+      const state = game.getState();
+      state.players[0].hand = ['guard'];
+      state.players[1].hand = ['guard'];  // Same card value - tie
+      state.deck = [];
+      game.setState(state);
+      game.checkRoundEnd();
+      
+      const afterRound1 = game.getState();
+      // No winner in a tie, so lastRoundWinnerId should be null
+      expect(afterRound1.lastRoundWinnerId).toBeNull();
+      
+      // Round 2 should start with player 0 (default)
+      game.startRound();
+      const round2State = game.getState();
+      expect(round2State.activePlayerIndex).toBe(0);
+    });
+
+    it('should handle winner being in different positions', () => {
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+          { id: 'p3', name: 'Charlie' },
+          { id: 'p4', name: 'David' },
+        ],
+      });
+      
+      // Round 1: David (player 3) wins
+      game.startRound();
+      let state = game.getState();
+      state.players[0].hand = ['guard'];
+      state.players[1].hand = ['priest'];
+      state.players[2].hand = ['baron'];
+      state.players[3].hand = ['princess'];
+      state.deck = [];
+      game.setState(state);
+      game.checkRoundEnd();
+      
+      const afterRound1 = game.getState();
+      expect(afterRound1.lastRoundWinnerId).toBe('p4');
+      
+      // Round 2 should start with David (player 3)
+      game.startRound();
+      const round2State = game.getState();
+      expect(round2State.activePlayerIndex).toBe(3);
+    });
+  });
 });
