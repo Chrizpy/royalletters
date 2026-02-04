@@ -96,6 +96,7 @@
   $: isMyTurn = gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId;
   $: activePlayer = gameState?.players[gameState?.activePlayerIndex];
   $: allPlayersClockwise = reorderPlayersClockwise(gameState?.players || [], localPlayerId);
+  $: validTargetIds = new Set(getValidTargets().map(t => t.id));
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
@@ -293,7 +294,7 @@
       <PlayerArea 
         {player}
         isActive={gameState.players[gameState.activePlayerIndex]?.id === player.id}
-        isTargetable={selectingTarget && player.id !== localPlayerId && getValidTargets().some(t => t.id === player.id)}
+        isTargetable={selectingTarget && player.id !== localPlayerId && validTargetIds.has(player.id)}
         onSelect={() => selectTarget(player.id)}
         isCardEffectActor={cardEffectAnimation.actorId === player.id}
         isCardEffectTarget={cardEffectAnimation.targetId === player.id}
