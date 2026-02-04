@@ -61,20 +61,28 @@
   }
 
   // Get all cards in the current ruleset, sorted by value
-  $: cardsInDeck = Object.keys(registry.decks[gameState.ruleset] || {})
-    .map(cardId => {
-      const card = registry.cards[cardId];
-      const { remaining, total } = getRemainingCount(cardId);
-      return {
-        id: cardId,
-        name: card.name,
-        value: getCardValue(cardId),
-        description: card.description,
-        remaining,
-        total
-      };
-    })
-    .sort((a, b) => a.value - b.value);
+  $: cardsInDeck = (() => {
+    const deckDef = registry.decks[gameState.ruleset];
+    if (!deckDef) {
+      console.error(`Unknown ruleset: ${gameState.ruleset}`);
+      return [];
+    }
+    
+    return Object.keys(deckDef)
+      .map(cardId => {
+        const card = registry.cards[cardId];
+        const { remaining, total } = getRemainingCount(cardId);
+        return {
+          id: cardId,
+          name: card.name,
+          value: getCardValue(cardId),
+          description: card.description,
+          remaining,
+          total
+        };
+      })
+      .sort((a, b) => a.value - b.value);
+  })();
 
   function handleOverlayClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
