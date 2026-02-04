@@ -149,9 +149,10 @@
         }
       }
       // Check for new tie format: "Player and Player compared cards (tie)"
-      const tieMatchNew = nextMessage.match(/^.+? and (.+?) compared cards \(tie\)$/);
+      const tieMatchNew = nextMessage.match(/^(.+?) and (.+?) compared cards \(tie\)$/);
       if (tieMatchNew) {
-        return `${baronMatch[1]} played Baron on ${tieMatchNew[1]} and tied`;
+        // tieMatchNew[1] is the active player (who played Baron), tieMatchNew[2] is the target
+        return `${tieMatchNew[1]} played Baron on ${tieMatchNew[2]} and tied`;
       }
       // Check for old tie format: "Comparison was a tie"
       if (nextMessage === 'Comparison was a tie') {
