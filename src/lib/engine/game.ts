@@ -793,8 +793,11 @@ export class GameEngine {
       // Log appropriate message
       if (winners.length === 1) {
         this.addLog(`${winners[0].name} won the round!`, winners[0].id);
+      } else if (winners.length === 2) {
+        this.addLog(`${winners[0].name} and ${winners[1].name} tied and each receive a token!`);
       } else {
-        const winnerNames = winners.map(w => w.name).join(' and ');
+        const names = winners.map(w => w.name);
+        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
         this.addLog(`${winnerNames} tied and each receive a token!`);
       }
     }
@@ -863,8 +866,11 @@ export class GameEngine {
       
       if (roundWinners.length === 1) {
         this.addLog(`${roundWinners[0].name} won the game!`, roundWinners[0].id);
+      } else if (roundWinners.length === 2) {
+        this.addLog(`${roundWinners[0].name} and ${roundWinners[1].name} win the game!`);
       } else {
-        const winnerNames = roundWinners.map(w => w.name).join(' and ');
+        const names = roundWinners.map(w => w.name);
+        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
         this.addLog(`${winnerNames} win the game!`);
       }
     } else {
@@ -872,8 +878,14 @@ export class GameEngine {
       // This is an edge case - all win
       this.state.phase = 'GAME_END';
       this.state.winnerIds = qualifyingPlayers.map(p => p.id);
-      const winnerNames = qualifyingPlayers.map(w => w.name).join(' and ');
-      this.addLog(`${winnerNames} win the game!`);
+      
+      if (qualifyingPlayers.length === 2) {
+        this.addLog(`${qualifyingPlayers[0].name} and ${qualifyingPlayers[1].name} win the game!`);
+      } else {
+        const names = qualifyingPlayers.map(w => w.name);
+        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+        this.addLog(`${winnerNames} win the game!`);
+      }
     }
   }
 

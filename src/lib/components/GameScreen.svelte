@@ -338,7 +338,10 @@
           {:else if gameState.winnerIds.length === 2}
             {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} and {gameState.players.find(p => p.id === gameState.winnerIds[1])?.name} win!
           {:else}
-            {gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name).join(', ')} win!
+            {(() => {
+              const names = gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name);
+              return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+            })()} win!
           {/if}
         </div>
         {#if isHost && onPlayAgain}
