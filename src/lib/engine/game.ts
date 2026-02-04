@@ -35,7 +35,7 @@ export class GameEngine {
       activePlayerIndex: 0,
       phase: 'LOBBY',
       pendingAction: null,
-      winnerId: null,
+      winnerIds: [],
       lastRoundWinnerId: null,
       logs: [],
       rngSeed: '',
@@ -780,15 +780,27 @@ export class GameEngine {
       }
     }
 
-    // Award token to winner (if there's a single winner)
-    if (winners.length === 1) {
-      const winner = winners[0];
-      winner.tokens++;
-      winner.status = 'WON_ROUND';
-      this.state.lastRoundWinnerId = winner.id;  // Store the round winner
-      this.addLog(`${winner.name} won the round!`, winner.id);
-    } else {
-      this.addLog('Round ended in a tie');
+    // Award tokens to ALL winners (including ties)
+    if (winners.length > 0) {
+      for (const winner of winners) {
+        winner.tokens++;
+        winner.status = 'WON_ROUND';
+      }
+      
+      // Set lastRoundWinnerId to first winner (for turn order in next round)
+      // When there's a tie, the first winner in player order starts the next round
+      this.state.lastRoundWinnerId = winners[0].id;
+      
+      // Log appropriate message
+      if (winners.length === 1) {
+        this.addLog(`${winners[0].name} won the round!`, winners[0].id);
+      } else if (winners.length === 2) {
+        this.addLog(`${winners[0].name} and ${winners[1].name} tied and each receive a token!`);
+      } else {
+        const names = winners.map(w => w.name);
+        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+        this.addLog(`${winnerNames} tied and each receive a token!`);
+      }
     }
     
     // Check for Spy bonus (only in 2019 ruleset)
@@ -829,12 +841,51 @@ export class GameEngine {
     const playerCount = this.state.players.length;
     const tokensNeeded = TOKENS_TO_WIN_MAP[playerCount] || 4;
 
-    for (const player of this.state.players) {
-      if (player.tokens >= tokensNeeded) {
-        this.state.phase = 'GAME_END';
-        this.state.winnerId = player.id;
-        this.addLog(`${player.name} won the game!`, player.id);
-        return;
+    // Find all players who have reached the token threshold
+    const qualifyingPlayers = this.state.players.filter(p => p.tokens >= tokensNeeded);
+    
+    if (qualifyingPlayers.length === 0) {
+      return; // No one has won yet
+    }
+    
+    // If only one player reached the threshold, they win
+    if (qualifyingPlayers.length === 1) {
+      this.state.phase = 'GAME_END';
+      this.state.winnerIds = [qualifyingPlayers[0].id];
+      this.addLog(`${qualifyingPlayers[0].name} won the game!`, qualifyingPlayers[0].id);
+      return;
+    }
+    
+    // Multiple players reached threshold - apply Spy bonus priority rule
+    // Only players who won the round (status WON_ROUND) are considered winners
+    const roundWinners = qualifyingPlayers.filter(p => p.status === 'WON_ROUND');
+    
+    if (roundWinners.length > 0) {
+      // If any qualifying players won the round, only they are winners
+      this.state.phase = 'GAME_END';
+      this.state.winnerIds = roundWinners.map(p => p.id);
+      
+      if (roundWinners.length === 1) {
+        this.addLog(`${roundWinners[0].name} won the game!`, roundWinners[0].id);
+      } else if (roundWinners.length === 2) {
+        this.addLog(`${roundWinners[0].name} and ${roundWinners[1].name} win the game!`);
+      } else {
+        const names = roundWinners.map(w => w.name);
+        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+        this.addLog(`${winnerNames} win the game!`);
+      }
+    } else {
+      // All qualifying players reached threshold via Spy bonus only
+      // This is an edge case - all win
+      this.state.phase = 'GAME_END';
+      this.state.winnerIds = qualifyingPlayers.map(p => p.id);
+      
+      if (qualifyingPlayers.length === 2) {
+        this.addLog(`${qualifyingPlayers[0].name} and ${qualifyingPlayers[1].name} win the game!`);
+      } else {
+        const names = qualifyingPlayers.map(w => w.name);
+        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+        this.addLog(`${winnerNames} win the game!`);
       }
     }
   }

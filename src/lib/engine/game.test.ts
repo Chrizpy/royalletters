@@ -888,7 +888,7 @@ describe('Game End Tests', () => {
     const newState = game.getState();
 
     expect(newState.phase).toBe('GAME_END');
-    expect(newState.winnerId).toBe('p1');
+    expect(newState.winnerIds).toEqual(['p1']);
   });
 
   it('should end game when player reaches token goal (3 players)', () => {
@@ -909,7 +909,7 @@ describe('Game End Tests', () => {
     const newState = game.getState();
 
     expect(newState.phase).toBe('GAME_END');
-    expect(newState.winnerId).toBe('p2');
+    expect(newState.winnerIds).toEqual(['p2']);
   });
 
   it('should end game when player reaches token goal (4 players)', () => {
@@ -931,7 +931,7 @@ describe('Game End Tests', () => {
     const newState = game.getState();
 
     expect(newState.phase).toBe('GAME_END');
-    expect(newState.winnerId).toBe('p3');
+    expect(newState.winnerIds).toEqual(['p3']);
   });
 
   it('should end game when player reaches token goal (5 players)', () => {
@@ -954,7 +954,7 @@ describe('Game End Tests', () => {
     const newState = game.getState();
 
     expect(newState.phase).toBe('GAME_END');
-    expect(newState.winnerId).toBe('p4');
+    expect(newState.winnerIds).toEqual(['p4']);
   });
 
   it('should end game when player reaches token goal (6 players)', () => {
@@ -978,7 +978,168 @@ describe('Game End Tests', () => {
     const newState = game.getState();
 
     expect(newState.phase).toBe('GAME_END');
-    expect(newState.winnerId).toBe('p5');
+    expect(newState.winnerIds).toEqual(['p5']);
+  });
+
+  it('should handle multiple players winning simultaneously from a round tie', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+      ],
+    });
+
+    // Set both players to 4 tokens (1 away from winning)
+    const state = game.getState();
+    state.players[0].tokens = 4;
+    state.players[1].tokens = 4;
+    state.players[2].tokens = 0;
+    // Both Alice and Bob have the same high card (tie)
+    state.players[0].hand = ['princess'];
+    state.players[1].hand = ['princess'];
+    state.players[2].hand = ['guard'];
+    state.players[0].status = 'PLAYING';
+    state.players[1].status = 'PLAYING';
+    state.players[2].status = 'PLAYING';
+    game.setState(state);
+
+    // Simulate round end - both should get tokens and win
+    game.determineRoundWinner();
+    const newState = game.getState();
+
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerIds).toContain('p1');
+    expect(newState.winnerIds).toContain('p2');
+    expect(newState.winnerIds).toHaveLength(2);
+  });
+
+  it('should exclude Spy bonus player when others won via round tie', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+      ],
+      ruleset: '2019',
+    });
+
+    // All players at 4 tokens (1 away from winning in 3-player game)
+    const state = game.getState();
+    state.players[0].tokens = 4;
+    state.players[1].tokens = 4;
+    state.players[2].tokens = 4;
+    // Alice and Bob tie for round win
+    state.players[0].hand = ['princess'];
+    state.players[1].hand = ['princess'];
+    state.players[2].hand = ['guard'];
+    state.players[0].status = 'PLAYING';
+    state.players[1].status = 'PLAYING';
+    state.players[2].status = 'PLAYING';
+    // Charlie has Spy in discard (will get bonus token)
+    state.players[2].discardPile = ['spy'];
+    game.setState(state);
+
+    // Simulate round end
+    game.determineRoundWinner();
+    const newState = game.getState();
+
+    // Alice and Bob get tokens from round tie (now 5 each)
+    expect(newState.players[0].tokens).toBe(5);
+    expect(newState.players[1].tokens).toBe(5);
+    // Charlie gets Spy bonus (now 5)
+    expect(newState.players[2].tokens).toBe(5);
+    
+    // Only Alice and Bob should win (they won the round, not Charlie)
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerIds).toContain('p1');
+    expect(newState.winnerIds).toContain('p2');
+    expect(newState.winnerIds).not.toContain('p3');
+    expect(newState.winnerIds).toHaveLength(2);
+  });
+
+  it('should let Spy bonus player win when they are the only one reaching threshold', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+      ],
+      ruleset: '2019',
+    });
+
+    // Charlie at 4 tokens, others lower
+    const state = game.getState();
+    state.players[0].tokens = 3;
+    state.players[1].tokens = 2;
+    state.players[2].tokens = 4;
+    // Alice wins the round
+    state.players[0].hand = ['princess'];
+    state.players[1].hand = ['guard'];
+    state.players[2].hand = ['priest'];
+    state.players[0].status = 'PLAYING';
+    state.players[1].status = 'PLAYING';
+    state.players[2].status = 'PLAYING';
+    // Charlie has Spy in discard (will get bonus token to reach 5)
+    state.players[2].discardPile = ['spy'];
+    game.setState(state);
+
+    // Simulate round end
+    game.determineRoundWinner();
+    const newState = game.getState();
+
+    // Alice gets token from round win (now 4)
+    expect(newState.players[0].tokens).toBe(4);
+    // Charlie gets Spy bonus (now 5, reaching threshold)
+    expect(newState.players[2].tokens).toBe(5);
+    
+    // Only Charlie should win (only one who reached threshold)
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerIds).toEqual(['p3']);
+  });
+
+  it('should handle round winner reaching threshold alone when others have Spy bonus', () => {
+    game = new GameEngine();
+    game.init({
+      players: [
+        { id: 'p1', name: 'Alice' },
+        { id: 'p2', name: 'Bob' },
+        { id: 'p3', name: 'Charlie' },
+      ],
+      ruleset: '2019',
+    });
+
+    // Alice at 4 tokens, Charlie at 5 tokens
+    const state = game.getState();
+    state.players[0].tokens = 4;
+    state.players[1].tokens = 2;
+    state.players[2].tokens = 5;
+    // Alice wins the round
+    state.players[0].hand = ['princess'];
+    state.players[1].hand = ['guard'];
+    state.players[2].hand = ['priest'];
+    state.players[0].status = 'PLAYING';
+    state.players[1].status = 'PLAYING';
+    state.players[2].status = 'PLAYING';
+    // Alice has Spy in discard (will get bonus token)
+    state.players[0].discardPile = ['spy'];
+    game.setState(state);
+
+    // Simulate round end
+    game.determineRoundWinner();
+    const newState = game.getState();
+
+    // Alice gets token from round win (now 5) + Spy bonus (now 6)
+    expect(newState.players[0].tokens).toBe(6);
+    // Charlie stays at 5
+    expect(newState.players[2].tokens).toBe(5);
+    
+    // Both reached threshold, but only Alice won the round
+    expect(newState.phase).toBe('GAME_END');
+    expect(newState.winnerIds).toEqual(['p1']);
   });
 });
 
@@ -1612,7 +1773,7 @@ describe('2019 Ruleset Tests', () => {
       expect(round3State.activePlayerIndex).toBe(2);
     });
 
-    it('should default to player 0 if there was a tie in previous round', () => {
+    it('should award tokens to both players when there is a tie', () => {
       game.init({
         players: [
           { id: 'p1', name: 'Alice' },
@@ -1630,10 +1791,15 @@ describe('2019 Ruleset Tests', () => {
       game.checkRoundEnd();
       
       const afterRound1 = game.getState();
-      // No winner in a tie, so lastRoundWinnerId should be null
-      expect(afterRound1.lastRoundWinnerId).toBeNull();
+      // Both players should receive a token
+      expect(afterRound1.players[0].tokens).toBe(1);
+      expect(afterRound1.players[1].tokens).toBe(1);
+      expect(afterRound1.players[0].status).toBe('WON_ROUND');
+      expect(afterRound1.players[1].status).toBe('WON_ROUND');
+      // First winner should be stored for turn order
+      expect(afterRound1.lastRoundWinnerId).toBe('p1');
       
-      // Round 2 should start with player 0 (default)
+      // Round 2 should start with player 0 (first winner in tie)
       game.startRound();
       const round2State = game.getState();
       expect(round2State.activePlayerIndex).toBe(0);
