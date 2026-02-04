@@ -317,7 +317,7 @@
       </div>
     </div>
 
-    {#if gameState.phase === 'LOBBY' || (gameState.phase === 'ROUND_END' && !gameState.winnerId)}
+    {#if gameState.phase === 'LOBBY' || (gameState.phase === 'ROUND_END' && gameState.winnerIds.length === 0)}
       <div class="start-area">
         {#if isHost}
           <button class="start-round-btn" on:click={handleStartRound}>
@@ -333,7 +333,13 @@
       <div class="winner-banner">
         <div class="winner-icon">👑</div>
         <div class="winner-text">
-          {gameState.players.find(p => p.id === gameState.winnerId)?.name} wins!
+          {#if gameState.winnerIds.length === 1}
+            {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} wins!
+          {:else if gameState.winnerIds.length === 2}
+            {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} and {gameState.players.find(p => p.id === gameState.winnerIds[1])?.name} win!
+          {:else}
+            {gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name).join(', ')} win!
+          {/if}
         </div>
         {#if isHost && onPlayAgain}
           <button class="play-again-btn" on:click={onPlayAgain}>
