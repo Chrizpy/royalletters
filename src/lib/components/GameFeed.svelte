@@ -154,7 +154,7 @@
         // tieMatchNew[1] is the active player (who played Baron), tieMatchNew[2] is the target
         return `${tieMatchNew[1]} played Baron on ${tieMatchNew[2]} and tied`;
       }
-      // Check for old tie format: "Comparison was a tie"
+      // Check for old tie format: "Comparison was a tie" (backward compatibility)
       if (nextMessage === 'Comparison was a tie') {
         return `${baronMatch[1]} played Baron and tied`;
       }
