@@ -26,6 +26,7 @@ export interface PlayerState {
   id: string;
   name: string;
   avatarId: string;
+  color: string;  // Player's display color (hex)
   hand: string[]; // Card IDs
   discardPile: string[];
   tokens: number;

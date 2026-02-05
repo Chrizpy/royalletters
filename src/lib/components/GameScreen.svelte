@@ -410,10 +410,10 @@
   </div>
 
   <!-- Game Feed overlay for log messages -->
-  <GameFeed logs={gameState.logs} />
+  <GameFeed logs={gameState.logs} players={gameState.players} {localPlayerId} />
 
   <!-- Game menu (log + chat) -->
-  <GameMenu logs={gameState.logs} {onSendChat} />
+  <GameMenu logs={gameState.logs} players={gameState.players} {localPlayerId} {onSendChat} />
   
   <!-- Card reveal modal (for Priest) - only show to the player who played Priest -->
   {#if revealed && revealed.viewerPlayerId === localPlayerId}

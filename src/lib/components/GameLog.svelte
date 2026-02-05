@@ -1,7 +1,12 @@
 <script lang="ts">
-  import type { LogEntry } from '../types';
+  import type { LogEntry, PlayerState } from '../types';
 
   export let logs: LogEntry[] = [];
+  export let players: PlayerState[] = [];
+  export let localPlayerId: string = '';
+  
+  // Color for the local player's actions (red to stand out)
+  const LOCAL_PLAYER_COLOR = '#FF4444';
   
   // Threshold in pixels for determining if user is "near bottom" of scroll container
   const SCROLL_NEAR_BOTTOM_THRESHOLD = 50;
@@ -23,6 +28,33 @@
   // Track log count changes
   $: if (logs.length !== previousLogCount) {
     previousLogCount = logs.length;
+  }
+
+  // Get player by ID
+  function getPlayer(playerId: string | undefined): PlayerState | undefined {
+    if (!playerId) return undefined;
+    return players.find(p => p.id === playerId);
+  }
+
+  // Get the display color for a log entry's actor
+  function getActorColor(log: LogEntry): string | null {
+    if (!log.actorId) return null;
+    
+    // If this is the local player's action, use red
+    if (log.actorId === localPlayerId) {
+      return LOCAL_PLAYER_COLOR;
+    }
+    
+    // Otherwise use the player's assigned color
+    const player = getPlayer(log.actorId);
+    return player?.color || null;
+  }
+
+  // Get the actor's name for display
+  function getActorName(log: LogEntry): string | null {
+    if (!log.actorId) return null;
+    const player = getPlayer(log.actorId);
+    return player?.name || null;
   }
 
   function handleScroll() {
@@ -78,7 +110,15 @@
         {#each logs as log}
           <div class="log-entry">
             <span class="log-time">{formatTime(log.timestamp)}</span>
-            <span class="log-message">{log.message}</span>
+            {#if log.actorId === localPlayerId}
+              <span class="log-message self-action">You {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "your ")}</span>
+            {:else if getActorName(log)}
+              <span class="log-message">
+                <span class="actor-name" style="color: {getActorColor(log)}">{getActorName(log)}</span>: {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "'s ")}
+              </span>
+            {:else}
+              <span class="log-message">{log.message}</span>
+            {/if}
           </div>
         {/each}
         
@@ -236,6 +276,15 @@
   .log-message {
     color: rgba(255, 255, 255, 0.9);
     flex: 1;
+  }
+
+  .actor-name {
+    font-weight: 600;
+  }
+
+  .self-action {
+    color: #FF4444;
+    font-weight: 600;
   }
 
   .log-empty {
