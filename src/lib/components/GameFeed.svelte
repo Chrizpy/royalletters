@@ -290,10 +290,26 @@
       if (condensed) {
         const itemId = nextId++;
         
-        // Schedule fade out after display time
-        const timeoutId = setTimeout(() => {
-          startFadeOut(itemId);
-        }, FEED_DISPLAY_TIME_MS);
+        // Cancel the fade timeout for the previous last item (if any) so the new item becomes the persistent one
+        // The last item should always stay visible
+        if (feedItems.length > 0) {
+          const previousLastItem = feedItems[feedItems.length - 1];
+          // Schedule fade for the previous last item now that it's no longer the last
+          if (previousLastItem && !previousLastItem.isFadingOut) {
+            clearTimeout(previousLastItem.timeoutId);
+            const newTimeoutId = setTimeout(() => {
+              startFadeOut(previousLastItem.id);
+            }, FEED_DISPLAY_TIME_MS);
+            feedItems = feedItems.map(f => 
+              f.id === previousLastItem.id ? { ...f, timeoutId: newTimeoutId } : f
+            );
+          }
+        }
+        
+        // Don't schedule fade for this item - it will be scheduled when a new item arrives
+        // This ensures the last item always stays visible
+        const timeoutId = setTimeout(() => {}, 0); // Placeholder timeout that does nothing
+        clearTimeout(timeoutId); // Clear it immediately
         
         const item: FeedItem = {
           id: itemId,
@@ -329,8 +345,11 @@
   // Watch for new logs and queue them for staggered display
   $: {
     // Reset feed if logs were completely cleared or reset to initial state (when starting a new game)
-    const isGameReset = logs.length === 0 || (logs.length === 1 && logs[0].message === 'Game initialized');
-    if (isGameReset && lastLogCount > 0) {
+    // Also reset if logs count decreased (game was restarted with new logs)
+    const isGameReset = logs.length === 0 || 
+      (logs.length === 1 && logs[0].message === 'Game initialized') ||
+      logs.length < lastLogCount;
+    if (isGameReset) {
       feedItems.forEach(item => clearTimeout(item.timeoutId));
       feedItems = [];
       pendingItems = [];
