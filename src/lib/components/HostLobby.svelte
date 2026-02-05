@@ -17,7 +17,7 @@
   let localConnectionState: string = 'disconnected';
   let players: Array<{ id: string; name: string; isAI?: boolean }> = [];
   let hostName = 'Host';
-  let selectedRuleset: Ruleset = 'classic';
+  let selectedRuleset: Ruleset = 'house';
   let aiCounter = 1;  // Counter for AI player names
   let aiMoveDelayMs = 2000;  // Default AI move delay (configurable)
   let aiCount = 0;  // Desired number of AI players (controlled by slider)
@@ -427,17 +427,18 @@
       {/if}
       
       {#if localConnectionState === 'connected' && qrCodeDataUrl}
-        <div class="name-section">
-          <label for="host-name">Your Name:</label>
-          <input 
-            id="host-name" 
-            type="text" 
-            bind:value={hostName} 
-            placeholder="Enter your name"
-            class="name-input"
-          />
+        <div class="qr-section">
+          <p class="instruction">Scan this QR code to join:</p>
+          <div class="qr-code">
+            <img src={qrCodeDataUrl} alt="QR Code" />
+          </div>
+          
+          <div class="peer-id-section">
+            <p class="peer-id-label">Or enter this code manually:</p>
+            <div class="peer-id-display">{generatedPeerId}</div>
+          </div>
         </div>
-        
+
         <div class="ruleset-section">
           <label for="ruleset">Game Edition:</label>
           <select 
@@ -457,6 +458,39 @@
             {:else}
               The original Love Letter experience.
             {/if}
+          </p>
+        </div>
+
+        <div class="tokens-section">
+          <label for="tokens-to-win">Tokens to Win:</label>
+          <div class="tokens-controls">
+            <input 
+              id="tokens-to-win" 
+              type="range" 
+              min="1" 
+              max="10" 
+              step="1"
+              bind:value={tokensToWin}
+              on:input={() => hasCustomTokens = true}
+              class="tokens-slider"
+            />
+            <span class="tokens-value">{effectiveTokens}</span>
+          </div>
+          <p class="tokens-hint">
+            {#if effectiveTokens === defaultTokens}
+              Default for {totalPlayers} players
+            {:else if effectiveTokens < defaultTokens}
+              Shorter game
+            {:else}
+              Longer game
+            {/if}
+            <button 
+              class="reset-tokens-btn" 
+              on:click={() => { hasCustomTokens = false; tokensToWin = defaultTokens; }}
+              disabled={!hasCustomTokens}
+            >
+              Reset
+            </button>
           </p>
         </div>
         
@@ -516,49 +550,26 @@
           {/if}
         </div>
 
-        <div class="tokens-section">
-          <label for="tokens-to-win">Tokens to Win:</label>
-          <div class="tokens-controls">
-            <input 
-              id="tokens-to-win" 
-              type="range" 
-              min="1" 
-              max="10" 
-              step="1"
-              bind:value={tokensToWin}
-              on:input={() => hasCustomTokens = true}
-              class="tokens-slider"
-            />
-            <span class="tokens-value">{effectiveTokens}</span>
-          </div>
-          <p class="tokens-hint">
-            {#if effectiveTokens === defaultTokens}
-              Default for {totalPlayers} players
-            {:else if effectiveTokens < defaultTokens}
-              Shorter game
-            {:else}
-              Longer game
-            {/if}
-            <button 
-              class="reset-tokens-btn" 
-              on:click={() => { hasCustomTokens = false; tokensToWin = defaultTokens; }}
-              disabled={!hasCustomTokens}
-            >
-              Reset
-            </button>
-          </p>
+        <div class="name-section">
+          <label for="host-name">Your Name:</label>
+          <input 
+            id="host-name" 
+            type="text" 
+            bind:value={hostName} 
+            placeholder="Enter your name"
+            class="name-input"
+          />
         </div>
-
-        <div class="qr-section">
-          <p class="instruction">Scan this QR code to join:</p>
-          <div class="qr-code">
-            <img src={qrCodeDataUrl} alt="QR Code" />
-          </div>
-          
-          <div class="peer-id-section">
-            <p class="peer-id-label">Or enter this code manually:</p>
-            <div class="peer-id-display">{generatedPeerId}</div>
-          </div>
+        
+        <div class="button-group">
+          <button 
+            class="start-btn" 
+            on:click={handleStartGame}
+            disabled={players.length === 0}
+          >
+            Start Game
+          </button>
+          <button class="back-btn" on:click={handleBack}>Cancel</button>
         </div>
         
         <div class="players-section">
@@ -579,17 +590,6 @@
           {#if players.length === 0}
             <p class="waiting">Waiting for players to join or add AI opponents...</p>
           {/if}
-        </div>
-        
-        <div class="button-group">
-          <button 
-            class="start-btn" 
-            on:click={handleStartGame}
-            disabled={players.length === 0}
-          >
-            Start Game
-          </button>
-          <button class="back-btn" on:click={handleBack}>Cancel</button>
         </div>
       {:else}
         <div class="loading">
