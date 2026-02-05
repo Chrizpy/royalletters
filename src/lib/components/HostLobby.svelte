@@ -20,12 +20,34 @@
   let selectedRuleset: Ruleset = 'classic';
   let aiCounter = 1;  // Counter for AI player names
   let aiMoveDelayMs = 1000;  // Default AI move delay (configurable)
+  let tokensToWin: number | null = null;  // null means use default based on player count
+  let hasCustomTokens = false;  // Track if user has manually adjusted tokens
+
+  // Default tokens based on player count
+  const DEFAULT_TOKENS_MAP: Record<number, number> = {
+    2: 6,
+    3: 5,
+    4: 4,
+    5: 3,
+    6: 3,
+  };
 
   // Max players depends on ruleset: classic = 4, 2019 = 6
   $: maxPlayers = selectedRuleset === '2019' ? 6 : 4;
   
   // Total players including host
   $: totalPlayers = players.length + 1;
+  
+  // Default tokens for current player count
+  $: defaultTokens = DEFAULT_TOKENS_MAP[totalPlayers] || 4;
+  
+  // Update tokensToWin when player count changes (only if user hasn't customized)
+  $: if (!hasCustomTokens) {
+    tokensToWin = defaultTokens;
+  }
+  
+  // Effective tokens value (use custom or default)
+  $: effectiveTokens = tokensToWin ?? defaultTokens;
   
   // Can add more AI players?
   $: canAddAI = totalPlayers < maxPlayers;
@@ -171,8 +193,8 @@
       ...players.map(p => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false }))
     ];
     
-    // Initialize and start the game with selected ruleset
-    initGame(allPlayers, selectedRuleset);
+    // Initialize and start the game with selected ruleset and tokens to win
+    initGame(allPlayers, selectedRuleset, effectiveTokens);
     startRound();
     
     // Broadcast state to all connected players
@@ -266,7 +288,7 @@
       ...players.map(p => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false }))
     ];
     
-    initGame(allPlayers, selectedRuleset);
+    initGame(allPlayers, selectedRuleset, effectiveTokens);
     startRound();
     broadcastGameState();
     
@@ -394,6 +416,39 @@
             {:else}
               Slow - More time to watch
             {/if}
+          </p>
+        </div>
+
+        <div class="tokens-section">
+          <label for="tokens-to-win">Tokens to Win:</label>
+          <div class="tokens-controls">
+            <input 
+              id="tokens-to-win" 
+              type="range" 
+              min="1" 
+              max="10" 
+              step="1"
+              bind:value={tokensToWin}
+              on:input={() => hasCustomTokens = true}
+              class="tokens-slider"
+            />
+            <span class="tokens-value">{effectiveTokens}</span>
+          </div>
+          <p class="tokens-hint">
+            {#if effectiveTokens === defaultTokens}
+              Default for {totalPlayers} players
+            {:else if effectiveTokens < defaultTokens}
+              Shorter game
+            {:else}
+              Longer game
+            {/if}
+            <button 
+              class="reset-tokens-btn" 
+              on:click={() => { hasCustomTokens = false; tokensToWin = defaultTokens; }}
+              disabled={!hasCustomTokens}
+            >
+              Reset
+            </button>
           </p>
         </div>
 
@@ -628,6 +683,93 @@
     font-size: 0.85rem;
     color: #666;
     font-style: italic;
+  }
+
+  .tokens-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .tokens-section label {
+    display: block;
+    font-weight: 500;
+    color: #000;
+    margin-bottom: 0.5rem;
+  }
+
+  .tokens-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .tokens-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .tokens-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(253, 160, 133, 0.4);
+  }
+
+  .tokens-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(253, 160, 133, 0.4);
+  }
+
+  .tokens-value {
+    font-weight: 600;
+    color: #fda085;
+    min-width: 24px;
+    text-align: right;
+  }
+
+  .tokens-hint {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .reset-tokens-btn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .reset-tokens-btn:hover:not(:disabled) {
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  .reset-tokens-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   .qr-section {

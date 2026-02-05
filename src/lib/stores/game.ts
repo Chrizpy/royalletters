@@ -18,9 +18,9 @@ export const revealedCard = writable<{ cardId: string; playerName: string; viewe
 /**
  * Initialize the game engine with players
  */
-export function initGame(players: Array<{ id: string; name: string; isHost?: boolean; isAI?: boolean }>, ruleset: Ruleset = 'classic') {
+export function initGame(players: Array<{ id: string; name: string; isHost?: boolean; isAI?: boolean }>, ruleset: Ruleset = 'classic', tokensToWin?: number) {
   engine = new GameEngine();
-  engine.init({ players, ruleset });
+  engine.init({ players, ruleset, tokensToWin });
   gameState.set(engine.getState());
 }
 

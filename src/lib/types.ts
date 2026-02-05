@@ -65,6 +65,7 @@ export interface GameState {
   rngSeed: string;
   roundCount: number;
   ruleset: Ruleset;
+  tokensToWin: number;  // Number of favour tokens needed to win the game
   chancellorCards?: string[];  // Cards drawn for Chancellor effect, waiting for player to select which to return
 }
 

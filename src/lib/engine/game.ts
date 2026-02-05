@@ -51,6 +51,7 @@ export class GameEngine {
       rngSeed: '',
       roundCount: 0,
       ruleset: 'classic',
+      tokensToWin: 4,  // Default, will be set properly in init()
     };
   }
 
@@ -74,11 +75,16 @@ export class GameEngine {
       isAI: p.isAI || false,
     }));
 
+    // Calculate default tokens to win based on player count
+    const playerCount = players.length;
+    const defaultTokensToWin = TOKENS_TO_WIN_MAP[playerCount] || 4;
+    
     this.state = {
       ...this.createEmptyState(),
       players,
       phase: 'LOBBY',
       ruleset: config.ruleset || 'classic',
+      tokensToWin: config.tokensToWin ?? defaultTokensToWin,
     };
 
     this.addLog('Game initialized');
@@ -869,8 +875,7 @@ export class GameEngine {
    * Check if game should end
    */
   checkGameEnd(): void {
-    const playerCount = this.state.players.length;
-    const tokensNeeded = TOKENS_TO_WIN_MAP[playerCount] || 4;
+    const tokensNeeded = this.state.tokensToWin;
 
     // Find all players who have reached the token threshold
     const qualifyingPlayers = this.state.players.filter(p => p.tokens >= tokensNeeded);
