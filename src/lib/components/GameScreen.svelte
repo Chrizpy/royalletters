@@ -413,6 +413,8 @@
       <GuessSelector 
         onSelect={selectGuess}
         onCancel={cancelSelection}
+        players={gameState.players}
+        localPlayerId={localPlayerId}
       />
     {/if}
 
@@ -424,6 +426,8 @@
         subtitle="The Guard (🍪) missed - now guess {revengeTargetPlayer?.name}'s card!"
         showCancel={false}
         headerStyle="revenge"
+        players={gameState.players}
+        localPlayerId={localPlayerId}
       />
     {/if}
   </div>

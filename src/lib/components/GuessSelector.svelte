@@ -1,7 +1,8 @@
 <script lang="ts">
   import cardsData from '../data/cards.json';
-  import type { CardDefinition, Ruleset } from '../types';
+  import type { CardDefinition, Ruleset, PlayerState } from '../types';
   import { gameState } from '../stores/game';
+  import { getCardDefinition } from '../engine/deck';
 
   export let onSelect: (cardGuess: string) => void;
   export let onCancel: () => void;
@@ -10,6 +11,8 @@
   export let showCancel: boolean = true;
   export let headerIcon: string = '';
   export let headerStyle: 'default' | 'revenge' = 'default';
+  export let players: PlayerState[] = [];
+  export let localPlayerId: string = '';
   
   // Type for the new card data structure
   interface CardRegistry {
@@ -59,6 +62,8 @@
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
       'spy': '#2c3e50',
+      'guard': '#e74c3c',
+      'tillbakakaka': '#e74c3c',
       'priest': '#9b59b6',
       'baron': '#3498db',
       'handmaid': '#1abc9c',
@@ -70,6 +75,9 @@
     };
     return colors[id] || '#95a5a6';
   }
+
+  // Filter players who have played cards (non-empty discard pile)
+  $: playersWithCards = players.filter(p => p.discardPile.length > 0);
 </script>
 
 <div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={showCancel ? onCancel : undefined} on:keydown={(e) => e.key === 'Escape' && showCancel && onCancel()}>
@@ -79,6 +87,32 @@
     {/if}
     <h3 class:revenge-title={headerStyle === 'revenge'}>{title}</h3>
     <p class="subtitle">{subtitle}</p>
+
+    {#if playersWithCards.length > 0}
+      <div class="played-cards-summary">
+        <div class="summary-header">📜 Played this round:</div>
+        <div class="players-played">
+          {#each playersWithCards as player}
+            <div class="player-played" class:is-local={player.id === localPlayerId} class:is-eliminated={player.status === 'ELIMINATED'}>
+              <span class="player-name-tag" style="color: {player.color}">
+                {player.id === localPlayerId ? 'You' : player.name}{player.status === 'ELIMINATED' ? ' 💀' : ''}:
+              </span>
+              <span class="played-cards">
+                {#each player.discardPile as cardId}
+                  <span 
+                    class="mini-card" 
+                    style="--card-color: {getCardColor(cardId)}"
+                    title={getCardDefinition(cardId)?.name}
+                  >
+                    {getCardDefinition(cardId)?.value}{#if cardId === 'tillbakakaka'}🍪{/if}
+                  </span>
+                {/each}
+              </span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
     
     <div class="card-grid">
       {#each guessableCards as card}
@@ -111,6 +145,7 @@
     z-index: 100;
     animation: overlay-fade 0.3s ease-out;
     padding: 1rem;
+    overflow-y: auto;
   }
 
   @keyframes overlay-fade {
@@ -125,7 +160,23 @@
     padding: 2rem;
     max-width: 500px;
     width: 100%;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
     animation: modal-pop 0.3s ease-out;
+  }
+
+  /* Mobile-specific adjustments */
+  @media (max-width: 480px) {
+    .guess-selector-overlay {
+      padding: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .guess-selector {
+      padding: 1.25rem;
+      max-height: calc(100vh - 1rem);
+      margin: 0.5rem 0;
+    }
   }
 
   @keyframes modal-pop {
@@ -229,5 +280,63 @@
 
   .cancel-btn:hover {
     background: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Played cards summary styles */
+  .played-cards-summary {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .summary-header {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  .players-played {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .player-played {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .player-played.is-eliminated {
+    opacity: 0.6;
+  }
+
+  .player-name-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .played-cards {
+    display: flex;
+    gap: 0.2rem;
+  }
+
+  .mini-card {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 26px;
+    padding: 0 4px;
+    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
 </style>
