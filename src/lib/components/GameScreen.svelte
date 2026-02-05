@@ -10,6 +10,7 @@
   import EliminationModal from './EliminationModal.svelte';
   import ChancellorModal from './ChancellorModal.svelte';
   import DeckInfoModal from './DeckInfoModal.svelte';
+  import CountessRuleModal from './CountessRuleModal.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
@@ -33,6 +34,8 @@
   let effectAnimationTimeout: number | null = null;
   let prevActivePlayerIndex: number | undefined = undefined;
   let showDeckInfoModal = false;
+  let showCountessRuleModal = false;
+  let countessConflictCard: 'king' | 'prince' = 'king';
 
   /**
    * Format multiple names with proper Oxford comma grammar
@@ -195,6 +198,19 @@
     
     const card = getCardDefinition(cardId);
     if (!card) return;
+
+    // Check Countess rule: if holding Countess + King or Prince, must play Countess
+    const hand = localPlayer?.hand || [];
+    const hasCountess = hand.includes('countess');
+    const hasKing = hand.includes('king');
+    const hasPrince = hand.includes('prince');
+    
+    if (hasCountess && (hasKing || hasPrince) && cardId !== 'countess') {
+      // Player is trying to play King or Prince while holding Countess - show modal
+      countessConflictCard = cardId === 'king' ? 'king' : 'prince';
+      showCountessRuleModal = true;
+      return;
+    }
 
     selectedCard = cardId;
     pendingCardId = cardId;
@@ -441,6 +457,14 @@
     <DeckInfoModal
       {gameState}
       onClose={() => showDeckInfoModal = false}
+    />
+  {/if}
+  
+  <!-- Countess rule modal - show when player tries to play King/Prince while holding Countess -->
+  {#if showCountessRuleModal}
+    <CountessRuleModal
+      conflictingCard={countessConflictCard}
+      onDismiss={() => showCountessRuleModal = false}
     />
   {/if}
 </div>
