@@ -2,6 +2,7 @@
   "cards": {
     "spy": { "id": "spy", "name": "Spy", "value": 0, "description": "Gain favor if you are the only one to play or discard a Spy.", "assetPath": "spy.webp", "effect": { "type": "SPY_BONUS", "requiresTargetPlayer": false } },
     "guard": { "id": "guard", "name": "Guard", "value": 1, "description": "Guess a player's card.", "assetPath": "guard.webp", "effect": { "type": "GUESS_CARD", "requiresTargetPlayer": true, "requiresTargetCardType": true } },
+    "tillbakakaka": { "id": "tillbakakaka", "name": "Guard (🍪)", "value": 1, "description": "Guess a player's card. If wrong, they get a revenge guess!", "assetPath": "guard.webp", "effect": { "type": "GUESS_CARD_REVENGE", "requiresTargetPlayer": true, "requiresTargetCardType": true } },
     "priest": { "id": "priest", "name": "Priest", "value": 2, "description": "Look at another hand.", "assetPath": "priest.webp", "effect": { "type": "SEE_HAND", "requiresTargetPlayer": true } },
     "baron": { "id": "baron", "name": "Baron", "value": 3, "description": "Compare hands; lower value is out.", "assetPath": "baron.webp", "effect": { "type": "COMPARE_HANDS", "requiresTargetPlayer": true } },
     "handmaid": { "id": "handmaid", "name": "Handmaid", "value": 4, "description": "Immune until next turn.", "assetPath": "handmaid.webp", "effect": { "type": "PROTECTION", "requiresTargetPlayer": false } },
@@ -25,6 +26,19 @@
     "2019": {
       "spy": 2,
       "guard": 6,
+      "priest": 2,
+      "baron": 2,
+      "handmaid": 2,
+      "prince": 2,
+      "chancellor": 2,
+      "king": 1,
+      "countess": 1,
+      "princess": 1
+    },
+    "house": {
+      "spy": 2,
+      "guard": 4,
+      "tillbakakaka": 2,
       "priest": 2,
       "baron": 2,
       "handmaid": 2,

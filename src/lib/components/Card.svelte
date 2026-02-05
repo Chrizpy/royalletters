@@ -17,6 +17,7 @@
     const colors: Record<string, string> = {
       'spy': '#2c3e50',
       'guard': '#e74c3c',
+      'tillbakakaka': '#e74c3c',
       'priest': '#9b59b6',
       'baron': '#3498db',
       'handmaid': '#1abc9c',
@@ -32,7 +33,8 @@
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
       'spy': '🕵️',
-      'guard': '⚔️',
+      'guard': '⚔️',      
+      'tillbakakaka': '⚔️',      
       'priest': '🙏',
       'baron': '⚖️',
       'handmaid': '🛡️',

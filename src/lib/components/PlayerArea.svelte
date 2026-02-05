@@ -17,6 +17,7 @@
     const colors: Record<string, string> = {
       'spy': '#2c3e50',
       'guard': '#e74c3c',
+      'tillbakakaka': '#e74c3c',
       'priest': '#9b59b6',
       'baron': '#3498db',
       'handmaid': '#1abc9c',
@@ -91,7 +92,7 @@
           title={getCardDefinition(cardId)?.name}
           style="--card-color: {getCardColor(cardId)}; --stack-index: {index};"
         >
-          {getCardDefinition(cardId)?.value}
+          {getCardDefinition(cardId)?.value}{#if cardId === 'tillbakakaka'}🍪{/if}
         </span>
       {/each}
     </div>

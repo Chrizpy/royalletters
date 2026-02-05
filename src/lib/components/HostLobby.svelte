@@ -32,8 +32,8 @@
     6: 3,
   };
 
-  // Max players depends on ruleset: classic = 4, 2019 = 6
-  $: maxPlayers = selectedRuleset === '2019' ? 6 : 4;
+  // Max players depends on ruleset: classic = 4, 2019/house = 6
+  $: maxPlayers = (selectedRuleset === '2019' || selectedRuleset === 'house') ? 6 : 4;
   
   // Total players including host
   $: totalPlayers = players.length + 1;
@@ -133,8 +133,16 @@
     } else if (message.type === 'PLAYER_ACTION') {
       const payload = message.payload as PlayerActionPayload;
       
+      // Check if this is a revenge guess action
+      if (payload.isRevengeGuess) {
+        applyAction({
+          type: 'REVENGE_GUESS',
+          playerId: message.senderId,
+          targetCardGuess: payload.targetCardGuess
+        });
+      }
       // Check if this is a Chancellor return action
-      if (payload.cardsToReturn) {
+      else if (payload.cardsToReturn) {
         applyAction({
           type: 'CHANCELLOR_RETURN',
           playerId: message.senderId,
@@ -273,6 +281,21 @@
     scheduleAIMove();
   }
 
+  function handleRevengeGuess(targetCardGuess: string) {
+    // Host applies revenge guess action directly
+    applyAction({
+      type: 'REVENGE_GUESS',
+      playerId: generatedPeerId,
+      targetCardGuess
+    });
+    
+    // Broadcast updated state to all clients
+    broadcastGameState();
+    
+    // Check if next turn is AI
+    scheduleAIMove();
+  }
+
   function handleStartRound() {
     startRound();
     broadcastGameState();
@@ -349,6 +372,7 @@
     localPlayerId={generatedPeerId}
     onPlayCard={handlePlayCard}
     onChancellorReturn={handleChancellorReturn}
+    onRevengeGuess={handleRevengeGuess}
     onStartRound={handleStartRound}
     onPlayAgain={handlePlayAgain}
     onSendChat={handleSendChat}
@@ -384,10 +408,13 @@
           >
             <option value="classic">Classic (16 cards)</option>
             <option value="2019">2019 Edition (21 cards)</option>
+            <option value="house">House Rules (21 cards)</option>
           </select>
           <p class="ruleset-hint">
             {#if selectedRuleset === '2019'}
               Includes Spy and Chancellor cards with new mechanics!
+            {:else if selectedRuleset === 'house'}
+              2019 Edition with custom rules: King swaps with burned card when no targets!
             {:else}
               The original Love Letter experience.
             {/if}

@@ -705,8 +705,63 @@ describe('Card Effect Tests', () => {
       expect(newState.players[1].hand).toHaveLength(0);
     });
 
-    it('should swap with burned card when all other players are protected', () => {
+    it('should fizzle when all other players are protected (2019 ruleset)', () => {
       const state = game.getState();
+      state.ruleset = '2019';
+      state.players[0].hand = ['king', 'guard'];
+      state.players[1].hand = ['baron'];
+      state.players[1].status = 'PROTECTED';
+      state.burnedCard = 'chancellor';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        // No targetPlayerId - no valid targets
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('no effect');
+      // Alice should still have her guard, burned card unchanged
+      expect(newState.players[0].hand).toContain('guard');
+      expect(newState.burnedCard).toBe('chancellor');
+      // Bob's hand should be unchanged
+      expect(newState.players[1].hand).toContain('baron');
+    });
+
+    it('should fizzle when all other players are eliminated (2019 ruleset)', () => {
+      const state = game.getState();
+      state.ruleset = '2019';
+      state.players[0].hand = ['king', 'priest'];
+      state.players[1].hand = [];
+      state.players[1].status = 'ELIMINATED';
+      state.burnedCard = 'princess';
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'king',
+        // No targetPlayerId - no valid targets
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('no effect');
+      // Alice should still have her priest, burned card unchanged
+      expect(newState.players[0].hand).toContain('priest');
+      expect(newState.burnedCard).toBe('princess');
+    });
+
+    it('should swap with burned card when all other players are protected (house ruleset)', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
       state.players[0].hand = ['king', 'guard'];
       state.players[1].hand = ['baron'];
       state.players[1].status = 'PROTECTED';
@@ -732,8 +787,9 @@ describe('Card Effect Tests', () => {
       expect(newState.players[1].hand).toContain('baron');
     });
 
-    it('should swap with burned card when all other players are eliminated', () => {
+    it('should swap with burned card when all other players are eliminated (house ruleset)', () => {
       const state = game.getState();
+      state.ruleset = 'house';
       state.players[0].hand = ['king', 'priest'];
       state.players[1].hand = [];
       state.players[1].status = 'ELIMINATED';
@@ -755,6 +811,187 @@ describe('Card Effect Tests', () => {
       // Alice should now have the burned card (princess), burned card should be her old card (priest)
       expect(newState.players[0].hand).toContain('princess');
       expect(newState.burnedCard).toBe('priest');
+    });
+  });
+
+  describe('Tillbakakaka (Guard 🍪) Tests', () => {
+    it('should eliminate target on correct guess (no revenge)', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.players[0].hand = ['tillbakakaka', 'priest'];
+      state.players[1].hand = ['baron'];
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'tillbakakaka',
+        targetPlayerId: 'p2',
+        targetCardGuess: 'baron',
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('eliminated');
+      expect(newState.players[1].status).toBe('ELIMINATED');
+      // No revenge phase should be entered
+      expect(newState.phase).not.toBe('WAITING_FOR_REVENGE_GUESS');
+    });
+
+    it('should enter revenge phase on incorrect guess', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.players[0].hand = ['tillbakakaka', 'priest'];
+      state.players[1].hand = ['baron'];
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'tillbakakaka',
+        targetPlayerId: 'p2',
+        targetCardGuess: 'princess',  // Wrong guess
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('revenge');
+      expect(newState.phase).toBe('WAITING_FOR_REVENGE_GUESS');
+      expect(newState.revengeGuess).toBeDefined();
+      expect(newState.revengeGuess?.revengerId).toBe('p2');
+      expect(newState.revengeGuess?.targetId).toBe('p1');
+    });
+
+    it('should eliminate original guesser on correct revenge guess', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.phase = 'WAITING_FOR_REVENGE_GUESS';
+      state.players[0].hand = ['priest'];  // Alice has priest after playing tillbakakaka
+      state.players[1].hand = ['baron'];
+      state.revengeGuess = {
+        revengerId: 'p2',
+        targetId: 'p1',
+      };
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'REVENGE_GUESS',
+        playerId: 'p2',
+        targetCardGuess: 'priest',  // Correct revenge guess
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('eliminated');
+      expect(newState.players[0].status).toBe('ELIMINATED');
+      expect(newState.phase).not.toBe('WAITING_FOR_REVENGE_GUESS');
+      expect(newState.revengeGuess).toBeUndefined();
+    });
+
+    it('should not eliminate anyone on incorrect revenge guess', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.phase = 'WAITING_FOR_REVENGE_GUESS';
+      state.players[0].hand = ['priest'];
+      state.players[1].hand = ['baron'];
+      state.revengeGuess = {
+        revengerId: 'p2',
+        targetId: 'p1',
+      };
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'REVENGE_GUESS',
+        playerId: 'p2',
+        targetCardGuess: 'princess',  // Wrong revenge guess
+      };
+
+      const result = game.applyMove(action);
+      const newState = result.newState;
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('incorrect');
+      expect(newState.players[0].status).toBe('PLAYING');
+      expect(newState.players[1].status).toBe('PLAYING');
+      expect(newState.phase).not.toBe('WAITING_FOR_REVENGE_GUESS');
+    });
+
+    it('should not allow guessing guard on revenge', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.phase = 'WAITING_FOR_REVENGE_GUESS';
+      state.players[0].hand = ['guard'];
+      state.players[1].hand = ['baron'];
+      state.revengeGuess = {
+        revengerId: 'p2',
+        targetId: 'p1',
+      };
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'REVENGE_GUESS',
+        playerId: 'p2',
+        targetCardGuess: 'guard',
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Cannot guess Guard');
+    });
+
+    it('should not allow guessing tillbakakaka on revenge', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.phase = 'WAITING_FOR_REVENGE_GUESS';
+      state.players[0].hand = ['tillbakakaka'];
+      state.players[1].hand = ['baron'];
+      state.revengeGuess = {
+        revengerId: 'p2',
+        targetId: 'p1',
+      };
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'REVENGE_GUESS',
+        playerId: 'p2',
+        targetCardGuess: 'tillbakakaka',
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Cannot guess Guard');
+    });
+
+    it('should not allow wrong player to make revenge guess', () => {
+      const state = game.getState();
+      state.ruleset = 'house';
+      state.phase = 'WAITING_FOR_REVENGE_GUESS';
+      state.players[0].hand = ['priest'];
+      state.players[1].hand = ['baron'];
+      state.revengeGuess = {
+        revengerId: 'p2',
+        targetId: 'p1',
+      };
+      game.setState(state);
+
+      const action: GameAction = {
+        type: 'REVENGE_GUESS',
+        playerId: 'p1',  // Wrong player - should be p2
+        targetCardGuess: 'baron',
+      };
+
+      const result = game.applyMove(action);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('Not your revenge guess');
     });
   });
 

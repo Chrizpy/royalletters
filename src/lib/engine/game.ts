@@ -269,8 +269,9 @@ export class GameEngine {
       }
     }
 
-    // Guard-specific validation: cannot guess Guard (but CAN guess Spy in 2019 rules)
-    if (action.cardId === 'guard' && action.targetCardGuess === 'guard') {
+    // Guard-specific validation: cannot guess Guard or tillbakakaka (but CAN guess Spy in 2019 rules)
+    if ((action.cardId === 'guard' || action.cardId === 'tillbakakaka') && 
+        (action.targetCardGuess === 'guard' || action.targetCardGuess === 'tillbakakaka')) {
       return { valid: false, error: 'Cannot guess Guard' };
     }
 
@@ -325,6 +326,11 @@ export class GameEngine {
       return this.applyChancellorReturn(action);
     }
     
+    // Handle Revenge guess action (tillbakakaka)
+    if (action.type === 'REVENGE_GUESS') {
+      return this.applyRevengeGuess(action);
+    }
+    
     const validation = this.validateMove(action.playerId, action);
     if (!validation.valid) {
       return {
@@ -364,11 +370,11 @@ export class GameEngine {
 
     // Check if card requires target but no target was provided (all players protected/eliminated)
     if (cardDef.effect.requiresTargetPlayer && !action.targetPlayerId) {
-      // Special case: King (TRADE_HANDS) swaps with the burned card when no valid targets
-      if (cardDef.effect.type === 'TRADE_HANDS' && this.state.burnedCard) {
+      // House rules: King swaps with burned card when no valid targets
+      if (cardDef.effect.type === 'TRADE_HANDS' && this.state.ruleset === 'house' && this.state.burnedCard) {
         result = this.applyTradeWithBurnedCard(activePlayer);
       } else {
-        // Other cards with no valid targets have no effect
+        // Card fizzles - no valid targets available
         this.addLog(`${cardDef.name} had no effect (no valid targets)`, activePlayer.id);
         result = {
           success: true,
@@ -381,6 +387,13 @@ export class GameEngine {
       switch (cardDef.effect.type) {
         case 'GUESS_CARD':
           result = this.applyGuessCard(action, activePlayer);
+          break;
+        case 'GUESS_CARD_REVENGE':
+          result = this.applyGuessCardRevenge(action, activePlayer);
+          // If revenge phase started, don't advance turn yet
+          if (this.state.phase === 'WAITING_FOR_REVENGE_GUESS') {
+            return result;
+          }
           break;
         case 'SEE_HAND':
           result = this.applySeeHand(action, activePlayer);
@@ -447,6 +460,127 @@ export class GameEngine {
       return {
         success: true,
         message: 'Incorrect guess',
+        newState: this.state,
+      };
+    }
+  }
+
+  private applyGuessCardRevenge(action: GameAction, activePlayer: PlayerState): ActionResult {
+    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
+    const guess = action.targetCardGuess!;
+
+    if (targetPlayer.hand.includes(guess)) {
+      const guessCardDef = getCardDefinition(guess);
+      const guessName = guessCardDef?.name || guess;
+      // Correct guess - eliminate target (no revenge)
+      while (targetPlayer.hand.length > 0) {
+        const card = targetPlayer.hand.shift()!;
+        targetPlayer.discardPile.push(card);
+      }
+      targetPlayer.status = 'ELIMINATED';
+      targetPlayer.eliminationReason = `${activePlayer.name} correctly guessed you had ${guessName} (with Guard 🍪)`;
+      this.addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, targetPlayer.id);
+      return {
+        success: true,
+        message: `Correct guess! ${targetPlayer.name} is eliminated`,
+        eliminatedPlayerId: targetPlayer.id,
+        newState: this.state,
+      };
+    } else {
+      // Incorrect guess - target gets a revenge guess!
+      const guessCardDef = getCardDefinition(guess);
+      const guessName = guessCardDef?.name || guess;
+      this.addLog(`${activePlayer.name} guessed ${targetPlayer.name} had ${guessName} (incorrectly) - 🍪 revenge time!`, activePlayer.id);
+      
+      // Set up revenge guess state
+      this.state.revengeGuess = {
+        revengerId: targetPlayer.id,
+        targetId: activePlayer.id,
+      };
+      this.state.phase = 'WAITING_FOR_REVENGE_GUESS';
+      
+      return {
+        success: true,
+        message: `Incorrect guess! ${targetPlayer.name} gets a revenge guess!`,
+        newState: this.state,
+      };
+    }
+  }
+
+  private applyRevengeGuess(action: GameAction): ActionResult {
+    // Validate revenge guess
+    if (this.state.phase !== 'WAITING_FOR_REVENGE_GUESS') {
+      return {
+        success: false,
+        message: 'Not in revenge guess phase',
+        newState: this.state,
+      };
+    }
+
+    if (!this.state.revengeGuess) {
+      return {
+        success: false,
+        message: 'No revenge guess pending',
+        newState: this.state,
+      };
+    }
+
+    if (action.playerId !== this.state.revengeGuess.revengerId) {
+      return {
+        success: false,
+        message: 'Not your revenge guess',
+        newState: this.state,
+      };
+    }
+
+    // Cannot guess guard or tillbakakaka on revenge
+    if (action.targetCardGuess === 'guard' || action.targetCardGuess === 'tillbakakaka') {
+      return {
+        success: false,
+        message: 'Cannot guess Guard',
+        newState: this.state,
+      };
+    }
+
+    const revenger = this.state.players.find(p => p.id === this.state.revengeGuess!.revengerId)!;
+    const target = this.state.players.find(p => p.id === this.state.revengeGuess!.targetId)!;
+    const guess = action.targetCardGuess!;
+
+    // Clear revenge state
+    this.state.revengeGuess = undefined;
+
+    if (target.hand.includes(guess)) {
+      const guessCardDef = getCardDefinition(guess);
+      const guessName = guessCardDef?.name || guess;
+      // Correct revenge guess - eliminate the original guesser!
+      while (target.hand.length > 0) {
+        const card = target.hand.shift()!;
+        target.discardPile.push(card);
+      }
+      target.status = 'ELIMINATED';
+      target.eliminationReason = `${revenger.name}'s revenge guess correctly identified you had ${guessName}`;
+      this.addLog(`🍪 Revenge! ${revenger.name} correctly guessed ${target.name} had ${guessName}`, revenger.id);
+      
+      // Advance turn
+      this.advanceTurn();
+      
+      return {
+        success: true,
+        message: `Revenge successful! ${target.name} is eliminated`,
+        eliminatedPlayerId: target.id,
+        newState: this.state,
+      };
+    } else {
+      const guessCardDef = getCardDefinition(guess);
+      const guessName = guessCardDef?.name || guess;
+      this.addLog(`🍪 ${revenger.name}'s revenge guess of ${guessName} was incorrect`, revenger.id);
+      
+      // Advance turn
+      this.advanceTurn();
+      
+      return {
+        success: true,
+        message: 'Revenge guess incorrect',
         newState: this.state,
       };
     }

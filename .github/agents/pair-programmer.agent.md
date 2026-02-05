@@ -1,7 +1,6 @@
 ---
 description: "Collaborative pair programmer that plans, implements, and reviews changes with clear checkpoints."
-tools:
-  ["editFiles", "readFile", "listFiles", "runTerminalCommand", "searchCodebase"]
+tools: ["execute", "read/readFile", "edit/editFiles"]
 ---
 
 ## Purpose

@@ -19,6 +19,7 @@
   export let localPlayerId: string;
   export let onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
   export let onChancellorReturn: ((cardsToReturn: string[]) => void) | undefined = undefined;
+  export let onRevengeGuess: ((targetCardGuess: string) => void) | undefined = undefined;
   export let onStartRound: () => void;
   export let onPlayAgain: (() => void) | undefined = undefined;
   export let isHost: boolean = false;
@@ -116,6 +117,9 @@
   $: validTargetIds = new Set(getValidTargets().map(t => t.id));
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
+  $: isRevengePhase = gameState?.phase === 'WAITING_FOR_REVENGE_GUESS';
+  $: isMyRevengeGuess = isRevengePhase && gameState?.revengeGuess?.revengerId === localPlayerId;
+  $: revengeTargetPlayer = isRevengePhase ? gameState?.players.find(p => p.id === gameState?.revengeGuess?.targetId) : null;
   $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
   // During Chancellor resolution, display the deck count as it will be after cards are returned
   // (current deck + cards to be returned, which is hand.length - 1 since player keeps 1 card)
@@ -249,6 +253,12 @@
     playCardWithSelection(pendingCardId!, pendingTargetId!, cardGuess);
   }
 
+  function selectRevengeGuess(cardGuess: string) {
+    if (onRevengeGuess) {
+      onRevengeGuess(cardGuess);
+    }
+  }
+
   function playCardWithSelection(cardId: string, targetId?: string, guess?: string) {
     onPlayCard(cardId, targetId, guess);
     resetSelection();
@@ -304,7 +314,7 @@
     <div class="round-info">
       Round {gameState.roundCount} · {tokensToWin} tokens to win
     </div>
-    <div class="turn-indicator" class:my-turn={isMyTurn}>
+    <div class="turn-indicator" class:my-turn={isMyTurn || isMyRevengeGuess}>
       {#if gameState.phase === 'GAME_END'}
         🎉 Game Over!
       {:else if gameState.phase === 'ROUND_END'}
@@ -314,6 +324,12 @@
           📜 Select 2 cards to return
         {:else}
           {activePlayer?.name} is using Chancellor
+        {/if}
+      {:else if gameState.phase === 'WAITING_FOR_REVENGE_GUESS'}
+        {#if isMyRevengeGuess}
+          🍪 Revenge! Guess {revengeTargetPlayer?.name}'s card!
+        {:else}
+          🍪 {gameState.players.find(p => p.id === gameState.revengeGuess?.revengerId)?.name} gets a revenge guess!
         {/if}
       {:else if isMyTurn}
         Your Turn
@@ -397,6 +413,17 @@
       <GuessSelector 
         onSelect={selectGuess}
         onCancel={cancelSelection}
+      />
+    {/if}
+
+    {#if isMyRevengeGuess}
+      <GuessSelector 
+        onSelect={selectRevengeGuess}
+        onCancel={() => {}}
+        title="🍪 Revenge Guess!"
+        subtitle="The Guard (🍪) missed - now guess {revengeTargetPlayer?.name}'s card!"
+        showCancel={false}
+        headerStyle="revenge"
       />
     {/if}
   </div>

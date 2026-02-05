@@ -5,6 +5,11 @@
 
   export let onSelect: (cardGuess: string) => void;
   export let onCancel: () => void;
+  export let title: string = 'Guess their card!';
+  export let subtitle: string = 'Which card do you think they have?';
+  export let showCancel: boolean = true;
+  export let headerIcon: string = '';
+  export let headerStyle: 'default' | 'revenge' = 'default';
   
   // Type for the new card data structure
   interface CardRegistry {
@@ -18,11 +23,11 @@
   // Get current ruleset from game state
   $: ruleset = $gameState?.ruleset || 'classic';
   
-  // Get cards available in current deck, excluding Guard (can't guess Guard, but CAN guess Spy)
+  // Get cards available in current deck, excluding Guard and tillbakakaka (can't guess Guard, but CAN guess Spy)
   $: guessableCards = Object.values(registry.cards)
     .filter(card => {
-      // Can't guess Guard
-      if (card.id === 'guard') return false;
+      // Can't guess Guard or tillbakakaka
+      if (card.id === 'guard' || card.id === 'tillbakakaka') return false;
       // Only include cards that are in the current deck
       const deckDef = registry.decks[ruleset];
       return deckDef && deckDef[card.id] !== undefined;
@@ -67,10 +72,13 @@
   }
 </script>
 
-<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={onCancel} on:keydown={(e) => e.key === 'Escape' && onCancel()}>
-  <div class="guess-selector" on:click|stopPropagation>
-    <h3>Guess their card!</h3>
-    <p class="subtitle">Which card do you think they have?</p>
+<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={showCancel ? onCancel : undefined} on:keydown={(e) => e.key === 'Escape' && showCancel && onCancel()}>
+  <div class="guess-selector" class:revenge-style={headerStyle === 'revenge'} on:click|stopPropagation>
+    {#if headerIcon}
+      <div class="header-icon">{headerIcon}</div>
+    {/if}
+    <h3 class:revenge-title={headerStyle === 'revenge'}>{title}</h3>
+    <p class="subtitle">{subtitle}</p>
     
     <div class="card-grid">
       {#each guessableCards as card}
@@ -86,7 +94,9 @@
       {/each}
     </div>
 
-    <button class="cancel-btn" on:click={onCancel}>Cancel</button>
+    {#if showCancel}
+      <button class="cancel-btn" on:click={onCancel}>Cancel</button>
+    {/if}
   </div>
 </div>
 
@@ -123,11 +133,33 @@
     to { transform: scale(1); opacity: 1; }
   }
 
+  .header-icon {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+  }
+
   h3 {
     text-align: center;
     margin: 0 0 0.5rem 0;
     color: white;
     font-size: 1.4rem;
+  }
+
+  h3.revenge-title {
+    font-size: 1.6rem;
+    color: #ff6b6b;
+  }
+
+  .guess-selector.revenge-style {
+    border-color: #e74c3c;
+    box-shadow: 0 0 30px rgba(231, 76, 60, 0.4);
+    animation: modal-pop 0.3s ease-out, revenge-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes revenge-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.4); }
+    50% { box-shadow: 0 0 40px rgba(231, 76, 60, 0.7); }
   }
 
   .subtitle {

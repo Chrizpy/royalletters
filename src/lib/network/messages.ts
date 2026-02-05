@@ -41,6 +41,7 @@ export interface PlayerActionPayload {
   targetPlayerId?: string;
   targetCardGuess?: string;
   cardsToReturn?: string[];  // For Chancellor effect
+  isRevengeGuess?: boolean;  // For tillbakakaka revenge guess
 }
 
 export interface RoundStartPayload {

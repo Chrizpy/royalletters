@@ -1,6 +1,6 @@
-export type EffectType = 'GUESS_CARD' | 'SEE_HAND' | 'COMPARE_HANDS' | 'PROTECTION' | 'FORCE_DISCARD' | 'TRADE_HANDS' | 'CONDITIONAL_DISCARD' | 'LOSE_IF_DISCARDED' | 'SPY_BONUS' | 'CHANCELLOR_DRAW';
+export type EffectType = 'GUESS_CARD' | 'GUESS_CARD_REVENGE' | 'SEE_HAND' | 'COMPARE_HANDS' | 'PROTECTION' | 'FORCE_DISCARD' | 'TRADE_HANDS' | 'CONDITIONAL_DISCARD' | 'LOSE_IF_DISCARDED' | 'SPY_BONUS' | 'CHANCELLOR_DRAW';
 
-export type Ruleset = 'classic' | '2019';
+export type Ruleset = 'classic' | '2019' | 'house';
 
 export interface CardEffect {
   type: EffectType;
@@ -36,7 +36,7 @@ export interface PlayerState {
   eliminationReason?: string;  // Reason why the player was eliminated
 }
 
-export type GamePhase = 'LOBBY' | 'ROUND_START' | 'TURN_START' | 'WAITING_FOR_ACTION' | 'WAITING_FOR_TARGET' | 'RESOLVING_ACTION' | 'CHANCELLOR_RESOLVING' | 'ROUND_END' | 'GAME_END';
+export type GamePhase = 'LOBBY' | 'ROUND_START' | 'TURN_START' | 'WAITING_FOR_ACTION' | 'WAITING_FOR_TARGET' | 'RESOLVING_ACTION' | 'CHANCELLOR_RESOLVING' | 'WAITING_FOR_REVENGE_GUESS' | 'ROUND_END' | 'GAME_END';
 
 export interface LogEntry {
   timestamp: number;
@@ -67,10 +67,14 @@ export interface GameState {
   ruleset: Ruleset;
   tokensToWin: number;  // Number of favour tokens needed to win the game
   chancellorCards?: string[];  // Cards drawn for Chancellor effect, waiting for player to select which to return
+  revengeGuess?: {  // For tillbakakaka (cookie guard) revenge mechanic
+    revengerId: string;  // Player who gets to make the revenge guess
+    targetId: string;    // Player who played tillbakakaka (target of revenge)
+  };
 }
 
 export interface GameAction {
-  type: 'PLAY_CARD' | 'CHANCELLOR_RETURN';
+  type: 'PLAY_CARD' | 'CHANCELLOR_RETURN' | 'REVENGE_GUESS';
   playerId: string;
   cardId?: string;
   targetPlayerId?: string;

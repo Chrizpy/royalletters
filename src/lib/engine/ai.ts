@@ -23,12 +23,12 @@ function getValidTargets(
 }
 
 /**
- * Get possible card guesses for Guard (excludes Guard itself, and Spy if classic ruleset)
+ * Get possible card guesses for Guard (excludes Guard and tillbakakaka, and Spy if classic ruleset)
  */
 function getPossibleGuesses(ruleset: Ruleset): string[] {
   const guesses = ['priest', 'baron', 'handmaid', 'prince', 'king', 'countess', 'princess'];
-  if (ruleset === '2019') {
-    // In 2019 edition, can also guess Spy and Chancellor
+  if (ruleset === '2019' || ruleset === 'house') {
+    // In 2019/house edition, can also guess Spy and Chancellor
     guesses.push('spy', 'chancellor');
   }
   return guesses;
@@ -60,9 +60,10 @@ function chooseGuardGuess(
   }
   
   // Get deck composition for the ruleset
-  const deckComposition = state.ruleset === '2019' ? {
+  const deckComposition = (state.ruleset === '2019' || state.ruleset === 'house') ? {
     spy: 2,
-    guard: 6,
+    guard: state.ruleset === 'house' ? 4 : 6,
+    tillbakakaka: state.ruleset === 'house' ? 2 : 0,
     priest: 2,
     baron: 2,
     handmaid: 2,
@@ -201,6 +202,11 @@ export function decideAIMove(state: GameState, playerId: string): GameAction | n
     return decideChancellorReturn(state, playerId);
   }
   
+  // Handle revenge guess phase (tillbakakaka)
+  if (state.phase === 'WAITING_FOR_REVENGE_GUESS') {
+    return decideRevengeGuess(state, playerId);
+  }
+  
   if (state.phase !== 'WAITING_FOR_ACTION') {
     return null;
   }
@@ -215,7 +221,7 @@ export function decideAIMove(state: GameState, playerId: string): GameAction | n
   // Choose target if needed
   const targetPlayerId = chooseTarget(state, playerId, cardToPlay);
   
-  // Choose card guess for Guard
+  // Choose card guess for Guard or tillbakakaka
   let targetCardGuess: string | undefined;
   const cardDef = getCardDefinition(cardToPlay);
   if (cardDef?.effect.requiresTargetCardType && targetPlayerId) {
@@ -265,17 +271,56 @@ function decideChancellorReturn(state: GameState, playerId: string): GameAction 
 }
 
 /**
- * Check if the active player is an AI
+ * Decide what card to guess for revenge (tillbakakaka effect)
+ */
+function decideRevengeGuess(state: GameState, playerId: string): GameAction | null {
+  // Check if this player is the one who should make the revenge guess
+  if (!state.revengeGuess || state.revengeGuess.revengerId !== playerId) {
+    return null;
+  }
+  
+  const targetPlayer = state.players.find(p => p.id === state.revengeGuess!.targetId);
+  if (!targetPlayer) {
+    return null;
+  }
+  
+  // Use the same logic as Guard guess
+  const guess = chooseGuardGuess(state, targetPlayer);
+  
+  return {
+    type: 'REVENGE_GUESS',
+    playerId,
+    targetCardGuess: guess,
+  };
+}
+
+/**
+ * Check if the active player is an AI (or in revenge phase, if the revenger is AI)
  */
 export function isActivePlayerAI(state: GameState): boolean {
+  // In revenge phase, the "active" player is the revenger
+  if (state.phase === 'WAITING_FOR_REVENGE_GUESS' && state.revengeGuess) {
+    const revenger = state.players.find(p => p.id === state.revengeGuess!.revengerId);
+    return revenger?.isAI === true;
+  }
+  
   const activePlayer = state.players[state.activePlayerIndex];
   return activePlayer?.isAI === true;
 }
 
 /**
- * Get the active AI player's ID if it's an AI's turn
+ * Get the active AI player's ID if it's an AI's turn (or revenge turn)
  */
 export function getActiveAIPlayerId(state: GameState): string | null {
+  // In revenge phase, the "active" player is the revenger
+  if (state.phase === 'WAITING_FOR_REVENGE_GUESS' && state.revengeGuess) {
+    const revenger = state.players.find(p => p.id === state.revengeGuess!.revengerId);
+    if (revenger?.isAI) {
+      return revenger.id;
+    }
+    return null;
+  }
+  
   const activePlayer = state.players[state.activePlayerIndex];
   if (activePlayer?.isAI) {
     return activePlayer.id;
