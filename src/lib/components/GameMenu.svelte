@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { LogEntry, PlayerState } from '../types';
   import type { ChatMessage } from '../stores/chat';
-  import { chatMessages } from '../stores/chat';
+  import { chatMessages, unreadChatCount, clearUnreadChatCount } from '../stores/chat';
 
   const SCROLL_DELAY_MS = 100;
   
@@ -20,8 +20,11 @@
   let chatInput = '';
   let hasScrolledLogOnOpen = false;
   let hasScrolledChatOnOpen = false;
+  let lastSeenLogCount = 0;
 
   $: messages = $chatMessages;
+  $: unreadChats = $unreadChatCount;
+  $: unreadLogs = logs.length - lastSeenLogCount;
   $: isChatInputEmpty = !chatInput.trim();
 
   // Only scroll to bottom when the log modal is first opened
@@ -47,11 +50,13 @@
   function openModal(type: 'log' | 'chat') {
     activeModal = type;
     isMenuOpen = false;
-    // Reset scroll flags when opening modals
+    // Reset scroll flags when opening modals and clear unread counts
     if (type === 'log') {
       hasScrolledLogOnOpen = false;
+      lastSeenLogCount = logs.length;
     } else if (type === 'chat') {
       hasScrolledChatOnOpen = false;
+      clearUnreadChatCount();
     }
   }
 
@@ -122,15 +127,15 @@
       <button class="mini-fab chat-fab" on:click={() => openModal('chat')} aria-label="Open chat">
         <span class="mini-fab-icon">💬</span>
         <span class="tooltip">Chat</span>
-        {#if messages.length > 0}
-          <span class="mini-badge">{messages.length}</span>
+        {#if unreadChats > 0}
+          <span class="mini-badge">{unreadChats}</span>
         {/if}
       </button>
       <button class="mini-fab log-fab-mini" on:click={() => openModal('log')} aria-label="Open game log">
         <span class="mini-fab-icon">📜</span>
         <span class="tooltip">Log</span>
-        {#if logs.length > 0}
-          <span class="mini-badge">{logs.length}</span>
+        {#if unreadLogs > 0}
+          <span class="mini-badge">{unreadLogs}</span>
         {/if}
       </button>
     </div>
