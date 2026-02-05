@@ -344,7 +344,17 @@ export class GameEngine {
       newState: this.state,
     };
 
-    this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
+    // Log the play with target if applicable
+    if (action.targetPlayerId) {
+      const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId);
+      if (targetPlayer) {
+        this.addLog(`${activePlayer.name} played ${cardDef.name} on ${targetPlayer.name}`, activePlayer.id, action.cardId);
+      } else {
+        this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
+      }
+    } else {
+      this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
+    }
 
     // Check if card requires target but no target was provided (all players protected/eliminated)
     if (cardDef.effect.requiresTargetPlayer && !action.targetPlayerId) {
@@ -513,7 +523,7 @@ export class GameEngine {
 
   private applyProtection(activePlayer: PlayerState): ActionResult {
     activePlayer.status = 'PROTECTED';
-    this.addLog(`${activePlayer.name} is protected`, activePlayer.id);
+    // No separate log needed - "played Handmaid" already implies protection
     return {
       success: true,
       message: 'You are protected until your next turn',
@@ -805,15 +815,22 @@ export class GameEngine {
       // When there's a tie, the first winner in player order starts the next round
       this.state.lastRoundWinnerId = winners[0].id;
       
-      // Log appropriate message
+      // Log appropriate message with card info
       if (winners.length === 1) {
-        this.addLog(`${winners[0].name} won the round!`, winners[0].id);
+        const winningCard = winners[0].hand[0];
+        const cardDef = getCardDefinition(winningCard);
+        const cardInfo = cardDef ? `${cardDef.name} (${cardDef.value})` : winningCard;
+        this.addLog(`${winners[0].name} won with ${cardInfo}!`, winners[0].id);
       } else if (winners.length === 2) {
-        this.addLog(`${winners[0].name} and ${winners[1].name} tied and each receive a token!`);
+        const card1 = getCardDefinition(winners[0].hand[0]);
+        const cardInfo = card1 ? `${card1.name} (${card1.value})` : 'unknown';
+        this.addLog(`${winners[0].name} and ${winners[1].name} tied with ${cardInfo}!`);
       } else {
         const names = winners.map(w => w.name);
         const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
-        this.addLog(`${winnerNames} tied and each receive a token!`);
+        const card1 = getCardDefinition(winners[0].hand[0]);
+        const cardInfo = card1 ? `${card1.name} (${card1.value})` : 'unknown';
+        this.addLog(`${winnerNames} tied with ${cardInfo}!`);
       }
     }
     

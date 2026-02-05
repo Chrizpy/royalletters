@@ -85,16 +85,22 @@
       return ''; // Empty string signals this message should be filtered
     }
 
-    // Pattern: "Player was eliminated (reason)" -> check if it's from a guess (will be merged with Guard)
-    const elimMatch = message.match(/^(.+?) was eliminated \(had (.+?)\)$/);
-    if (elimMatch) {
+    // Pattern: "Player was eliminated (had X)" -> filter (will be merged with Guard play)
+    const elimGuardMatch = message.match(/^(.+?) was eliminated \(had (.+?)\)$/);
+    if (elimGuardMatch) {
       return ''; // Will be merged with Guard play
     }
     
-    // Pattern: "Player was eliminated (other reasons)" -> "Player eliminated"
+    // Pattern: "Player was eliminated (lower card)" -> filter (will be merged with Baron play)
+    const elimBaronMatch = message.match(/^(.+?) was eliminated \(lower card\)$/);
+    if (elimBaronMatch) {
+      return ''; // Will be merged with Baron play
+    }
+    
+    // Pattern: "Player was eliminated (other reasons)" -> "Player was eliminated"
     const elimOtherMatch = message.match(/^(.+?) was eliminated/);
     if (elimOtherMatch) {
-      return `${elimOtherMatch[1]} eliminated`;
+      return `${elimOtherMatch[1]} was eliminated`;
     }
 
     // Pattern: "Player guessed Target had CardName (incorrectly)" OR "Player guessed CardName (incorrectly)"
@@ -136,27 +142,29 @@
       return `${fizzleMatch[1]} fizzled`;
     }
 
-    // Pattern: "Player played Guard" - check next message for target
-    const guardMatch = message.match(/^(.+?) played Guard$/);
+    // Pattern: "Player played Guard on Target" - check next message for guess result
+    const guardMatch = message.match(/^(.+?) played Guard on (.+?)$/);
     if (guardMatch && nextMessage) {
-      // Check for guess with target (new format): "Player guessed Target had Card (incorrectly)"
-      const nextGuessWithTargetMatch = nextMessage.match(/^.+? guessed (.+?) had (.+?) \(incorrectly\)$/);
-      if (nextGuessWithTargetMatch) {
-        return `${guardMatch[1]} played Guard on ${nextGuessWithTargetMatch[1]} and guessed ${nextGuessWithTargetMatch[2]}`;
-      }
+      const player = guardMatch[1];
+      const target = guardMatch[2];
       
-      // Check for guess without target (old format): "Player guessed Card (incorrectly)"
-      const nextGuessMatch = nextMessage.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
+      // Check for incorrect guess
+      const nextGuessMatch = nextMessage.match(/guessed .+? had (.+?) \(incorrectly\)$/);
       if (nextGuessMatch) {
-        // Show without target since game logs don't provide it for incorrect guesses (old format)
-        return `${guardMatch[1]} played Guard and guessed ${nextGuessMatch[2]}`;
+        return `${player} played Guard on ${target}, guessed ${nextGuessMatch[1]}`;
       }
       
-      // Check for elimination (correct guess) - this has the target
-      const nextElimMatch = nextMessage.match(/^(.+?) was eliminated \(had (.+?)\)$/);
+      // Check for elimination (correct guess)
+      const nextElimMatch = nextMessage.match(/was eliminated \(had (.+?)\)$/);
       if (nextElimMatch) {
-        return `${guardMatch[1]} played Guard on ${nextElimMatch[1]} and guessed ${nextElimMatch[2]}`;
+        return `${player} played Guard on ${target}, guessed ${nextElimMatch[1]} ✓`;
       }
+    }
+    
+    // Fallback: Guard without target (all protected)
+    const guardNoTargetMatch = message.match(/^(.+?) played Guard$/);
+    if (guardNoTargetMatch) {
+      return message;
     }
     
     // Pattern: "Player played Spy" - check if this is a duplicate
@@ -170,47 +178,69 @@
       }
     }
 
-    // Pattern: "Player played Baron" - check next for result
-    const baronMatch = message.match(/^(.+?) played Baron$/);
+    // Pattern: "Player played Baron on Target" - check next for result
+    const baronMatch = message.match(/^(.+?) played Baron on (.+?)$/);
     if (baronMatch && nextMessage) {
+      const player = baronMatch[1];
+      const target = baronMatch[2];
       const elim = nextMessage.match(/^(.+?) was eliminated \(lower card\)$/);
       if (elim) {
-        if (elim[1] === baronMatch[1]) {
-          return `${baronMatch[1]} played Baron and lost`;
+        if (elim[1] === player) {
+          return `${player} played Baron on ${target} and lost`;
         } else {
-          return `${baronMatch[1]} played Baron on ${elim[1]} and won`;
+          return `${player} played Baron on ${target} and won`;
         }
       }
       if (nextMessage === 'Comparison was a tie') {
-        return `${baronMatch[1]} played Baron and tied`;
+        return `${player} played Baron on ${target} — tie`;
       }
     }
-
-    // Pattern: "Player played Priest" - extract target from saw message
-    const priestMatch = message.match(/^(.+?) played Priest$/);
-    if (priestMatch && nextMessage) {
-      const sawNext = nextMessage.match(/^.+? saw (.+?)'s hand$/);
-      if (sawNext) {
-        return `${priestMatch[1]} played Priest on ${sawNext[1]}`;
-      }
+    
+    // Fallback: Baron without target (all protected)
+    const baronNoTargetMatch = message.match(/^(.+?) played Baron$/);
+    if (baronNoTargetMatch) {
+      return message;
     }
 
-    // Pattern: "Player played King" - extract target from trade
-    const kingMatch = message.match(/^(.+?) played King$/);
-    if (kingMatch && nextMessage) {
-      const tradeNext = nextMessage.match(/^.+? and (.+?) traded hands$/);
-      if (tradeNext) {
-        return `${kingMatch[1]} ↔ ${tradeNext[1]}`;
-      }
+    // Pattern: "Player played Priest on Target" - already has target info
+    const priestMatch = message.match(/^(.+?) played Priest on (.+?)$/);
+    if (priestMatch) {
+      return `${priestMatch[1]} played Priest on ${priestMatch[2]}`;
+    }
+    
+    // Fallback: Priest without target (all protected)
+    const priestNoTargetMatch = message.match(/^(.+?) played Priest$/);
+    if (priestNoTargetMatch) {
+      return message;
     }
 
-    // Pattern: "Player played Prince" - extract target from discard
-    const princeMatch = message.match(/^(.+?) played Prince$/);
-    if (princeMatch && nextMessage) {
-      const discardNext = nextMessage.match(/^(.+?) discarded/);
-      if (discardNext) {
-        return `${princeMatch[1]} played Prince on ${discardNext[1]}`;
+    // Pattern: "Player played King on Target" - already has target info
+    const kingMatch = message.match(/^(.+?) played King on (.+?)$/);
+    if (kingMatch) {
+      return `${kingMatch[1]} ↔ ${kingMatch[2]}`;
+    }
+    
+    // Fallback: King without target (swapped with burned card or all protected)
+    const kingNoTargetMatch = message.match(/^(.+?) played King$/);
+    if (kingNoTargetMatch) {
+      return message;
+    }
+
+    // Pattern: "Player played Prince on Target" - handle self-target specially
+    const princeMatch = message.match(/^(.+?) played Prince on (.+?)$/);
+    if (princeMatch) {
+      const player = princeMatch[1];
+      const target = princeMatch[2];
+      if (player === target) {
+        return `${player} played Prince on self`;
       }
+      return `${player} played Prince on ${target}`;
+    }
+    
+    // Fallback: Prince without target (shouldn't happen, but handle gracefully)
+    const princeNoTargetMatch = message.match(/^(.+?) played Prince$/);
+    if (princeNoTargetMatch) {
+      return message;
     }
 
     // Pattern: "Player played Spy" - keep as-is (bonus message already filtered)
@@ -221,8 +251,8 @@
     // Patterns to keep as-is (already concise)
     const keepAsIsPatterns = [
       /played/,              // "Player played CardName" (for cards not handled above)
-      /is protected/,        // "Player is protected"
-      /won the round/,       // "Player won the round!"
+      /won with/,            // "Player won with Card (value)!"
+      /tied with/,           // "Player and Player tied with Card (value)!"
       /won the game/,        // "Player won the game!"
       /Round ended/          // "Round ended in a tie"
     ];
@@ -352,7 +382,7 @@
       class:self-action={item.actorId === localPlayerId}
     >
       {#if item.actorId === localPlayerId}
-        You {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "your ")}
+        You {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "your ").replace(/^was /, 'were ').replace(/^is /, 'are ')}
       {:else if getActorName(item.actorId)}
         <span class="actor-name" style="color: {getActorColor(item.actorId)}">{getActorName(item.actorId)}</span>: {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "'s ")}
       {:else}
