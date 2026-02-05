@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { LogEntry } from '../types';
+  import type { LogEntry, PlayerState } from '../types';
 
   interface FeedItem {
     id: number;
@@ -7,6 +7,7 @@
     timestamp: number;
     timeoutId: ReturnType<typeof setTimeout>;
     isFadingOut: boolean;
+    actorId?: string;
   }
 
   interface PendingItem {
@@ -15,6 +16,11 @@
   }
 
   export let logs: LogEntry[] = [];
+  export let players: PlayerState[] = [];
+  export let localPlayerId: string = '';
+  
+  // Color for the local player's actions (red to stand out)
+  const LOCAL_PLAYER_COLOR = '#FF4444';
 
   const FEED_DISPLAY_TIME_MS = 5000;
   const FADE_OUT_DURATION_MS = 1000;
@@ -26,6 +32,33 @@
   let nextId = 0;
   let lastLogCount = 0;
   let processingInterval: ReturnType<typeof setInterval> | null = null;
+
+  // Get player by ID
+  function getPlayer(playerId: string | undefined): PlayerState | undefined {
+    if (!playerId) return undefined;
+    return players.find(p => p.id === playerId);
+  }
+
+  // Get the display color for an actor
+  function getActorColor(actorId: string | undefined): string | null {
+    if (!actorId) return null;
+    
+    // If this is the local player's action, use red
+    if (actorId === localPlayerId) {
+      return LOCAL_PLAYER_COLOR;
+    }
+    
+    // Otherwise use the player's assigned color
+    const player = getPlayer(actorId);
+    return player?.color || null;
+  }
+
+  // Get the actor's name for display
+  function getActorName(actorId: string | undefined): string | null {
+    if (!actorId) return null;
+    const player = getPlayer(actorId);
+    return player?.name || null;
+  }
 
   // Filter function to exclude verbose messages
   function shouldShowInFeed(message: string): boolean {
@@ -237,7 +270,8 @@
           message: condensed,
           timestamp: Date.now(),
           timeoutId,
-          isFadingOut: false
+          isFadingOut: false,
+          actorId: current.log.actorId
         };
         feedItems = [...feedItems, item];
         
@@ -315,8 +349,15 @@
       class="feed-item" 
       class:fading={item.shouldFade}
       class:fade-out={item.isFadingOut}
+      class:self-action={item.actorId === localPlayerId}
     >
-      {item.message}
+      {#if item.actorId === localPlayerId}
+        You {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "your ")}
+      {:else if getActorName(item.actorId)}
+        <span class="actor-name" style="color: {getActorColor(item.actorId)}">{getActorName(item.actorId)}</span>: {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "'s ")}
+      {:else}
+        {item.message}
+      {/if}
     </div>
   {/each}
 </div>
@@ -355,6 +396,15 @@
   .feed-item.fade-out {
     opacity: 0 !important;
     transition: opacity 1s ease-out !important;
+  }
+
+  .actor-name {
+    font-weight: 700;
+  }
+
+  .feed-item.self-action {
+    color: #FF4444;
+    font-weight: 700;
   }
 
   @keyframes slide-in {

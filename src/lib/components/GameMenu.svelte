@@ -1,11 +1,16 @@
 <script lang="ts">
-  import type { LogEntry } from '../types';
+  import type { LogEntry, PlayerState } from '../types';
   import type { ChatMessage } from '../stores/chat';
   import { chatMessages } from '../stores/chat';
 
   const SCROLL_DELAY_MS = 100;
+  
+  // Color for the local player's actions (red to stand out)
+  const LOCAL_PLAYER_COLOR = '#FF4444';
 
   export let logs: LogEntry[] = [];
+  export let players: PlayerState[] = [];
+  export let localPlayerId: string = '';
   export let onSendChat: ((text: string) => void) | undefined = undefined;
   
   let isMenuOpen = false;
@@ -57,6 +62,33 @@
   function formatTime(timestamp: number): string {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  // Get player by ID
+  function getPlayer(playerId: string | undefined): PlayerState | undefined {
+    if (!playerId) return undefined;
+    return players.find(p => p.id === playerId);
+  }
+
+  // Get the display color for a log entry's actor
+  function getActorColor(log: LogEntry): string | null {
+    if (!log.actorId) return null;
+    
+    // If this is the local player's action, use red
+    if (log.actorId === localPlayerId) {
+      return LOCAL_PLAYER_COLOR;
+    }
+    
+    // Otherwise use the player's assigned color
+    const player = getPlayer(log.actorId);
+    return player?.color || null;
+  }
+
+  // Get the actor's name for display
+  function getActorName(log: LogEntry): string | null {
+    if (!log.actorId) return null;
+    const player = getPlayer(log.actorId);
+    return player?.name || null;
   }
 
   function handleSendChat() {
@@ -123,7 +155,15 @@
         {#each logs as log}
           <div class="log-entry">
             <span class="entry-time">{formatTime(log.timestamp)}</span>
-            <span class="entry-message">{log.message}</span>
+            {#if log.actorId === localPlayerId}
+              <span class="entry-message self-action">You {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "your ")}</span>
+            {:else if getActorName(log)}
+              <span class="entry-message">
+                <span class="actor-name" style="color: {getActorColor(log)}">{getActorName(log)}</span>: {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "'s ")}
+              </span>
+            {:else}
+              <span class="entry-message">{log.message}</span>
+            {/if}
           </div>
         {/each}
         
@@ -426,6 +466,15 @@
   .entry-message {
     color: rgba(255, 255, 255, 0.9);
     flex: 1;
+  }
+
+  .actor-name {
+    font-weight: 600;
+  }
+
+  .self-action {
+    color: #FF4444;
+    font-weight: 600;
   }
 
   /* Chat Entries */

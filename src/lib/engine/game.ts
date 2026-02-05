@@ -11,6 +11,16 @@ import type {
 } from '../types';
 import { createDeck, shuffle, getCardDefinition, getCardValue } from './deck';
 
+// Color palette for player colors (distinct, readable on dark backgrounds)
+const PLAYER_COLORS = [
+  '#00D4FF',  // Cyan
+  '#FFD93D',  // Gold
+  '#32CD32',  // Lime Green
+  '#A855F7',  // Purple
+  '#FF69B4',  // Hot Pink
+  '#FF8C42',  // Orange
+];
+
 const TOKENS_TO_WIN_MAP: Record<number, number> = {
   2: 6,
   3: 5,
@@ -48,10 +58,14 @@ export class GameEngine {
    * Initialize the game with players
    */
   init(config: GameConfig): void {
-    const players: PlayerState[] = config.players.map((p) => ({
+    // Shuffle colors to assign randomly
+    const shuffledColors = shuffle([...PLAYER_COLORS], uuidv4());
+    
+    const players: PlayerState[] = config.players.map((p, index) => ({
       id: p.id,
       name: p.name,
       avatarId: p.avatarId || 'default',
+      color: shuffledColors[index % shuffledColors.length],
       hand: [],
       discardPile: [],
       tokens: 0,
