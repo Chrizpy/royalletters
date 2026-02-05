@@ -16,6 +16,14 @@
         <button class="target-btn" on:click={() => onSelect(target.id)}>
           <span class="target-icon">👤</span>
           <span class="target-name">{target.name}</span>
+          <span class="target-tokens">
+            {#each Array(target.tokens) as _}
+              <span class="token">💎</span>
+            {/each}
+            {#if target.tokens === 0}
+              <span class="no-tokens">0</span>
+            {/if}
+          </span>
         </button>
       {/each}
 
@@ -101,6 +109,21 @@
   .target-name {
     flex: 1;
     font-weight: 500;
+  }
+
+  .target-tokens {
+    display: flex;
+    gap: 0.15rem;
+    align-items: center;
+  }
+
+  .token {
+    font-size: 0.9rem;
+  }
+
+  .no-tokens {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
   }
 
   .no-targets {
