@@ -19,7 +19,9 @@
   let hostName = 'Host';
   let selectedRuleset: Ruleset = 'classic';
   let aiCounter = 1;  // Counter for AI player names
-  let aiMoveDelayMs = 1000;  // Default AI move delay (configurable)
+  let aiMoveDelayMs = 2000;  // Default AI move delay (configurable)
+  let aiCount = 0;  // Desired number of AI players (controlled by slider)
+  let showAIOptions = false;  // Toggle for AI options visibility
   let tokensToWin: number | null = null;  // null means use default based on player count
   let hasCustomTokens = false;  // Track if user has manually adjusted tokens
 
@@ -49,8 +51,14 @@
   // Effective tokens value (use custom or default)
   $: effectiveTokens = tokensToWin ?? defaultTokens;
   
-  // Can add more AI players?
-  $: canAddAI = totalPlayers < maxPlayers;
+  // Maximum AI players that can be added
+  $: maxAI = maxPlayers - 1;  // Leave room for at least the host
+  
+  // Count of human players (non-AI, excluding host)
+  $: humanPlayerCount = players.filter(p => !p.isAI).length;
+  
+  // Available slots for AI after accounting for humans
+  $: availableAISlots = maxPlayers - 1 - humanPlayerCount;
 
   // Subscribe to game started state
   $: inGame = $gameStarted;
@@ -319,21 +327,52 @@
     scheduleAIMove();
   }
   
-  function handleAddAI() {
-    if (!canAddAI) return;
+  // Sync AI players with slider value
+  function syncAIPlayers(targetCount: number) {
+    const currentAIs = players.filter(p => p.isAI);
+    const currentAICount = currentAIs.length;
     
-    const aiId = `ai-${uuidv4().substring(0, 8)}`;
-    const aiName = `AI ${aiCounter++}`;
-    
-    players = [...players, { id: aiId, name: aiName, isAI: true }];
+    if (targetCount > currentAICount) {
+      // Add more AI players
+      const toAdd = targetCount - currentAICount;
+      const newAIs = [];
+      for (let i = 0; i < toAdd; i++) {
+        newAIs.push({
+          id: `ai-${uuidv4().substring(0, 8)}`,
+          name: `AI ${aiCounter++}`,
+          isAI: true
+        });
+      }
+      players = [...players, ...newAIs];
+    } else if (targetCount < currentAICount) {
+      // Remove AI players (from the end)
+      const toRemove = currentAICount - targetCount;
+      const aiIds = currentAIs.slice(-toRemove).map(p => p.id);
+      players = players.filter(p => !aiIds.includes(p.id));
+    }
   }
   
-  function handleRemovePlayer(playerId: string) {
-    // Only allow removing AI players from lobby
-    const player = players.find(p => p.id === playerId);
-    if (player?.isAI) {
-      players = players.filter(p => p.id !== playerId);
-    }
+  // Handle AI count slider change
+  function handleAICountChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const newCount = Math.min(parseInt(target.value, 10), availableAISlots);
+    aiCount = newCount;
+    syncAIPlayers(newCount);
+  }
+  
+  // Clamp aiCount when human players join (reduces available AI slots)
+  $: if (aiCount > availableAISlots) {
+    aiCount = availableAISlots;
+    syncAIPlayers(aiCount);
+  }
+  
+  // Handle AI options toggle - add 1 AI when enabled, remove all when disabled
+  $: if (showAIOptions && aiCount === 0) {
+    aiCount = 1;
+    syncAIPlayers(1);
+  } else if (!showAIOptions && aiCount > 0) {
+    aiCount = 0;
+    syncAIPlayers(0);
   }
 
   function handleSendChat(text: string) {
@@ -421,29 +460,60 @@
           </p>
         </div>
         
-        <div class="ai-timing-section">
-          <label for="ai-delay">AI Move Speed:</label>
-          <div class="ai-delay-controls">
+        <div class="ai-options-section">
+          <label class="ai-toggle">
             <input 
-              id="ai-delay" 
-              type="range" 
-              min="500" 
-              max="5000" 
-              step="250"
-              bind:value={aiMoveDelayMs}
-              class="ai-delay-slider"
+              type="checkbox" 
+              bind:checked={showAIOptions}
             />
-            <span class="ai-delay-value">{(aiMoveDelayMs / 1000).toFixed(1)}s</span>
-          </div>
-          <p class="ai-timing-hint">
-            {#if aiMoveDelayMs <= 1000}
-              Fast - AI moves quickly
-            {:else if aiMoveDelayMs <= 2500}
-              Normal - Comfortable pace
-            {:else}
-              Slow - More time to watch
-            {/if}
-          </p>
+            <span class="ai-toggle-label">🤖 Add AI Players</span>
+          </label>
+          
+          {#if showAIOptions}
+            <div class="ai-options-content">
+              <div class="ai-option">
+                <label for="ai-count">Number of AI:</label>
+                <div class="ai-slider-controls">
+                  <input
+                    type="range"
+                    id="ai-count"
+                    class="ai-count-slider"
+                    min="1"
+                    max={availableAISlots}
+                    bind:value={aiCount}
+                    on:input={handleAICountChange}
+                  />
+                  <span class="ai-count-value">{aiCount}</span>
+                </div>
+              </div>
+              
+              <div class="ai-option">
+                <label for="ai-delay">AI Speed:</label>
+                <div class="ai-slider-controls">
+                  <input 
+                    id="ai-delay" 
+                    type="range" 
+                    min="500" 
+                    max="5000" 
+                    step="250"
+                    bind:value={aiMoveDelayMs}
+                    class="ai-delay-slider"
+                  />
+                  <span class="ai-delay-value">{(aiMoveDelayMs / 1000).toFixed(1)}s</span>
+                </div>
+              </div>
+              
+              <p class="ai-options-hint">
+                {#if aiMoveDelayMs <= 1000}
+                  ⚡ Fast pace
+                {:else if aiMoveDelayMs <= 2500}
+                  🎯 Normal pace
+                {:else}
+                  🐢 Slow pace
+                {/if}
+              </p>
+            </div>
+          {/if}
         </div>
 
         <div class="tokens-section">
@@ -502,27 +572,12 @@
               <div class="player-item" class:ai={player.isAI}>
                 <span class="player-icon">{player.isAI ? '🤖' : '👤'}</span>
                 <span class="player-name">{player.name}</span>
-                {#if player.isAI}
-                  <button 
-                    class="remove-btn" 
-                    on:click={() => handleRemovePlayer(player.id)}
-                    title="Remove AI player"
-                  >
-                    ✕
-                  </button>
-                {/if}
               </div>
             {/each}
           </div>
           
-          {#if canAddAI}
-            <button class="add-ai-btn" on:click={handleAddAI}>
-              🤖 Add AI Player
-            </button>
-          {/if}
-          
           {#if players.length === 0}
-            <p class="waiting">Waiting for players to join or add AI players...</p>
+            <p class="waiting">Waiting for players to join or add AI opponents...</p>
           {/if}
         </div>
         
@@ -649,28 +704,113 @@
     font-style: italic;
   }
 
-  .ai-timing-section {
+  .ai-options-section {
     margin-bottom: 1.5rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
   }
 
-  .ai-timing-section label {
-    display: block;
+  .ai-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .ai-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #22c55e;
+    cursor: pointer;
+  }
+
+  .ai-toggle-label {
     font-weight: 500;
-    color: #000;
-    margin-bottom: 0.5rem;
+    color: #374151;
   }
 
-  .ai-delay-controls {
+  .ai-options-content {
+    padding: 1rem;
+    background: #f0fdf4;
+    border-top: 1px solid #bbf7d0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .ai-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ai-option label {
+    font-weight: 500;
+    color: #166534;
+    font-size: 0.9rem;
+  }
+
+  .ai-slider-controls {
     display: flex;
     align-items: center;
     gap: 1rem;
+  }
+
+  .ai-options-hint {
+    font-size: 0.85rem;
+    color: #166534;
+    margin: 0;
+    text-align: center;
+  }
+
+  .ai-count-slider {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: #bbf7d0;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .ai-count-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.4);
+  }
+
+  .ai-count-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.4);
+  }
+
+  .ai-count-value {
+    font-weight: 600;
+    color: #166534;
+    min-width: 24px;
+    text-align: center;
   }
 
   .ai-delay-slider {
     flex: 1;
     height: 8px;
     border-radius: 4px;
-    background: #ddd;
+    background: #bbf7d0;
     outline: none;
     -webkit-appearance: none;
     appearance: none;
@@ -682,34 +822,27 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
     cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.4);
   }
 
   .ai-delay-slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
     cursor: pointer;
-    border: none;
-    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.4);
   }
 
   .ai-delay-value {
     font-weight: 600;
-    color: #667eea;
+    color: #166534;
     min-width: 40px;
     text-align: right;
-  }
-
-  .ai-timing-hint {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: #666;
-    font-style: italic;
   }
 
   .tokens-section {
@@ -859,6 +992,27 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .player-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .player-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  .player-list::-webkit-scrollbar-thumb {
+    background: #c4c4c4;
+    border-radius: 3px;
+  }
+
+  .player-list::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
   }
 
   .player-item {
@@ -887,44 +1041,6 @@
   .player-item.ai {
     background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
     color: white;
-  }
-  
-  .remove-btn {
-    background: rgba(255, 255, 255, 0.3);
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: white;
-    transition: background 0.2s ease;
-  }
-  
-  .remove-btn:hover {
-    background: rgba(255, 255, 255, 0.5);
-  }
-  
-  .add-ai-btn {
-    width: 100%;
-    padding: 0.75rem;
-    margin-top: 0.75rem;
-    border: 2px dashed #4ade80;
-    border-radius: 8px;
-    background: transparent;
-    color: #22c55e;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  
-  .add-ai-btn:hover {
-    background: #f0fdf4;
-    border-color: #22c55e;
   }
 
   .waiting {
