@@ -149,7 +149,9 @@
 
 <!-- Log Modal -->
 {#if activeModal === 'log'}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
   <div class="modal-overlay" on:click={closeModal} on:keydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
     <div class="modal-content" on:click|stopPropagation role="document">
       <div class="modal-header">
         <span class="modal-title">📜 Game Log</span>
@@ -182,7 +184,9 @@
 
 <!-- Chat Modal -->
 {#if activeModal === 'chat'}
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
   <div class="modal-overlay" on:click={closeModal} on:keydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
+    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
     <div class="modal-content chat-modal" on:click|stopPropagation role="document">
       <div class="modal-header">
         <span class="modal-title">💬 Chat</span>

@@ -91,6 +91,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div 
   class="deck-info-overlay" 
   role="dialog" 
@@ -100,6 +101,7 @@
   on:keydown={(e) => e.key === 'Escape' && onClose()}
   tabindex="0"
 >
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="deck-info-modal" on:click|stopPropagation>
     <div class="modal-header">
       <h3 id="deck-info-title">📚 Deck Information</h3>

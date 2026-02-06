@@ -6,28 +6,36 @@ import type {
   GameAction,
   ActionResult,
   LogEntry,
-  TOKENS_TO_WIN,
-  Ruleset,
 } from '../types';
 import { createDeck, shuffle, getCardDefinition, getCardValue } from './deck';
-
-// Color palette for player colors (distinct, readable on dark backgrounds)
-const PLAYER_COLORS = [
-  '#00D4FF',  // Cyan
-  '#FFD93D',  // Gold
-  '#32CD32',  // Lime Green
-  '#A855F7',  // Purple
-  '#FF69B4',  // Hot Pink
-  '#FF8C42',  // Orange
-];
-
-const TOKENS_TO_WIN_MAP: Record<number, number> = {
-  2: 6,
-  3: 5,
-  4: 4,
-  5: 3,
-  6: 3,
-};
+import { getTokensToWin } from './constants';
+import { validateCardPlay } from './validation';
+import {
+  createPlayers,
+  resetPlayersForRound,
+  getActivePlayers,
+  getPlayersWithCardInDiscard,
+  formatPlayerNames,
+} from './player';
+import {
+  type EffectContext,
+  addLog as addLogUtil,
+  applyGuessCard,
+  applyGuessCardRevenge,
+  applyRevengeGuess,
+  applySeeHand,
+  applyCompareHands,
+  applyProtection,
+  applyForceDiscard,
+  applyTradeHands,
+  applyTradeWithBurnedCard,
+  applyConditionalDiscard,
+  applyLoseIfDiscarded,
+  applySpyBonus,
+  applyChancellorDraw,
+  applyChancellorReturn,
+  validateChancellorReturn,
+} from './effects';
 
 export class GameEngine {
   private state: GameState;
@@ -59,25 +67,11 @@ export class GameEngine {
    * Initialize the game with players
    */
   init(config: GameConfig): void {
-    // Shuffle colors to assign randomly
-    const shuffledColors = shuffle([...PLAYER_COLORS], uuidv4());
-    
-    const players: PlayerState[] = config.players.map((p, index) => ({
-      id: p.id,
-      name: p.name,
-      avatarId: p.avatarId || 'default',
-      color: shuffledColors[index % shuffledColors.length],
-      hand: [],
-      discardPile: [],
-      tokens: 0,
-      status: 'PLAYING',
-      isHost: p.isHost || false,
-      isAI: p.isAI || false,
-    }));
+    const players = createPlayers(config.players, uuidv4());
 
     // Calculate default tokens to win based on player count
     const playerCount = players.length;
-    const defaultTokensToWin = TOKENS_TO_WIN_MAP[playerCount] || 4;
+    const defaultTokensToWin = getTokensToWin(playerCount);
     
     this.state = {
       ...this.createEmptyState(),
@@ -100,13 +94,7 @@ export class GameEngine {
     this.state.roundCount++;
 
     // Reset player states for new round
-    this.state.players = this.state.players.map((p) => ({
-      ...p,
-      hand: [],
-      discardPile: [],
-      status: 'PLAYING',  // Reset ALL players to PLAYING for new round
-      eliminationReason: undefined,  // Clear elimination reason for new round
-    }));
+    this.state.players = resetPlayersForRound(this.state.players);
 
     // Create and shuffle deck using the configured ruleset
     const deck = shuffle(createDeck(this.state.ruleset), rngSeed);
@@ -186,135 +174,11 @@ export class GameEngine {
   validateMove(playerId: string, action: GameAction): { valid: boolean; error?: string } {
     // Handle Chancellor return action
     if (action.type === 'CHANCELLOR_RETURN') {
-      return this.validateChancellorReturn(playerId, action);
+      return validateChancellorReturn(playerId, action, this.state, this.getActivePlayer());
     }
     
-    // Check if it's the player's turn
-    const activePlayer = this.getActivePlayer();
-    if (!activePlayer || activePlayer.id !== playerId) {
-      return { valid: false, error: 'Not your turn' };
-    }
-
-    // Check if phase is correct
-    if (this.state.phase !== 'WAITING_FOR_ACTION') {
-      return { valid: false, error: 'Not in action phase' };
-    }
-    
-    // Check if cardId is provided for PLAY_CARD action
-    if (!action.cardId) {
-      return { valid: false, error: 'Card ID required' };
-    }
-
-    // Check if player has the card
-    if (!activePlayer.hand.includes(action.cardId)) {
-      return { valid: false, error: 'Card not in hand' };
-    }
-
-    // Countess rule: If player has Countess + (King or Prince), must play Countess
-    const hasCountess = activePlayer.hand.includes('countess');
-    const hasKing = activePlayer.hand.includes('king');
-    const hasPrince = activePlayer.hand.includes('prince');
-    
-    if (hasCountess && (hasKing || hasPrince) && action.cardId !== 'countess') {
-      return { valid: false, error: 'Must play Countess when holding King or Prince' };
-    }
-
-    // Get card definition
-    const cardDef = getCardDefinition(action.cardId);
-    if (!cardDef) {
-      return { valid: false, error: 'Unknown card' };
-    }
-
-    // Check if target is required
-    if (cardDef.effect.requiresTargetPlayer) {
-      // Check if there are any valid targets available (non-eliminated, non-protected players)
-      const validTargets = this.state.players.filter(p => {
-        if (p.id === playerId && !cardDef.effect.canTargetSelf) return false;
-        if (p.status === 'ELIMINATED') return false;
-        if (p.status === 'PROTECTED' && p.id !== playerId) return false;
-        return true;
-      });
-
-      // If no valid targets exist, the card can be played with no effect (no target required)
-      if (validTargets.length === 0) {
-        // Card will be played with no effect - this is allowed per Love Letter rules
-        return { valid: true };
-      }
-
-      if (!action.targetPlayerId) {
-        return { valid: false, error: 'Target player required' };
-      }
-
-      const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId);
-      if (!targetPlayer) {
-        return { valid: false, error: 'Invalid target player' };
-      }
-
-      // Check if target is eliminated
-      if (targetPlayer.status === 'ELIMINATED') {
-        return { valid: false, error: 'Cannot target eliminated player' };
-      }
-
-      // Check if target is protected (unless can target self and targeting self)
-      if (targetPlayer.status === 'PROTECTED') {
-        const isSelfTarget = targetPlayer.id === playerId;
-        if (!isSelfTarget || !cardDef.effect.canTargetSelf) {
-          return { valid: false, error: 'Cannot target protected player' };
-        }
-      }
-
-      // Check if can target self
-      if (action.targetPlayerId === playerId && !cardDef.effect.canTargetSelf) {
-        return { valid: false, error: 'Cannot target yourself with this card' };
-      }
-    }
-
-    // Guard-specific validation: cannot guess Guard or tillbakakaka (but CAN guess Spy in 2019 rules)
-    if ((action.cardId === 'guard' || action.cardId === 'tillbakakaka') && 
-        (action.targetCardGuess === 'guard' || action.targetCardGuess === 'tillbakakaka')) {
-      return { valid: false, error: 'Cannot guess Guard' };
-    }
-
-    // Check if targetCardGuess is required
-    if (cardDef.effect.requiresTargetCardType && !action.targetCardGuess) {
-      return { valid: false, error: 'Target card guess required' };
-    }
-
-    return { valid: true };
-  }
-  
-  /**
-   * Validate Chancellor return action
-   */
-  private validateChancellorReturn(playerId: string, action: GameAction): { valid: boolean; error?: string } {
-    const activePlayer = this.getActivePlayer();
-    if (!activePlayer || activePlayer.id !== playerId) {
-      return { valid: false, error: 'Not your turn' };
-    }
-    
-    if (this.state.phase !== 'CHANCELLOR_RESOLVING') {
-      return { valid: false, error: 'Not in Chancellor resolving phase' };
-    }
-    
-    // Number of cards to return depends on how many were drawn
-    // Player must keep exactly 1 card, so they return (hand size - 1) cards
-    const cardsToReturnCount = activePlayer.hand.length - 1;
-    
-    if (!action.cardsToReturn || action.cardsToReturn.length !== cardsToReturnCount) {
-      return { valid: false, error: `Must return exactly ${cardsToReturnCount} card(s)` };
-    }
-    
-    // Verify all cards to return are in player's hand
-    const handCopy = [...activePlayer.hand];
-    for (const cardId of action.cardsToReturn) {
-      const index = handCopy.indexOf(cardId);
-      if (index === -1) {
-        return { valid: false, error: 'Card not in hand' };
-      }
-      handCopy.splice(index, 1);
-    }
-    
-    return { valid: true };
+    // Delegate to validation module
+    return validateCardPlay(this.state, playerId, action, this.getActivePlayer());
   }
 
   /**
@@ -323,12 +187,12 @@ export class GameEngine {
   applyMove(action: GameAction): ActionResult {
     // Handle Chancellor return action
     if (action.type === 'CHANCELLOR_RETURN') {
-      return this.applyChancellorReturn(action);
+      return this.applyChancellorReturnAction(action);
     }
     
     // Handle Revenge guess action (tillbakakaka)
     if (action.type === 'REVENGE_GUESS') {
-      return this.applyRevengeGuess(action);
+      return this.applyRevengeGuessAction(action);
     }
     
     const validation = this.validateMove(action.playerId, action);
@@ -372,7 +236,8 @@ export class GameEngine {
     if (cardDef.effect.requiresTargetPlayer && !action.targetPlayerId) {
       // House rules: King swaps with burned card when no valid targets
       if (cardDef.effect.type === 'TRADE_HANDS' && this.state.ruleset === 'house' && this.state.burnedCard) {
-        result = this.applyTradeWithBurnedCard(activePlayer);
+        const effectResult = applyTradeWithBurnedCard(activePlayer, this.state);
+        result = this.toActionResult(effectResult);
       } else {
         // Card fizzles - no valid targets available
         this.addLog(`${cardDef.name} had no effect (no valid targets)`, activePlayer.id);
@@ -383,46 +248,58 @@ export class GameEngine {
         };
       }
     } else {
-      // Apply card effect
+      // Create effect context
+      const context: EffectContext = {
+        state: this.state,
+        action,
+        activePlayer,
+      };
+
+      // Apply card effect using extracted handlers
+      let effectResult;
       switch (cardDef.effect.type) {
         case 'GUESS_CARD':
-          result = this.applyGuessCard(action, activePlayer);
+          effectResult = applyGuessCard(context);
           break;
         case 'GUESS_CARD_REVENGE':
-          result = this.applyGuessCardRevenge(action, activePlayer);
+          effectResult = applyGuessCardRevenge(context);
           // If revenge phase started, don't advance turn yet
-          if (this.state.phase === 'WAITING_FOR_REVENGE_GUESS') {
-            return result;
+          if (effectResult.skipTurnAdvance) {
+            return this.toActionResult(effectResult);
           }
           break;
         case 'SEE_HAND':
-          result = this.applySeeHand(action, activePlayer);
+          effectResult = applySeeHand(context);
           break;
         case 'COMPARE_HANDS':
-          result = this.applyCompareHands(action, activePlayer);
+          effectResult = applyCompareHands(context);
           break;
         case 'PROTECTION':
-          result = this.applyProtection(activePlayer);
+          effectResult = applyProtection(context);
           break;
         case 'FORCE_DISCARD':
-          result = this.applyForceDiscard(action, activePlayer);
+          effectResult = applyForceDiscard(context);
           break;
         case 'TRADE_HANDS':
-          result = this.applyTradeHands(action, activePlayer);
+          effectResult = applyTradeHands(context);
           break;
         case 'CONDITIONAL_DISCARD':
-          result = this.applyConditionalDiscard(activePlayer);
+          effectResult = applyConditionalDiscard(context);
           break;
         case 'LOSE_IF_DISCARDED':
-          result = this.applyLoseIfDiscarded(activePlayer);
+          effectResult = applyLoseIfDiscarded(context);
           break;
         case 'SPY_BONUS':
-          result = this.applySpyBonus(activePlayer);
+          effectResult = applySpyBonus(context);
           break;
         case 'CHANCELLOR_DRAW':
-          result = this.applyChancellorDraw(activePlayer);
+          effectResult = applyChancellorDraw(context);
           // Don't advance turn yet - waiting for player to return cards
-          return result;
+          return this.toActionResult(effectResult);
+      }
+      
+      if (effectResult) {
+        result = this.toActionResult(effectResult);
       }
     }
 
@@ -432,396 +309,49 @@ export class GameEngine {
     return result;
   }
 
-  private applyGuessCard(action: GameAction, activePlayer: PlayerState): ActionResult {
-    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
-    const guess = action.targetCardGuess!;
-
-    if (targetPlayer.hand.includes(guess)) {
-      const guessCardDef = getCardDefinition(guess);
-      const guessName = guessCardDef?.name || guess;
-      // Move the eliminated player's card(s) to their discard pile
-      while (targetPlayer.hand.length > 0) {
-        const card = targetPlayer.hand.shift()!;
-        targetPlayer.discardPile.push(card);
-      }
-      targetPlayer.status = 'ELIMINATED';
-      targetPlayer.eliminationReason = `${activePlayer.name} correctly guessed you had ${guessName}`;
-      this.addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, targetPlayer.id);
-      return {
-        success: true,
-        message: `Correct guess! ${targetPlayer.name} is eliminated`,
-        eliminatedPlayerId: targetPlayer.id,
-        newState: this.state,
-      };
-    } else {
-      const guessCardDef = getCardDefinition(guess);
-      const guessName = guessCardDef?.name || guess;
-      this.addLog(`${activePlayer.name} guessed ${targetPlayer.name} had ${guessName} (incorrectly)`, activePlayer.id);
-      return {
-        success: true,
-        message: 'Incorrect guess',
-        newState: this.state,
-      };
-    }
+  /**
+   * Convert an EffectResult to an ActionResult
+   */
+  private toActionResult(effectResult: { message: string; revealedCard?: string; eliminatedPlayerId?: string }): ActionResult {
+    return {
+      success: true,
+      message: effectResult.message,
+      revealedCard: effectResult.revealedCard,
+      eliminatedPlayerId: effectResult.eliminatedPlayerId,
+      newState: this.state,
+    };
   }
 
-  private applyGuessCardRevenge(action: GameAction, activePlayer: PlayerState): ActionResult {
-    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
-    const guess = action.targetCardGuess!;
-
-    if (targetPlayer.hand.includes(guess)) {
-      const guessCardDef = getCardDefinition(guess);
-      const guessName = guessCardDef?.name || guess;
-      // Correct guess - eliminate target (no revenge)
-      while (targetPlayer.hand.length > 0) {
-        const card = targetPlayer.hand.shift()!;
-        targetPlayer.discardPile.push(card);
-      }
-      targetPlayer.status = 'ELIMINATED';
-      targetPlayer.eliminationReason = `${activePlayer.name} correctly guessed you had ${guessName} (with Guard 🍪)`;
-      this.addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, targetPlayer.id);
-      return {
-        success: true,
-        message: `Correct guess! ${targetPlayer.name} is eliminated`,
-        eliminatedPlayerId: targetPlayer.id,
-        newState: this.state,
-      };
-    } else {
-      // Incorrect guess - target gets a revenge guess!
-      const guessCardDef = getCardDefinition(guess);
-      const guessName = guessCardDef?.name || guess;
-      this.addLog(`${activePlayer.name} guessed ${targetPlayer.name} had ${guessName} (incorrectly) - 🍪 revenge time!`, activePlayer.id);
-      
-      // Set up revenge guess state
-      this.state.revengeGuess = {
-        revengerId: targetPlayer.id,
-        targetId: activePlayer.id,
-      };
-      this.state.phase = 'WAITING_FOR_REVENGE_GUESS';
-      
-      return {
-        success: true,
-        message: `Incorrect guess! ${targetPlayer.name} gets a revenge guess!`,
-        newState: this.state,
-      };
-    }
-  }
-
-  private applyRevengeGuess(action: GameAction): ActionResult {
-    // Validate revenge guess
-    if (this.state.phase !== 'WAITING_FOR_REVENGE_GUESS') {
+  /**
+   * Apply revenge guess action using extracted handler
+   */
+  private applyRevengeGuessAction(action: GameAction): ActionResult {
+    const result = applyRevengeGuess(action, this.state);
+    
+    if (!result.success) {
       return {
         success: false,
-        message: 'Not in revenge guess phase',
-        newState: this.state,
-      };
-    }
-
-    if (!this.state.revengeGuess) {
-      return {
-        success: false,
-        message: 'No revenge guess pending',
-        newState: this.state,
-      };
-    }
-
-    if (action.playerId !== this.state.revengeGuess.revengerId) {
-      return {
-        success: false,
-        message: 'Not your revenge guess',
-        newState: this.state,
-      };
-    }
-
-    // Cannot guess guard or tillbakakaka on revenge
-    if (action.targetCardGuess === 'guard' || action.targetCardGuess === 'tillbakakaka') {
-      return {
-        success: false,
-        message: 'Cannot guess Guard',
-        newState: this.state,
-      };
-    }
-
-    const revenger = this.state.players.find(p => p.id === this.state.revengeGuess!.revengerId)!;
-    const target = this.state.players.find(p => p.id === this.state.revengeGuess!.targetId)!;
-    const guess = action.targetCardGuess!;
-
-    // Clear revenge state
-    this.state.revengeGuess = undefined;
-
-    if (target.hand.includes(guess)) {
-      const guessCardDef = getCardDefinition(guess);
-      const guessName = guessCardDef?.name || guess;
-      // Correct revenge guess - eliminate the original guesser!
-      while (target.hand.length > 0) {
-        const card = target.hand.shift()!;
-        target.discardPile.push(card);
-      }
-      target.status = 'ELIMINATED';
-      target.eliminationReason = `${revenger.name}'s revenge guess correctly identified you had ${guessName}`;
-      this.addLog(`🍪 Revenge! ${revenger.name} correctly guessed ${target.name} had ${guessName}`, revenger.id);
-      
-      // Advance turn
-      this.advanceTurn();
-      
-      return {
-        success: true,
-        message: `Revenge successful! ${target.name} is eliminated`,
-        eliminatedPlayerId: target.id,
-        newState: this.state,
-      };
-    } else {
-      const guessCardDef = getCardDefinition(guess);
-      const guessName = guessCardDef?.name || guess;
-      this.addLog(`🍪 ${revenger.name}'s revenge guess of ${guessName} was incorrect`, revenger.id);
-      
-      // Advance turn
-      this.advanceTurn();
-      
-      return {
-        success: true,
-        message: 'Revenge guess incorrect',
-        newState: this.state,
-      };
-    }
-  }
-
-  private applySeeHand(action: GameAction, activePlayer: PlayerState): ActionResult {
-    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
-    const revealedCard = targetPlayer.hand[0] || '';
-
-    this.addLog(`${activePlayer.name} saw ${targetPlayer.name}'s hand`, activePlayer.id);
-
-    return {
-      success: true,
-      message: `You saw ${targetPlayer.name}'s hand`,
-      revealedCard,
-      newState: this.state,
-    };
-  }
-
-  private applyCompareHands(action: GameAction, activePlayer: PlayerState): ActionResult {
-    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
-    
-    const activeCard = activePlayer.hand[0];
-    const targetCard = targetPlayer.hand[0];
-
-    if (!activeCard || !targetCard) {
-      return {
-        success: true,
-        message: 'Comparison failed - missing cards',
-        newState: this.state,
-      };
-    }
-
-    const activeValue = getCardValue(activeCard, this.state.ruleset);
-    const targetValue = getCardValue(targetCard, this.state.ruleset);
-
-    if (activeValue < targetValue) {
-      const activeCardDef = getCardDefinition(activeCard);
-      const targetCardDef = getCardDefinition(targetCard);
-      // Move the eliminated player's card(s) to their discard pile
-      while (activePlayer.hand.length > 0) {
-        const card = activePlayer.hand.shift()!;
-        activePlayer.discardPile.push(card);
-      }
-      activePlayer.status = 'ELIMINATED';
-      activePlayer.eliminationReason = `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`;
-      this.addLog(`${activePlayer.name} was eliminated (lower card)`, activePlayer.id);
-      return {
-        success: true,
-        message: `You lost the comparison and are eliminated`,
-        eliminatedPlayerId: activePlayer.id,
-        newState: this.state,
-      };
-    } else if (targetValue < activeValue) {
-      const activeCardDef = getCardDefinition(activeCard);
-      const targetCardDef = getCardDefinition(targetCard);
-      // Move the eliminated player's card(s) to their discard pile
-      while (targetPlayer.hand.length > 0) {
-        const card = targetPlayer.hand.shift()!;
-        targetPlayer.discardPile.push(card);
-      }
-      targetPlayer.status = 'ELIMINATED';
-      targetPlayer.eliminationReason = `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`;
-      this.addLog(`${targetPlayer.name} was eliminated (lower card)`, targetPlayer.id);
-      return {
-        success: true,
-        message: `${targetPlayer.name} had lower card and is eliminated`,
-        eliminatedPlayerId: targetPlayer.id,
-        newState: this.state,
-      };
-    } else {
-      this.addLog('Comparison was a tie', activePlayer.id);
-      return {
-        success: true,
-        message: 'Tie - no one eliminated',
-        newState: this.state,
-      };
-    }
-  }
-
-  private applyProtection(activePlayer: PlayerState): ActionResult {
-    activePlayer.status = 'PROTECTED';
-    // No separate log needed - "played Handmaid" already implies protection
-    return {
-      success: true,
-      message: 'You are protected until your next turn',
-      newState: this.state,
-    };
-  }
-
-  private applyForceDiscard(action: GameAction, activePlayer: PlayerState): ActionResult {
-    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
-    
-    const discardedCard = targetPlayer.hand.shift();
-    if (discardedCard) {
-      targetPlayer.discardPile.push(discardedCard);
-      this.addLog(`${targetPlayer.name} discarded ${discardedCard}`, targetPlayer.id, discardedCard);
-
-      // If Princess was discarded, target is eliminated
-      if (discardedCard === 'princess') {
-        targetPlayer.status = 'ELIMINATED';
-        targetPlayer.eliminationReason = `${activePlayer.name} forced you to discard Princess`;
-        this.addLog(`${targetPlayer.name} was eliminated (discarded Princess)`, targetPlayer.id);
-        return {
-          success: true,
-          message: `${targetPlayer.name} discarded Princess and is eliminated`,
-          eliminatedPlayerId: targetPlayer.id,
-          newState: this.state,
-        };
-      }
-
-      // Draw new card
-      const newCard = this.state.deck.shift();
-      if (newCard) {
-        targetPlayer.hand.push(newCard);
-        this.addLog(`${targetPlayer.name} drew a new card`, targetPlayer.id);
-      }
-    }
-
-    return {
-      success: true,
-      message: `${targetPlayer.name} discarded and drew a new card`,
-      newState: this.state,
-    };
-  }
-
-  private applyTradeHands(action: GameAction, activePlayer: PlayerState): ActionResult {
-    const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId)!;
-    
-    const temp = activePlayer.hand;
-    activePlayer.hand = targetPlayer.hand;
-    targetPlayer.hand = temp;
-
-    this.addLog(`${activePlayer.name} and ${targetPlayer.name} traded hands`, activePlayer.id);
-
-    return {
-      success: true,
-      message: `You traded hands with ${targetPlayer.name}`,
-      newState: this.state,
-    };
-  }
-
-  private applyTradeWithBurnedCard(activePlayer: PlayerState): ActionResult {
-    // When King is played but no valid player targets exist, swap with the burned card
-    const burnedCard = this.state.burnedCard;
-    if (!burnedCard) {
-      // No burned card available - should not happen but handle gracefully
-      this.addLog(`King had no effect (no burned card)`, activePlayer.id);
-      return {
-        success: true,
-        message: 'King had no effect - no burned card available',
-        newState: this.state,
-      };
-    }
-
-    // Swap player's card with the burned card
-    const playerCard = activePlayer.hand[0];
-    activePlayer.hand[0] = burnedCard;
-    this.state.burnedCard = playerCard;
-
-    this.addLog(`${activePlayer.name} swapped their card with the burned card`, activePlayer.id);
-
-    return {
-      success: true,
-      message: 'You swapped your card with the burned card',
-      newState: this.state,
-    };
-  }
-
-  private applyConditionalDiscard(activePlayer: PlayerState): ActionResult {
-    // Countess has no effect when played
-    return {
-      success: true,
-      message: 'Countess played',
-      newState: this.state,
-    };
-  }
-
-  private applyLoseIfDiscarded(activePlayer: PlayerState): ActionResult {
-    // If Princess is discarded (played), player is eliminated
-    activePlayer.status = 'ELIMINATED';
-    activePlayer.eliminationReason = 'You played the Princess';
-    this.addLog(`${activePlayer.name} was eliminated (played Princess)`, activePlayer.id);
-    return {
-      success: true,
-      message: 'You played Princess and are eliminated',
-      eliminatedPlayerId: activePlayer.id,
-      newState: this.state,
-    };
-  }
-  
-  private applySpyBonus(activePlayer: PlayerState): ActionResult {
-    // Spy has no immediate effect when played - bonus is checked at round end
-    this.addLog(`${activePlayer.name} played Spy`, activePlayer.id);
-    return {
-      success: true,
-      message: 'Spy played - you may gain a token at round end if you are the only one with a Spy in your discard pile',
-      newState: this.state,
-    };
-  }
-  
-  private applyChancellorDraw(activePlayer: PlayerState): ActionResult {
-    // Draw up to 2 cards from the deck
-    const drawnCards: string[] = [];
-    for (let i = 0; i < 2; i++) {
-      const card = this.state.deck.shift();
-      if (card) {
-        activePlayer.hand.push(card);
-        drawnCards.push(card);
-      }
-    }
-    
-    if (drawnCards.length === 0) {
-      // No cards to draw - Chancellor has no effect
-      this.addLog(`Chancellor had no effect (deck empty)`, activePlayer.id);
-      this.advanceTurn();
-      return {
-        success: true,
-        message: 'Chancellor had no effect - deck is empty',
+        message: result.message,
         newState: this.state,
       };
     }
     
-    // Store drawn cards info and change phase
-    this.state.chancellorCards = drawnCards;
-    this.state.phase = 'CHANCELLOR_RESOLVING';
-    
-    this.addLog(`${activePlayer.name} drew ${drawnCards.length} card${drawnCards.length !== 1 ? 's' : ''} with Chancellor`, activePlayer.id);
-    
-    // Calculate how many cards to return (hand size - 1 to keep exactly 1)
-    const cardsToReturnCount = activePlayer.hand.length - 1;
+    // Advance turn after revenge guess
+    this.advanceTurn();
     
     return {
       success: true,
-      message: `Drew ${drawnCards.length} card${drawnCards.length !== 1 ? 's' : ''}. Select ${cardsToReturnCount} card${cardsToReturnCount !== 1 ? 's' : ''} to return to the bottom of the deck.`,
+      message: result.message,
+      eliminatedPlayerId: result.eliminatedPlayerId,
       newState: this.state,
     };
   }
-  
-  private applyChancellorReturn(action: GameAction): ActionResult {
-    const validation = this.validateChancellorReturn(action.playerId, action);
+
+  /**
+   * Apply Chancellor return action using extracted handler
+   */
+  private applyChancellorReturnAction(action: GameAction): ActionResult {
+    const validation = validateChancellorReturn(action.playerId, action, this.state, this.getActivePlayer());
     if (!validation.valid) {
       return {
         success: false,
@@ -831,31 +361,12 @@ export class GameEngine {
     }
     
     const activePlayer = this.getActivePlayer()!;
-    const cardsToReturn = action.cardsToReturn!;
+    const effectResult = applyChancellorReturn(action, this.state, activePlayer);
     
-    // Remove cards from hand and add to bottom of deck
-    for (const cardId of cardsToReturn) {
-      const index = activePlayer.hand.indexOf(cardId);
-      if (index !== -1) {
-        activePlayer.hand.splice(index, 1);
-        this.state.deck.push(cardId);  // Add to bottom of deck
-      }
-    }
-    
-    // Clear chancellor state
-    this.state.chancellorCards = undefined;
-    
-    const returnCount = cardsToReturn.length;
-    this.addLog(`${activePlayer.name} returned ${returnCount} card${returnCount !== 1 ? 's' : ''} to the deck`, activePlayer.id);
-    
-    // Now advance turn
+    // Advance turn after Chancellor return
     this.advanceTurn();
     
-    return {
-      success: true,
-      message: 'Cards returned to deck',
-      newState: this.state,
-    };
+    return this.toActionResult(effectResult);
   }
 
   /**
@@ -895,7 +406,7 @@ export class GameEngine {
    */
   checkRoundEnd(): boolean {
     // Count active players
-    const activePlayers = this.state.players.filter(p => p.status !== 'ELIMINATED');
+    const activePlayers = getActivePlayers(this.state.players);
 
     // Round ends if only 1 player remains
     if (activePlayers.length <= 1) {
@@ -918,7 +429,7 @@ export class GameEngine {
    * Determine the winner of the round
    */
   determineRoundWinner(): void {
-    const activePlayers = this.state.players.filter(p => p.status !== 'ELIMINATED');
+    const activePlayers = getActivePlayers(this.state.players);
 
     if (activePlayers.length === 0) {
       this.addLog('No winner this round');
@@ -956,20 +467,14 @@ export class GameEngine {
       this.state.lastRoundWinnerId = winners[0].id;
       
       // Log appropriate message with card info
+      const winningCard = winners[0].hand[0];
+      const cardDef = getCardDefinition(winningCard);
+      const cardInfo = cardDef ? `${cardDef.name} (${cardDef.value})` : winningCard;
+      
       if (winners.length === 1) {
-        const winningCard = winners[0].hand[0];
-        const cardDef = getCardDefinition(winningCard);
-        const cardInfo = cardDef ? `${cardDef.name} (${cardDef.value})` : winningCard;
         this.addLog(`${winners[0].name} won with ${cardInfo}!`, winners[0].id);
-      } else if (winners.length === 2) {
-        const card1 = getCardDefinition(winners[0].hand[0]);
-        const cardInfo = card1 ? `${card1.name} (${card1.value})` : 'unknown';
-        this.addLog(`${winners[0].name} and ${winners[1].name} tied with ${cardInfo}!`);
       } else {
-        const names = winners.map(w => w.name);
-        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
-        const card1 = getCardDefinition(winners[0].hand[0]);
-        const cardInfo = card1 ? `${card1.name} (${card1.value})` : 'unknown';
+        const winnerNames = formatPlayerNames(winners.map(w => w.name));
         this.addLog(`${winnerNames} tied with ${cardInfo}!`);
       }
     }
@@ -992,10 +497,7 @@ export class GameEngine {
     }
     
     // Find all non-eliminated players who have Spy in their discard pile
-    // Eliminated players' spies don't count for the bonus
-    const playersWithSpy = this.state.players.filter(p => 
-      p.discardPile.includes('spy') && p.status !== 'ELIMINATED'
-    );
+    const playersWithSpy = getPlayersWithCardInDiscard(this.state.players, 'spy', true);
     
     // If exactly one non-eliminated player has a Spy, they get a bonus token
     if (playersWithSpy.length === 1) {
@@ -1035,28 +537,16 @@ export class GameEngine {
       this.state.phase = 'GAME_END';
       this.state.winnerIds = roundWinners.map(p => p.id);
       
-      if (roundWinners.length === 1) {
-        this.addLog(`${roundWinners[0].name} won the game!`, roundWinners[0].id);
-      } else if (roundWinners.length === 2) {
-        this.addLog(`${roundWinners[0].name} and ${roundWinners[1].name} win the game!`);
-      } else {
-        const names = roundWinners.map(w => w.name);
-        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
-        this.addLog(`${winnerNames} win the game!`);
-      }
+      const winnerNames = formatPlayerNames(roundWinners.map(w => w.name));
+      this.addLog(`${winnerNames} win the game!`);
     } else {
       // All qualifying players reached threshold via Spy bonus only
       // This is an edge case - all win
       this.state.phase = 'GAME_END';
       this.state.winnerIds = qualifyingPlayers.map(p => p.id);
       
-      if (qualifyingPlayers.length === 2) {
-        this.addLog(`${qualifyingPlayers[0].name} and ${qualifyingPlayers[1].name} win the game!`);
-      } else {
-        const names = qualifyingPlayers.map(w => w.name);
-        const winnerNames = names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
-        this.addLog(`${winnerNames} win the game!`);
-      }
+      const winnerNames = formatPlayerNames(qualifyingPlayers.map(w => w.name));
+      this.addLog(`${winnerNames} win the game!`);
     }
   }
 

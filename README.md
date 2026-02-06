@@ -28,14 +28,14 @@ npm install
 npm test
 ```
 
-The test suite includes 73 tests covering:
-- RNG determinism
-- Deck creation and shuffling
+The test suite covers:
+- RNG determinism and deck shuffling
 - Game initialization and round management
-- All 8 card effects (Guard, Priest, Baron, Handmaid, Prince, King, Countess, Princess)
+- All card effects (classic + 2019 ruleset cards)
 - Win conditions and state serialization
 - P2P message encoding/decoding
 - Game state synchronization
+- AI player decision-making
 
 ### 3. Development Server (UI Preview)
 
@@ -63,38 +63,7 @@ npm run check
 
 ## Project Structure
 
-```
-src/
-├── App.svelte              # Main app component with routing
-├── app.css                 # Global styles (mobile-first)
-├── main.ts                 # App entry point
-└── lib/
-    ├── components/         # Svelte UI components
-    │   ├── LobbyScreen.svelte    # Host/Join selection
-    │   ├── HostLobby.svelte      # Game hosting with QR code
-    │   ├── JoinGame.svelte       # Join via QR/code
-    │   ├── GameScreen.svelte     # Main game interface
-    │   ├── Card.svelte           # Card display component
-    │   ├── PlayerArea.svelte     # Player hand and info
-    │   └── ...                   # Additional UI components
-    ├── data/
-    │   └── cards.json            # Card definitions (8 card types)
-    ├── engine/
-    │   ├── rng.ts                # Deterministic random number generator
-    │   ├── deck.ts               # Deck creation and shuffling
-    │   ├── game.ts               # Core game engine
-    │   └── game.test.ts          # Game engine tests
-    ├── network/
-    │   ├── peer.ts               # PeerJS WebRTC wrapper
-    │   ├── sync.ts               # Game state synchronization
-    │   ├── messages.ts           # P2P message protocol
-    │   └── *.test.ts             # Network layer tests
-    ├── stores/
-    │   ├── chat.ts               # Chat messages store
-    │   ├── game.ts               # Game state store
-    │   └── network.ts            # Network state store
-    └── types.ts                  # TypeScript type definitions
-```
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full directory structure, layer responsibilities, and data flow diagrams.
 
 ## Using the Game Engine
 
@@ -137,9 +106,14 @@ game.setState(state);
 - **Deterministic**: Same seed always produces same game sequence
 - **Serializable**: Full state can be converted to/from JSON for P2P sync
 - **Type-safe**: Complete TypeScript type definitions
-- **Well-tested**: 73 passing tests with full coverage of game logic and networking
+- **Well-tested**: Comprehensive test suite covering game logic and networking
 - **Mobile-First**: Optimized for mobile browsers with native app-like experience
 - **P2P Networking**: WebRTC-based communication for low-latency gameplay
+
+## Documentation
+
+- [Architecture Overview](docs/ARCHITECTURE.md) - System design, directory structure, and data flow
+- [Coding Guidelines](.github/copilot-instructions.md) - Conventions for contributing
 
 ## Recommended IDE Setup
 

@@ -1,10 +1,22 @@
 import type { GameState, GameAction, PlayerState, Ruleset } from '../types';
-import { getCardDefinition, getCardValue } from './deck';
+import { getCardDefinition, getCardValue, createDeck } from './deck';
 
 /**
  * AI player decision-making engine
  * Implements a basic strategy for playing Love Letter
  */
+
+/**
+ * Get deck composition for a ruleset by counting cards in a created deck
+ */
+function getDeckComposition(ruleset: Ruleset): Record<string, number> {
+  const deck = createDeck(ruleset);
+  const composition: Record<string, number> = {};
+  for (const card of deck) {
+    composition[card] = (composition[card] || 0) + 1;
+  }
+  return composition;
+}
 
 /**
  * Get all valid target players for a given card
@@ -59,29 +71,8 @@ function chooseGuardGuess(
     seenCards[card] = (seenCards[card] || 0) + 1;
   }
   
-  // Get deck composition for the ruleset
-  const deckComposition = (state.ruleset === '2019' || state.ruleset === 'house') ? {
-    spy: 2,
-    guard: state.ruleset === 'house' ? 4 : 6,
-    tillbakakaka: state.ruleset === 'house' ? 2 : 0,
-    priest: 2,
-    baron: 2,
-    handmaid: 2,
-    prince: 2,
-    chancellor: 2,
-    king: 1,
-    countess: 1,
-    princess: 1,
-  } : {
-    guard: 5,
-    priest: 2,
-    baron: 2,
-    handmaid: 2,
-    prince: 2,
-    king: 1,
-    countess: 1,
-    princess: 1,
-  };
+  // Get deck composition for the ruleset dynamically
+  const deckComposition = getDeckComposition(state.ruleset);
   
   // Calculate remaining cards
   const remainingCards: Array<{ cardId: string; count: number }> = [];
