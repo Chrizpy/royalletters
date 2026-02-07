@@ -7,6 +7,7 @@
   import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
+  import { saveSession, clearSession } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
   let manualPeerId = '';
@@ -134,6 +135,13 @@
         if (state === 'connected') {
           remotePeerId.set(hostPeerId);
           peerId.set(guestPeerId);
+          
+          // Save session for reconnection
+          saveSession({
+            guestPeerId,
+            hostPeerId,
+            nickname: nickname.trim()
+          });
           
           // Send player joined message with nickname
           const playerJoinedPayload: PlayerJoinedPayload = {

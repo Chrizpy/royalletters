@@ -4,7 +4,7 @@
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
   import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload, type ReconnectPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
   import { v4 as uuidv4 } from 'uuid';
@@ -197,6 +197,50 @@
       
       // Broadcast to all other clients except the original sender
       peerManager.broadcastExcept(message, fromPeerId);
+    } else if (message.type === 'RECONNECT') {
+      // Handle player reconnecting to existing game
+      const payload = message.payload as ReconnectPayload;
+      console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
+      
+      // Check if this player exists in the game
+      const engine = getEngine();
+      const state = engine?.getState();
+      const existingPlayer = state?.players.find(p => p.id === payload.playerId);
+      
+      if (existingPlayer && $gameStarted) {
+        console.log('Reconnecting existing player:', existingPlayer.name);
+        
+        // Update local players array (might have been removed on disconnect)
+        if (!players.some(p => p.id === payload.playerId)) {
+          players = [...players, { id: payload.playerId, name: existingPlayer.name }];
+        }
+        
+        // Send current game state to reconnected player
+        if (peerManager && state) {
+          const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state } as GameStateSyncPayload);
+          peerManager.sendTo(fromPeerId, syncMessage);
+        }
+        
+        // Resume AI play if it's an AI's turn
+        scheduleAIMove();
+      } else {
+        console.warn('Unknown player trying to reconnect or game not started:', payload.playerId);
+        // Treat as new player if game not started yet
+        if (!$gameStarted && !players.some(p => p.id === fromPeerId)) {
+          players = [...players, { id: fromPeerId, name: payload.playerName }];
+        }
+      }
+    } else if (message.type === 'REQUEST_STATE_SYNC') {
+      // Handle explicit request for state sync
+      console.log('State sync requested by:', fromPeerId);
+      
+      const engine = getEngine();
+      const state = engine?.getState();
+      
+      if (peerManager && state && $gameStarted) {
+        const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state } as GameStateSyncPayload);
+        peerManager.sendTo(fromPeerId, syncMessage);
+      }
     }
   }
 
