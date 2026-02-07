@@ -100,6 +100,7 @@ export class PeerManager {
     conn.on('open', () => {
       console.log('Connection opened:', conn.peer);
       this.connections.set(conn.peer, conn);
+      this.reconnectAttempts = 0; // Reset on successful connection
       this.notifyConnectionListeners(conn.peer);
     });
 

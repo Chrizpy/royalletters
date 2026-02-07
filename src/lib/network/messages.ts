@@ -8,7 +8,9 @@ export type MessageType =
   | 'ROUND_START'        // Host starts a new round (includes RNG seed)
   | 'CONNECTION_ACK'     // Acknowledge connection established
   | 'PRIEST_REVEAL'      // Private reveal for Priest card effect
-  | 'CHAT_MESSAGE';      // In-game chat message
+  | 'CHAT_MESSAGE'       // In-game chat message
+  | 'RECONNECT'          // Player reconnecting to existing game
+  | 'REQUEST_STATE_SYNC';// Request current game state from host
 
 export interface NetworkMessage {
   type: MessageType;
@@ -62,6 +64,15 @@ export interface ChatMessagePayload {
   text: string;
   senderName: string;
   timestamp: number;
+}
+
+export interface ReconnectPayload {
+  playerId: string;
+  playerName: string;
+}
+
+export interface RequestStateSyncPayload {
+  playerId: string;
 }
 
 export function createMessage(

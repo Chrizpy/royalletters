@@ -8,6 +8,8 @@ import {
   type GameStateSyncPayload,
   type PlayerActionPayload,
   type ConnectionAckPayload,
+  type ReconnectPayload,
+  type RequestStateSyncPayload,
 } from './messages';
 import type { GameAction, GameState } from '../types';
 
@@ -69,6 +71,12 @@ export class GameSync {
         case 'CONNECTION_ACK':
           this.handleConnectionAck(message);
           break;
+        case 'RECONNECT':
+          this.handleReconnect(message, fromPeerId);
+          break;
+        case 'REQUEST_STATE_SYNC':
+          this.handleRequestStateSync(message, fromPeerId);
+          break;
         default:
           console.warn('Unknown message type:', message.type);
       }
@@ -95,6 +103,63 @@ export class GameSync {
 
     // Broadcast updated player info to all clients
     this.broadcastPlayerInfo();
+  }
+
+  /**
+   * HOST: Handle player reconnecting to existing game
+   */
+  private handleReconnect(message: NetworkMessage, fromPeerId: string): void {
+    if (!this.isHost) return;
+
+    const payload = message.payload as ReconnectPayload;
+    console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
+
+    // Check if this player exists in the game
+    const state = this.engine.getState();
+    const existingPlayer = state.players.find(p => p.id === payload.playerId);
+
+    if (existingPlayer) {
+      console.log('Reconnecting existing player:', existingPlayer.name);
+      
+      // Send acknowledgment
+      const ackMessage = createMessage('CONNECTION_ACK', this.localPlayerId, {
+        playerId: this.localPlayerId,
+        playerName: this.localPlayerName,
+      } as ConnectionAckPayload);
+      this.peerManager.sendTo(fromPeerId, ackMessage);
+
+      // Send current game state to reconnected player
+      this.sendStateSyncTo(fromPeerId);
+    } else {
+      console.warn('Unknown player trying to reconnect:', payload.playerId);
+      // Could treat as new player or reject
+    }
+  }
+
+  /**
+   * HOST: Handle request for state sync (e.g., after reconnect)
+   */
+  private handleRequestStateSync(message: NetworkMessage, fromPeerId: string): void {
+    if (!this.isHost) return;
+
+    const payload = message.payload as RequestStateSyncPayload;
+    console.log('State sync requested by:', payload.playerId);
+
+    // Send current game state to requesting player
+    this.sendStateSyncTo(fromPeerId);
+  }
+
+  /**
+   * HOST: Send game state to a specific peer
+   */
+  private sendStateSyncTo(peerId: string): void {
+    if (!this.isHost) return;
+
+    const state = this.engine.getState();
+    const payload: GameStateSyncPayload = { state };
+    const message = createMessage('GAME_STATE_SYNC', this.localPlayerId, payload);
+    
+    this.peerManager.sendTo(peerId, message);
   }
 
   /**
@@ -178,6 +243,33 @@ export class GameSync {
       playerId: this.localPlayerId,
       playerName: this.localPlayerName,
     } as PlayerJoinedPayload);
+
+    this.peerManager.broadcast(message);
+  }
+
+  /**
+   * GUEST: Announce reconnection to an existing game
+   */
+  announceReconnect(): void {
+    if (this.isHost) return;
+
+    const message = createMessage('RECONNECT', this.localPlayerId, {
+      playerId: this.localPlayerId,
+      playerName: this.localPlayerName,
+    } as ReconnectPayload);
+
+    this.peerManager.broadcast(message);
+  }
+
+  /**
+   * GUEST: Request current game state from host
+   */
+  requestStateSync(): void {
+    if (this.isHost) return;
+
+    const message = createMessage('REQUEST_STATE_SYNC', this.localPlayerId, {
+      playerId: this.localPlayerId,
+    } as RequestStateSyncPayload);
 
     this.peerManager.broadcast(message);
   }
