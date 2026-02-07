@@ -491,8 +491,8 @@ export class GameEngine {
    * If exactly one non-eliminated player has a Spy in their discard pile, they gain a token
    */
   private checkSpyBonus(): void {
-    // Only applies to 2019 ruleset
-    if (this.state.ruleset !== '2019') {
+    // Only applies to rulesets that include Spy cards (2019 and house)
+    if (this.state.ruleset !== '2019' && this.state.ruleset !== 'house') {
       return;
     }
     

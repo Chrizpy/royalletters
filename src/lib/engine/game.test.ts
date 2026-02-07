@@ -1760,6 +1760,35 @@ describe('2019 Ruleset Tests', () => {
       // Alice wins round (+1) but no Spy bonus because she doesn't have Spy
       expect(state.players[0].tokens).toBe(1);
     });
+
+    it('should award Spy bonus in house ruleset', () => {
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: 'house'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      // Alice has Spy in discard (e.g., forced discard via Prince)
+      state.players[0].discardPile = ['spy', 'guard'];
+      state.players[1].discardPile = ['priest'];
+      state.players[0].hand = ['princess'];
+      state.players[1].hand = ['guard'];
+      state.deck = [];
+      game.setState(state);
+
+      // Force round end (deck empty)
+      game.checkRoundEnd();
+      state = game.getState();
+
+      // Alice should get +1 for round win (highest card) and +1 for Spy bonus
+      expect(state.players[0].tokens).toBe(2);
+    });
   });
 
   describe('Chancellor Tests', () => {
