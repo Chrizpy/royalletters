@@ -1848,6 +1848,52 @@ describe('2019 Ruleset Tests', () => {
       expect(state.deck.slice(-2)).toEqual(expect.arrayContaining(cardsToReturn));
     });
 
+    it('should place first-selected card at the very bottom of deck', () => {
+      // This test ensures the UI promise "First selected → very bottom" is honored
+      const game = new GameEngine();
+      game.init({
+        players: [
+          { id: 'p1', name: 'Alice' },
+          { id: 'p2', name: 'Bob' },
+        ],
+        ruleset: '2019'
+      });
+      game.startRound();
+      game.drawPhase();
+
+      let state = game.getState();
+      state.players[0].hand = ['chancellor', 'guard'];
+      state.deck = ['priest', 'baron', 'handmaid'];
+      game.setState(state);
+
+      // Play Chancellor - draws priest and baron
+      game.applyMove({
+        type: 'PLAY_CARD',
+        playerId: 'p1',
+        cardId: 'chancellor'
+      });
+
+      state = game.getState();
+      // Hand should now be: guard, priest, baron (in some order)
+      expect(state.phase).toBe('CHANCELLOR_RESOLVING');
+      
+      // Return cards in specific order: priest first (should be at very bottom), baron second
+      const result = game.applyMove({
+        type: 'CHANCELLOR_RETURN',
+        playerId: 'p1',
+        cardsToReturn: ['priest', 'baron']  // priest selected first, baron selected second
+      });
+
+      expect(result.success).toBe(true);
+      state = game.getState();
+      
+      // The deck should now have: [..., baron, priest]
+      // priest is at the very end (true bottom), baron is above it
+      const deckLength = state.deck.length;
+      expect(state.deck[deckLength - 1]).toBe('priest');  // Very bottom (last to be drawn)
+      expect(state.deck[deckLength - 2]).toBe('baron');   // Second from bottom
+    });
+
     it('should reject Chancellor return with wrong number of cards', () => {
       const game = new GameEngine();
       game.init({

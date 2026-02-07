@@ -95,13 +95,18 @@ export function applyChancellorReturn(
 ): EffectResult {
   const cardsToReturn = action.cardsToReturn!;
   
-  // Remove cards from hand and add to bottom of deck
+  // Remove cards from hand first
   for (const cardId of cardsToReturn) {
     const index = activePlayer.hand.indexOf(cardId);
     if (index !== -1) {
       activePlayer.hand.splice(index, 1);
-      state.deck.push(cardId);  // Add to bottom of deck
     }
+  }
+  
+  // Add to bottom of deck in reverse order so first-selected ends up at very bottom
+  // (push appends to end, so we reverse to get correct order)
+  for (const cardId of [...cardsToReturn].reverse()) {
+    state.deck.push(cardId);
   }
   
   // Clear chancellor state
