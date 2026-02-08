@@ -875,6 +875,7 @@ describe('Card Effect Tests', () => {
       state.revengeGuess = {
         revengerId: 'p2',
         targetId: 'p1',
+        originalGuess: 'baron',
       };
       game.setState(state);
 
@@ -903,6 +904,7 @@ describe('Card Effect Tests', () => {
       state.revengeGuess = {
         revengerId: 'p2',
         targetId: 'p1',
+        originalGuess: 'baron',
       };
       game.setState(state);
 
@@ -931,6 +933,7 @@ describe('Card Effect Tests', () => {
       state.revengeGuess = {
         revengerId: 'p2',
         targetId: 'p1',
+        originalGuess: 'baron',
       };
       game.setState(state);
 
@@ -955,6 +958,7 @@ describe('Card Effect Tests', () => {
       state.revengeGuess = {
         revengerId: 'p2',
         targetId: 'p1',
+        originalGuess: 'baron',
       };
       game.setState(state);
 
@@ -979,6 +983,7 @@ describe('Card Effect Tests', () => {
       state.revengeGuess = {
         revengerId: 'p2',
         targetId: 'p1',
+        originalGuess: 'baron',
       };
       game.setState(state);
 

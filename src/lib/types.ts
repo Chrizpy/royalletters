@@ -70,6 +70,7 @@ export interface GameState {
   revengeGuess?: {  // For tillbakakaka (cookie guard) revenge mechanic
     revengerId: string;  // Player who gets to make the revenge guess
     targetId: string;    // Player who played tillbakakaka (target of revenge)
+    originalGuess: string;  // The card ID that was incorrectly guessed
   };
 }
 

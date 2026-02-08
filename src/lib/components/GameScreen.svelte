@@ -428,6 +428,7 @@
         headerStyle="revenge"
         players={gameState.players}
         localPlayerId={localPlayerId}
+        originalGuess={gameState.revengeGuess?.originalGuess}
       />
     {/if}
   </div>

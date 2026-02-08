@@ -13,6 +13,7 @@
   export let headerStyle: 'default' | 'revenge' = 'default';
   export let players: PlayerState[] = [];
   export let localPlayerId: string = '';
+  export let originalGuess: string | undefined = undefined;
   
   // Type for the new card data structure
   interface CardRegistry {
@@ -89,6 +90,16 @@
     {/if}
     <h3 class:revenge-title={headerStyle === 'revenge'}>{title}</h3>
     <p class="subtitle">{subtitle}</p>
+
+    {#if originalGuess}
+      {@const originalCard = getCardDefinition(originalGuess)}
+      <div class="original-guess-info">
+        <span class="original-guess-label">They guessed you had:</span>
+        <span class="original-guess-card" style="--card-color: {getCardColor(originalGuess)}">
+          {getCardEmoji(originalGuess)} {originalCard?.name} ({originalCard?.value})
+        </span>
+      </div>
+    {/if}
 
     {#if playersWithCards.length > 0}
       <div class="played-cards-summary">
@@ -219,6 +230,35 @@
     text-align: center;
     color: rgba(255, 255, 255, 0.7);
     margin: 0 0 1.5rem 0;
+  }
+
+  .original-guess-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(231, 76, 60, 0.15);
+    border: 1px solid rgba(231, 76, 60, 0.4);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .original-guess-label {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .original-guess-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
   }
 
   .card-grid {

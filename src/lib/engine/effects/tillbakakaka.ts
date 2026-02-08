@@ -40,6 +40,7 @@ export function applyGuessCardRevenge(context: EffectContext): EffectResult {
     state.revengeGuess = {
       revengerId: targetPlayer.id,
       targetId: activePlayer.id,
+      originalGuess: guess,
     };
     state.phase = 'WAITING_FOR_REVENGE_GUESS';
     
