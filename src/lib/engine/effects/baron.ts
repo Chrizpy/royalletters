@@ -28,8 +28,7 @@ export function applyCompareHands(context: EffectContext): EffectResult {
   if (activeValue < targetValue) {
     eliminatePlayer(
       activePlayer,
-      `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`,
-      state
+      `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`
     );
     addLog(`${activePlayer.name} was eliminated (lower card)`, state, activePlayer.id);
     
@@ -40,8 +39,7 @@ export function applyCompareHands(context: EffectContext): EffectResult {
   } else if (targetValue < activeValue) {
     eliminatePlayer(
       targetPlayer,
-      `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`,
-      state
+      `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`
     );
     addLog(`${targetPlayer.name} was eliminated (lower card)`, state, targetPlayer.id);
     

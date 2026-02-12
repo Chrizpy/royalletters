@@ -1,5 +1,6 @@
 import type { GameState, GameAction, PlayerState, Ruleset } from '../types';
 import { getCardDefinition, getCardValue, createDeck } from './deck';
+import { getValidTargets } from './validation';
 
 /**
  * AI player decision-making engine
@@ -18,21 +19,7 @@ function getDeckComposition(ruleset: Ruleset): Record<string, number> {
   return composition;
 }
 
-/**
- * Get all valid target players for a given card
- */
-function getValidTargets(
-  state: GameState,
-  playerId: string,
-  canTargetSelf: boolean
-): PlayerState[] {
-  return state.players.filter((p) => {
-    if (p.id === playerId && !canTargetSelf) return false;
-    if (p.status === 'ELIMINATED') return false;
-    if (p.status === 'PROTECTED' && p.id !== playerId) return false;
-    return true;
-  });
-}
+
 
 /**
  * Get possible card guesses for Guard (excludes Guard and tillbakakaka, and Spy if classic ruleset)

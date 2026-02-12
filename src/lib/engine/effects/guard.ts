@@ -17,8 +17,7 @@ export function applyGuessCard(context: EffectContext): EffectResult {
   if (targetPlayer.hand.includes(guess)) {
     eliminatePlayer(
       targetPlayer,
-      `${activePlayer.name} correctly guessed you had ${guessName}`,
-      state
+      `${activePlayer.name} correctly guessed you had ${guessName}`
     );
     addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, state, targetPlayer.id);
     

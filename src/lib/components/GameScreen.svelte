@@ -12,6 +12,9 @@
   import DeckInfoModal from './DeckInfoModal.svelte';
   import CountessRuleModal from './CountessRuleModal.svelte';
   import { getCardDefinition } from '../engine/deck';
+  import { getValidTargets } from '../engine/validation';
+  import { getTokensToWin } from '../engine/constants';
+  import { formatPlayerNames } from '../engine/player';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
 
@@ -38,17 +41,6 @@
   let showCountessRuleModal = false;
   let countessConflictCard: 'king' | 'prince' = 'king';
 
-  /**
-   * Format multiple names with proper Oxford comma grammar
-   * Examples: "Alice", "Alice and Bob", "Alice, Bob, and Charlie"
-   */
-  function formatWinnerNames(names: (string | undefined)[]): string {
-    const validNames = names.filter(n => n) as string[];
-    if (validNames.length === 0) return '';
-    if (validNames.length === 1) return validNames[0];
-    if (validNames.length === 2) return `${validNames[0]} and ${validNames[1]}`;
-    return validNames.slice(0, -1).join(', ') + ', and ' + validNames[validNames.length - 1];
-  }
 
   /**
    * Reorder all players for clockwise display in a 2-column grid.
@@ -114,7 +106,7 @@
   $: isMyTurn = gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId;
   $: activePlayer = gameState?.players[gameState?.activePlayerIndex];
   $: allPlayersClockwise = reorderPlayersClockwise(gameState?.players || [], localPlayerId);
-  $: validTargetIds = new Set(getValidTargets().map(t => t.id));
+  $: validTargetIds = new Set(getLocalValidTargets().map(t => t.id));
   $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
   $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
   $: isRevengePhase = gameState?.phase === 'WAITING_FOR_REVENGE_GUESS';
@@ -186,11 +178,6 @@
     prevActivePlayerIndex = gameState.activePlayerIndex;
   }
 
-  function getTokensToWin(playerCount: number): number {
-    const map: Record<number, number> = { 2: 6, 3: 5, 4: 4, 5: 3, 6: 3 };
-    return map[playerCount] || 4;
-  }
-  
   function handleChancellorReturn(cardsToReturn: string[]) {
     if (onChancellorReturn) {
       onChancellorReturn(cardsToReturn);
@@ -222,7 +209,7 @@
     // Check if card needs a target
     if (card.effect.requiresTargetPlayer) {
       // Check if there are valid targets available
-      const validTargets = getValidTargets();
+      const validTargets = getLocalValidTargets();
       if (validTargets.length === 0) {
         // No valid targets - play card with no effect
         playCardWithSelection(cardId);
@@ -293,17 +280,12 @@
     }
   });
 
-  function getValidTargets(): PlayerState[] {
+  function getLocalValidTargets(): PlayerState[] {
     if (!pendingCardId || !gameState) return [];
     const card = getCardDefinition(pendingCardId);
     if (!card) return [];
     
-    return gameState.players.filter(p => {
-      if (p.status === 'ELIMINATED') return false;
-      if (p.status === 'PROTECTED' && p.id !== localPlayerId) return false;
-      if (p.id === localPlayerId && !card.effect.canTargetSelf) return false;
-      return true;
-    });
+    return getValidTargets(gameState, localPlayerId, card.effect.canTargetSelf ?? false);
   }
 </script>
 
@@ -387,7 +369,7 @@
           {#if gameState.winnerIds.length === 1}
             {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} wins!
           {:else}
-            {formatWinnerNames(gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name))} win!
+            {formatPlayerNames(gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name).filter((n): n is string => !!n))} win!
           {/if}
         </div>
         {#if isHost && onPlayAgain}
@@ -402,7 +384,7 @@
 
     {#if selectingTarget}
       <TargetSelector 
-        validTargets={getValidTargets()} 
+        validTargets={getLocalValidTargets()} 
         onSelect={selectTarget}
         onCancel={cancelSelection}
         cardName={getCardDefinition(pendingCardId!)?.name || ''}

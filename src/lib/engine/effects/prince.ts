@@ -19,8 +19,7 @@ export function applyForceDiscard(context: EffectContext): EffectResult {
     if (discardedCard === 'princess') {
       eliminatePlayer(
         targetPlayer,
-        `${activePlayer.name} forced you to discard Princess`,
-        state
+        `${activePlayer.name} forced you to discard Princess`
       );
       addLog(`${targetPlayer.name} was eliminated (discarded Princess)`, state, targetPlayer.id);
       

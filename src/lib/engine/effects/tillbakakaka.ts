@@ -19,8 +19,7 @@ export function applyGuessCardRevenge(context: EffectContext): EffectResult {
     // Correct guess - eliminate target (no revenge)
     eliminatePlayer(
       targetPlayer,
-      `${activePlayer.name} correctly guessed you had ${guessName} (with Guard 🍪)`,
-      state
+      `${activePlayer.name} correctly guessed you had ${guessName} (with Guard 🍪)`
     );
     addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, state, targetPlayer.id);
     
@@ -101,8 +100,7 @@ export function applyRevengeGuess(
     // Correct revenge guess - eliminate the original guesser!
     eliminatePlayer(
       target,
-      `${revenger.name}'s revenge guess correctly identified you had ${guessName}`,
-      state
+      `${revenger.name}'s revenge guess correctly identified you had ${guessName}`
     );
     addLog(`🍪 Revenge! ${revenger.name} correctly guessed ${target.name} had ${guessName}`, state, revenger.id);
     

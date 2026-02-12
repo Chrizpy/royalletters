@@ -102,11 +102,3 @@ export interface GameConfig {
   tokensToWin?: number;
   ruleset?: Ruleset;
 }
-
-export const TOKENS_TO_WIN: Record<number, number> = {
-  2: 6,
-  3: 5,
-  4: 4,
-  5: 3,
-  6: 3,
-};

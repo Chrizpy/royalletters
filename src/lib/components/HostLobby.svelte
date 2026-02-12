@@ -9,6 +9,7 @@
   import { addChatMessage } from '../stores/chat';
   import { v4 as uuidv4 } from 'uuid';
   import type { Ruleset } from '../types';
+  import { getTokensToWin } from '../engine/constants';
 
   let qrCodeDataUrl = '';
   let generatedPeerId = '';
@@ -25,15 +26,6 @@
   let tokensToWin: number | null = null;  // null means use default based on player count
   let hasCustomTokens = false;  // Track if user has manually adjusted tokens
 
-  // Default tokens based on player count
-  const DEFAULT_TOKENS_MAP: Record<number, number> = {
-    2: 6,
-    3: 5,
-    4: 4,
-    5: 3,
-    6: 3,
-  };
-
   // Max players depends on ruleset: classic = 4, 2019/house = 6
   $: maxPlayers = (selectedRuleset === '2019' || selectedRuleset === 'house') ? 6 : 4;
   
@@ -41,7 +33,7 @@
   $: totalPlayers = players.length + 1;
   
   // Default tokens for current player count
-  $: defaultTokens = DEFAULT_TOKENS_MAP[totalPlayers] || 4;
+  $: defaultTokens = getTokensToWin(totalPlayers);
   
   // Update tokensToWin when player count changes (only if user hasn't customized)
   $: if (!hasCustomTokens) {
@@ -179,10 +171,7 @@
       }
       
       // Broadcast updated state to all clients
-      broadcastGameState();
-      
-      // Check if next turn is AI
-      scheduleAIMove();
+      broadcastAndScheduleAI();
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message from a guest - add to local store and broadcast to all except sender
       const payload = message.payload as ChatMessagePayload;
@@ -258,10 +247,7 @@
     startRound();
     
     // Broadcast state to all connected players
-    broadcastGameState();
-    
-    // Check if it's an AI's turn after starting
-    scheduleAIMove();
+    broadcastAndScheduleAI();
   }
 
   function broadcastGameState() {
@@ -273,6 +259,11 @@
     const message = createMessage('GAME_STATE_SYNC', generatedPeerId, payload);
     
     peerManager.broadcast(message);
+  }
+
+  function broadcastAndScheduleAI() {
+    broadcastGameState();
+    scheduleAIMove();
   }
   
   /**
@@ -294,10 +285,7 @@
     const result = executeAIMove();
     if (result) {
       // Broadcast updated state
-      broadcastGameState();
-      
-      // Check if it's still an AI's turn (could be another AI)
-      scheduleAIMove();
+      broadcastAndScheduleAI();
     }
   }
 
@@ -312,10 +300,7 @@
     });
     
     // Broadcast updated state to all clients
-    broadcastGameState();
-    
-    // Check if next turn is AI
-    scheduleAIMove();
+    broadcastAndScheduleAI();
   }
   
   function handleChancellorReturn(cardsToReturn: string[]) {
@@ -327,10 +312,7 @@
     });
     
     // Broadcast updated state to all clients
-    broadcastGameState();
-    
-    // Check if next turn is AI
-    scheduleAIMove();
+    broadcastAndScheduleAI();
   }
 
   function handleRevengeGuess(targetCardGuess: string) {
@@ -342,18 +324,12 @@
     });
     
     // Broadcast updated state to all clients
-    broadcastGameState();
-    
-    // Check if next turn is AI
-    scheduleAIMove();
+    broadcastAndScheduleAI();
   }
 
   function handleStartRound() {
     startRound();
-    broadcastGameState();
-    
-    // Check if first turn is AI
-    scheduleAIMove();
+    broadcastAndScheduleAI();
   }
 
   function handlePlayAgain() {
@@ -365,10 +341,7 @@
     
     initGame(allPlayers, selectedRuleset, effectiveTokens);
     startRound();
-    broadcastGameState();
-    
-    // Check if first turn is AI
-    scheduleAIMove();
+    broadcastAndScheduleAI();
   }
   
   // Sync AI players with slider value

@@ -554,14 +554,14 @@ export class GameEngine {
    * Get current game state
    */
   getState(): GameState {
-    return JSON.parse(JSON.stringify(this.state));
+    return structuredClone(this.state);
   }
 
   /**
    * Set game state (for P2P sync)
    */
   setState(state: GameState): void {
-    this.state = JSON.parse(JSON.stringify(state));
+    this.state = structuredClone(state);
   }
 
   /**

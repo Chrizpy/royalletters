@@ -48,8 +48,7 @@ export interface EffectResult {
  */
 export type EliminatePlayerFn = (
   player: PlayerState,
-  reason: string,
-  state: GameState
+  reason: string
 ) => void;
 
 /**
