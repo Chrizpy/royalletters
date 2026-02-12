@@ -4,26 +4,26 @@
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
   import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type PlayerActionPayload, type ChatMessagePayload, type PlayerJoinedPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
   import { saveSession, clearSession } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
-  let manualPeerId = '';
-  let error = '';
-  let showManualInput = false;
-  let isScanning = false;
-  let scanner: Html5Qrcode | null = null;
+  let manualPeerId = $state('');
+  let error = $state('');
+  let showManualInput = $state(false);
+  let isScanning = $state(false);
+  let scanner = $state<Html5Qrcode | null>(null);
   let peerManager: PeerManager;
-  let localConnectionState: string = 'disconnected';
-  let cameraPermissionDenied = false;
-  let guestPeerId = '';
-  let hostPeerId = '';
-  let nickname = '';
+  let localConnectionState = $state('disconnected');
+  let cameraPermissionDenied = $state(false);
+  let guestPeerId = $state('');
+  let hostPeerId = $state('');
+  let nickname = $state('');
 
   // Subscribe to game started state
-  $: inGame = $gameStarted;
+  let inGame = $derived($gameStarted);
 
   onMount(async () => {
     try {
@@ -91,11 +91,11 @@
     console.log('Guest received message:', message.type);
     
     if (message.type === 'GAME_STATE_SYNC') {
-      const payload = message.payload as GameStateSyncPayload;
+      const payload = message.payload;
       setGameState(payload.state);
     } else if (message.type === 'PRIEST_REVEAL') {
       // Host sent us a private Priest reveal - this guest played Priest
-      const payload = message.payload as PriestRevealPayload;
+      const payload = message.payload;
       revealedCard.set({
         cardId: payload.cardId,
         playerName: payload.targetPlayerName,
@@ -103,7 +103,7 @@
       });
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message - add to local store
-      const payload = message.payload as ChatMessagePayload;
+      const payload = message.payload;
       const chatMsg = {
         id: uuidv4(),
         senderId: message.senderId,
@@ -313,7 +313,7 @@
           <div class="scanner-section">
             <p class="instruction">Point your camera at the host's QR code</p>
             <div id="qr-reader" class="qr-reader"></div>
-            <button class="toggle-btn" on:click={toggleManualInput}>
+            <button class="toggle-btn" onclick={toggleManualInput}>
               Enter code manually
             </button>
           </div>
@@ -337,14 +337,14 @@
           
           <button 
             class="connect-btn"
-            on:click={handleManualConnect}
+            onclick={handleManualConnect}
             disabled={!manualPeerId.trim()}
           >
             Connect
           </button>
           
           {#if !cameraPermissionDenied}
-            <button class="toggle-btn" on:click={toggleManualInput}>
+            <button class="toggle-btn" onclick={toggleManualInput}>
               Use camera instead
             </button>
           {/if}
@@ -352,7 +352,7 @@
       {/if}
     {/if}
     
-    <button class="back-btn" on:click={handleBack}>Back</button>
+    <button class="back-btn" onclick={handleBack}>Back</button>
   </div>
 </div>
 {/if}

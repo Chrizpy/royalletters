@@ -12,12 +12,22 @@ export type MessageType =
   | 'RECONNECT'          // Player reconnecting to existing game
   | 'REQUEST_STATE_SYNC';// Request current game state from host
 
-export interface NetworkMessage {
-  type: MessageType;
-  payload: unknown;
+interface MessageBase {
   timestamp: number;
   senderId: string;
 }
+
+export type NetworkMessage =
+  | { type: 'PLAYER_JOINED'; payload: PlayerJoinedPayload } & MessageBase
+  | { type: 'PLAYER_INFO'; payload: PlayerInfoPayload } & MessageBase
+  | { type: 'GAME_STATE_SYNC'; payload: GameStateSyncPayload } & MessageBase
+  | { type: 'PLAYER_ACTION'; payload: PlayerActionPayload } & MessageBase
+  | { type: 'ROUND_START'; payload: RoundStartPayload } & MessageBase
+  | { type: 'CONNECTION_ACK'; payload: ConnectionAckPayload } & MessageBase
+  | { type: 'PRIEST_REVEAL'; payload: PriestRevealPayload } & MessageBase
+  | { type: 'CHAT_MESSAGE'; payload: ChatMessagePayload } & MessageBase
+  | { type: 'RECONNECT'; payload: ReconnectPayload } & MessageBase
+  | { type: 'REQUEST_STATE_SYNC'; payload: RequestStateSyncPayload } & MessageBase;
 
 export interface PlayerJoinedPayload {
   playerId: string;
@@ -75,15 +85,15 @@ export interface RequestStateSyncPayload {
   playerId: string;
 }
 
-export function createMessage(
-  type: MessageType,
+export function createMessage<T extends NetworkMessage['type']>(
+  type: T,
   senderId: string,
-  payload: unknown
-): NetworkMessage {
+  payload: Extract<NetworkMessage, { type: T }>['payload']
+): Extract<NetworkMessage, { type: T }> {
   return {
     type,
     payload,
     timestamp: Date.now(),
     senderId,
-  };
+  } as Extract<NetworkMessage, { type: T }>;
 }

@@ -1,19 +1,23 @@
 <script lang="ts">
   import type { PlayerState } from '../types';
 
-  export let player: PlayerState | undefined;
+  let { player }: {
+    player: PlayerState | undefined;
+  } = $props();
 
-  let dismissed = false;
-  let lastEliminationReason: string | undefined;
+  let dismissed = $state(false);
+  let lastEliminationReason = $state<string | undefined>(undefined);
 
   // Reset dismissed state when elimination reason changes (new elimination)
-  $: if (player?.eliminationReason !== lastEliminationReason) {
-    dismissed = false;
-    lastEliminationReason = player?.eliminationReason;
-  }
+  $effect(() => {
+    if (player?.eliminationReason !== lastEliminationReason) {
+      dismissed = false;
+      lastEliminationReason = player?.eliminationReason;
+    }
+  });
 
-  $: isEliminated = player?.status === 'ELIMINATED';
-  $: showModal = isEliminated && player?.eliminationReason && !dismissed;
+  let isEliminated = $derived(player?.status === 'ELIMINATED');
+  let showModal = $derived(isEliminated && player?.eliminationReason && !dismissed);
 
   function dismiss() {
     dismissed = true;
@@ -26,7 +30,7 @@
       <div class="elimination-icon">💀</div>
       <h2 class="elimination-title">You've Been Eliminated!</h2>
       <p class="elimination-reason">{player?.eliminationReason}</p>
-      <button class="dismiss-btn" on:click={dismiss}>
+      <button class="dismiss-btn" onclick={dismiss}>
         Continue Watching
       </button>
     </div>

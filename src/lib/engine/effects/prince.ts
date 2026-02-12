@@ -5,6 +5,7 @@
 
 import type { EffectContext, EffectResult } from './types';
 import { eliminatePlayer, addLog } from './utils';
+import { PRINCESS } from '../cardIds';
 
 export function applyForceDiscard(context: EffectContext): EffectResult {
   const { state, action, activePlayer } = context;
@@ -16,11 +17,10 @@ export function applyForceDiscard(context: EffectContext): EffectResult {
     addLog(`${targetPlayer.name} discarded ${discardedCard}`, state, targetPlayer.id, discardedCard);
 
     // If Princess was discarded, target is eliminated
-    if (discardedCard === 'princess') {
+    if (discardedCard === PRINCESS) {
       eliminatePlayer(
         targetPlayer,
-        `${activePlayer.name} forced you to discard Princess`,
-        state
+        `${activePlayer.name} forced you to discard Princess`
       );
       addLog(`${targetPlayer.name} was eliminated (discarded Princess)`, state, targetPlayer.id);
       

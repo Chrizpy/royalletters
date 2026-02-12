@@ -2,16 +2,18 @@
   import type { PlayerState } from '../types';
   import { getCardDefinition } from '../engine/deck';
 
-  export let player: PlayerState;
-  export let isActive: boolean = false;
-  export let isTargetable: boolean = false;
-  export let onSelect: () => void = () => {};
-  export let isCardEffectActor: boolean = false;
-  export let isCardEffectTarget: boolean = false;
-  export let cardEffectId: string | null = null;
+  let { player, isActive = false, isTargetable = false, onSelect = () => {}, isCardEffectActor = false, isCardEffectTarget = false, cardEffectId = null }: {
+    player: PlayerState;
+    isActive?: boolean;
+    isTargetable?: boolean;
+    onSelect?: () => void;
+    isCardEffectActor?: boolean;
+    isCardEffectTarget?: boolean;
+    cardEffectId?: string | null;
+  } = $props();
 
-  let previousDiscardPileLength = 0;
-  let newlyAddedCardIndex = -1;
+  let previousDiscardPileLength = $state(0);
+  let newlyAddedCardIndex = $state(-1);
 
   function getCardColor(cardId: string): string {
     const colors: Record<string, string> = {
@@ -30,23 +32,25 @@
     return colors[cardId] || '#95a5a6';
   }
   
-  $: effectBorderColor = cardEffectId ? getCardColor(cardEffectId) : null;
+  let effectBorderColor = $derived(cardEffectId ? getCardColor(cardEffectId) : null);
   
   // Track when a new card is added to discard pile
-  $: if (player.discardPile.length > previousDiscardPileLength) {
-    // A new card was added - it's the last one in the array
-    newlyAddedCardIndex = player.discardPile.length - 1;
-    previousDiscardPileLength = player.discardPile.length;
-    
-    // Clear the animation flag after the animation completes
-    setTimeout(() => {
+  $effect(() => {
+    if (player.discardPile.length > previousDiscardPileLength) {
+      // A new card was added - it's the last one in the array
+      newlyAddedCardIndex = player.discardPile.length - 1;
+      previousDiscardPileLength = player.discardPile.length;
+      
+      // Clear the animation flag after the animation completes
+      setTimeout(() => {
+        newlyAddedCardIndex = -1;
+      }, 600); // Match animation duration
+    } else if (player.discardPile.length < previousDiscardPileLength) {
+      // Discard pile was cleared (new round)
+      previousDiscardPileLength = player.discardPile.length;
       newlyAddedCardIndex = -1;
-    }, 600); // Match animation duration
-  } else if (player.discardPile.length < previousDiscardPileLength) {
-    // Discard pile was cleared (new round)
-    previousDiscardPileLength = player.discardPile.length;
-    newlyAddedCardIndex = -1;
-  }
+    }
+  });
 </script>
 
 <button 
@@ -58,7 +62,7 @@
   class:eliminated={player.status === 'ELIMINATED'}
   class:protected={player.status === 'PROTECTED'}
   style={effectBorderColor ? `--effect-border-color: ${effectBorderColor}` : ''}
-  on:click={() => isTargetable && onSelect()}
+  onclick={() => isTargetable && onSelect()}
   disabled={!isTargetable}
 >
   <div class="player-avatar">

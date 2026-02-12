@@ -8,40 +8,46 @@
   // Color for the local player's actions (red to stand out)
   const LOCAL_PLAYER_COLOR = '#FF4444';
 
-  export let logs: LogEntry[] = [];
-  export let players: PlayerState[] = [];
-  export let localPlayerId: string = '';
-  export let onSendChat: ((text: string) => void) | undefined = undefined;
+  let { logs = [], players = [], localPlayerId = '', onSendChat = undefined }: {
+    logs?: LogEntry[];
+    players?: PlayerState[];
+    localPlayerId?: string;
+    onSendChat?: ((text: string) => void) | undefined;
+  } = $props();
   
-  let isMenuOpen = false;
-  let activeModal: 'log' | 'chat' | null = null;
-  let logsContainer: HTMLDivElement;
-  let chatContainer: HTMLDivElement;
-  let chatInput = '';
-  let hasScrolledLogOnOpen = false;
-  let hasScrolledChatOnOpen = false;
-  let lastSeenLogCount = 0;
+  let isMenuOpen = $state(false);
+  let activeModal = $state<'log' | 'chat' | null>(null);
+  let logsContainer = $state<HTMLDivElement>(undefined!);
+  let chatContainer = $state<HTMLDivElement>(undefined!);
+  let chatInput = $state('');
+  let hasScrolledLogOnOpen = $state(false);
+  let hasScrolledChatOnOpen = $state(false);
+  let lastSeenLogCount = $state(0);
 
-  $: messages = $chatMessages;
-  $: unreadChats = $unreadChatCount;
-  $: unreadLogs = logs.length - lastSeenLogCount;
-  $: isChatInputEmpty = !chatInput.trim();
+  let messages = $derived($chatMessages);
+  let unreadChats = $derived($unreadChatCount);
+  let unreadLogs = $derived(logs.length - lastSeenLogCount);
+  let isChatInputEmpty = $derived(!chatInput.trim());
 
   // Only scroll to bottom when the log modal is first opened
-  $: if (logsContainer && logs.length && activeModal === 'log' && !hasScrolledLogOnOpen) {
-    setTimeout(() => {
-      logsContainer.scrollTop = logsContainer.scrollHeight;
-      hasScrolledLogOnOpen = true;
-    }, SCROLL_DELAY_MS);
-  }
+  $effect(() => {
+    if (logsContainer && logs.length && activeModal === 'log' && !hasScrolledLogOnOpen) {
+      setTimeout(() => {
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+        hasScrolledLogOnOpen = true;
+      }, SCROLL_DELAY_MS);
+    }
+  });
 
   // Only scroll to bottom when the chat modal is first opened
-  $: if (chatContainer && messages.length && activeModal === 'chat' && !hasScrolledChatOnOpen) {
-    setTimeout(() => {
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-      hasScrolledChatOnOpen = true;
-    }, SCROLL_DELAY_MS);
-  }
+  $effect(() => {
+    if (chatContainer && messages.length && activeModal === 'chat' && !hasScrolledChatOnOpen) {
+      setTimeout(() => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        hasScrolledChatOnOpen = true;
+      }, SCROLL_DELAY_MS);
+    }
+  });
 
   function toggleMenu() {
     isMenuOpen = !isMenuOpen;
@@ -120,18 +126,18 @@
   <!-- Expanded Menu Items (The "Two Bubbles") -->
   {#if isMenuOpen}
     <div class="menu-items">
-      <button class="mini-fab exit-fab" on:click={handleExitGame} aria-label="Exit game">
+      <button class="mini-fab exit-fab" onclick={handleExitGame} aria-label="Exit game">
         <span class="mini-fab-icon">🚪</span>
         <span class="tooltip">Exit</span>
       </button>
-      <button class="mini-fab chat-fab" on:click={() => openModal('chat')} aria-label="Open chat">
+      <button class="mini-fab chat-fab" onclick={() => openModal('chat')} aria-label="Open chat">
         <span class="mini-fab-icon">💬</span>
         <span class="tooltip">Chat</span>
         {#if unreadChats > 0}
           <span class="mini-badge">{unreadChats}</span>
         {/if}
       </button>
-      <button class="mini-fab log-fab-mini" on:click={() => openModal('log')} aria-label="Open game log">
+      <button class="mini-fab log-fab-mini" onclick={() => openModal('log')} aria-label="Open game log">
         <span class="mini-fab-icon">📜</span>
         <span class="tooltip">Log</span>
         {#if unreadLogs > 0}
@@ -142,7 +148,7 @@
   {/if}
 
   <!-- Main Toggle Button -->
-  <button class="main-fab" class:open={isMenuOpen} on:click={toggleMenu} aria-label="Toggle menu">
+  <button class="main-fab" class:open={isMenuOpen} onclick={toggleMenu} aria-label="Toggle menu">
     <span class="fab-icon">{isMenuOpen ? '✕' : '☰'}</span>
   </button>
 </div>
@@ -150,12 +156,12 @@
 <!-- Log Modal -->
 {#if activeModal === 'log'}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div class="modal-overlay" on:click={closeModal} on:keydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
+  <div class="modal-overlay" onclick={closeModal} onkeydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <div class="modal-content" on:click|stopPropagation role="document">
+    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="document">
       <div class="modal-header">
         <span class="modal-title">📜 Game Log</span>
-        <button class="close-btn" on:click={closeModal} aria-label="Close log">✕</button>
+        <button class="close-btn" onclick={closeModal} aria-label="Close log">✕</button>
       </div>
       
       <div class="modal-body" bind:this={logsContainer}>
@@ -185,12 +191,12 @@
 <!-- Chat Modal -->
 {#if activeModal === 'chat'}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div class="modal-overlay" on:click={closeModal} on:keydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
+  <div class="modal-overlay" onclick={closeModal} onkeydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <div class="modal-content chat-modal" on:click|stopPropagation role="document">
+    <div class="modal-content chat-modal" onclick={(e) => e.stopPropagation()} role="document">
       <div class="modal-header">
         <span class="modal-title">💬 Chat</span>
-        <button class="close-btn" on:click={closeModal} aria-label="Close chat">✕</button>
+        <button class="close-btn" onclick={closeModal} aria-label="Close chat">✕</button>
       </div>
       
       <div class="modal-body chat-body" bind:this={chatContainer}>
@@ -213,9 +219,9 @@
           class="chat-input" 
           placeholder="Type a message..." 
           bind:value={chatInput}
-          on:keydown={handleKeydown}
+          onkeydown={handleKeydown}
         />
-        <button class="send-btn" on:click={handleSendChat} aria-label="Send message" disabled={isChatInputEmpty}>
+        <button class="send-btn" onclick={handleSendChat} aria-label="Send message" disabled={isChatInputEmpty}>
           ➤
         </button>
       </div>

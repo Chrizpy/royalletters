@@ -1,9 +1,11 @@
 <script lang="ts">
   import type { LogEntry, PlayerState } from '../types';
 
-  export let logs: LogEntry[] = [];
-  export let players: PlayerState[] = [];
-  export let localPlayerId: string = '';
+  let { logs = [], players = [], localPlayerId = '' }: {
+    logs?: LogEntry[];
+    players?: PlayerState[];
+    localPlayerId?: string;
+  } = $props();
   
   // Color for the local player's actions (red to stand out)
   const LOCAL_PLAYER_COLOR = '#FF4444';
@@ -11,24 +13,28 @@
   // Threshold in pixels for determining if user is "near bottom" of scroll container
   const SCROLL_NEAR_BOTTOM_THRESHOLD = 50;
   
-  let isOpen = false;
-  let logsContainer: HTMLDivElement;
-  let previousLogCount = 0;
-  let userHasScrolledUp = false;
+  let isOpen = $state(false);
+  let logsContainer = $state<HTMLDivElement>(undefined!);
+  let previousLogCount = $state(0);
+  let userHasScrolledUp = $state(false);
 
   // Only auto-scroll when new logs are added and user hasn't scrolled up
-  $: if (logsContainer && logs.length > previousLogCount && isOpen && !userHasScrolledUp) {
-    setTimeout(() => {
-      if (logsContainer) {
-        logsContainer.scrollTop = logsContainer.scrollHeight;
-      }
-    }, 100);
-  }
+  $effect(() => {
+    if (logsContainer && logs.length > previousLogCount && isOpen && !userHasScrolledUp) {
+      setTimeout(() => {
+        if (logsContainer) {
+          logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+      }, 100);
+    }
+  });
 
   // Track log count changes
-  $: if (logs.length !== previousLogCount) {
-    previousLogCount = logs.length;
-  }
+  $effect(() => {
+    if (logs.length !== previousLogCount) {
+      previousLogCount = logs.length;
+    }
+  });
 
   // Get player by ID
   function getPlayer(playerId: string | undefined): PlayerState | undefined {
@@ -90,7 +96,7 @@
 </script>
 
 <!-- Floating log button -->
-<button class="log-fab" on:click={toggleOpen} aria-label="View game log">
+<button class="log-fab" onclick={toggleOpen} aria-label="View game log">
   <span class="fab-icon">📜</span>
   {#if logs.length > 0}
     <span class="log-badge">{logs.length}</span>
@@ -99,14 +105,14 @@
 
 <!-- Log modal overlay -->
 {#if isOpen}
-  <div class="log-overlay" on:click={close} on:keydown={(e) => e.key === 'Escape' && close()} role="dialog" aria-modal="true" tabindex="0">
-    <div class="log-modal" on:click|stopPropagation>
+  <div class="log-overlay" onclick={close} onkeydown={(e) => e.key === 'Escape' && close()} role="dialog" aria-modal="true" tabindex="0">
+    <div class="log-modal" onclick={(e) => e.stopPropagation()}>
       <div class="log-header">
         <span class="log-title">📜 Game Log</span>
-        <button class="close-btn" on:click={close} aria-label="Close log">✕</button>
+        <button class="close-btn" onclick={close} aria-label="Close log">✕</button>
       </div>
       
-      <div class="log-content" bind:this={logsContainer} on:scroll={handleScroll}>
+      <div class="log-content" bind:this={logsContainer} onscroll={handleScroll}>
         {#each logs as log}
           <div class="log-entry">
             <span class="log-time">{formatTime(log.timestamp)}</span>

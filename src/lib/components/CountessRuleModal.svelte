@@ -1,9 +1,11 @@
 <script lang="ts">
-  export let conflictingCard: 'king' | 'prince';
-  export let onDismiss: () => void;
+  let { conflictingCard, onDismiss }: {
+    conflictingCard: 'king' | 'prince';
+    onDismiss: () => void;
+  } = $props();
 
-  $: cardName = conflictingCard === 'king' ? 'King' : 'Prince';
-  $: cardEmoji = conflictingCard === 'king' ? '👑' : '🤴';
+  let cardName = $derived(conflictingCard === 'king' ? 'King' : 'Prince');
+  let cardEmoji = $derived(conflictingCard === 'king' ? '👑' : '🤴');
 </script>
 
 <div class="countess-overlay" role="dialog" aria-modal="true">
@@ -17,7 +19,7 @@
       According to the rules, when you have the Countess together with the King or Prince, 
       you <em>must</em> play the Countess.
     </p>
-    <button class="dismiss-btn" on:click={onDismiss}>
+    <button class="dismiss-btn" onclick={onDismiss}>
       Got it!
     </button>
   </div>

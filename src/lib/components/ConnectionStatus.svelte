@@ -1,23 +1,23 @@
 <script lang="ts">
   import { connectionState, peerId, remotePeerId } from '../stores/network';
   
-  let showDetails = false;
+  let showDetails = $state(false);
   
   function toggleDetails() {
     showDetails = !showDetails;
   }
   
-  $: statusColor = $connectionState === 'connected' ? '#4caf50' : 
+  let statusColor = $derived($connectionState === 'connected' ? '#4caf50' : 
                    $connectionState === 'connecting' ? '#ff9800' : 
-                   $connectionState === 'error' ? '#f44336' : '#9e9e9e';
+                   $connectionState === 'error' ? '#f44336' : '#9e9e9e');
   
-  $: statusText = $connectionState === 'connected' ? 'Connected' : 
+  let statusText = $derived($connectionState === 'connected' ? 'Connected' : 
                   $connectionState === 'connecting' ? 'Connecting...' : 
-                  $connectionState === 'error' ? 'Connection Error' : 'Disconnected';
+                  $connectionState === 'error' ? 'Connection Error' : 'Disconnected');
 </script>
 
 <div class="connection-status">
-  <button class="status-indicator" on:click={toggleDetails}>
+  <button class="status-indicator" onclick={toggleDetails}>
     <div class="status-dot" style="background-color: {statusColor}"></div>
     <span class="status-text">{statusText}</span>
   </button>
@@ -26,7 +26,7 @@
     <div class="details-popup">
       <div class="details-header">
         <h3>Connection Details</h3>
-        <button class="close-btn" on:click={toggleDetails}>×</button>
+        <button class="close-btn" onclick={toggleDetails}>×</button>
       </div>
       <div class="details-content">
         <div class="detail-row">

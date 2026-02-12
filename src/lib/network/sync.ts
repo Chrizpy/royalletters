@@ -3,13 +3,9 @@ import { PeerManager } from './peer';
 import {
   createMessage,
   type NetworkMessage,
-  type PlayerJoinedPayload,
   type PlayerInfoPayload,
   type GameStateSyncPayload,
   type PlayerActionPayload,
-  type ConnectionAckPayload,
-  type ReconnectPayload,
-  type RequestStateSyncPayload,
 } from './messages';
 import type { GameAction, GameState } from '../types';
 
@@ -88,17 +84,17 @@ export class GameSync {
   /**
    * HOST: Handle guest announcing themselves
    */
-  private handlePlayerJoined(message: NetworkMessage, fromPeerId: string): void {
+  private handlePlayerJoined(message: Extract<NetworkMessage, { type: 'PLAYER_JOINED' }>, fromPeerId: string): void {
     if (!this.isHost) return;
 
-    const payload = message.payload as PlayerJoinedPayload;
+    const payload = message.payload;
     console.log('Player joined:', payload.playerName);
 
     // Send acknowledgment
     const ackMessage = createMessage('CONNECTION_ACK', this.localPlayerId, {
       playerId: this.localPlayerId,
       playerName: this.localPlayerName,
-    } as ConnectionAckPayload);
+    });
     this.peerManager.sendTo(fromPeerId, ackMessage);
 
     // Broadcast updated player info to all clients
@@ -108,10 +104,10 @@ export class GameSync {
   /**
    * HOST: Handle player reconnecting to existing game
    */
-  private handleReconnect(message: NetworkMessage, fromPeerId: string): void {
+  private handleReconnect(message: Extract<NetworkMessage, { type: 'RECONNECT' }>, fromPeerId: string): void {
     if (!this.isHost) return;
 
-    const payload = message.payload as ReconnectPayload;
+    const payload = message.payload;
     console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
 
     // Check if this player exists in the game
@@ -125,7 +121,7 @@ export class GameSync {
       const ackMessage = createMessage('CONNECTION_ACK', this.localPlayerId, {
         playerId: this.localPlayerId,
         playerName: this.localPlayerName,
-      } as ConnectionAckPayload);
+      });
       this.peerManager.sendTo(fromPeerId, ackMessage);
 
       // Send current game state to reconnected player
@@ -139,10 +135,10 @@ export class GameSync {
   /**
    * HOST: Handle request for state sync (e.g., after reconnect)
    */
-  private handleRequestStateSync(message: NetworkMessage, fromPeerId: string): void {
+  private handleRequestStateSync(message: Extract<NetworkMessage, { type: 'REQUEST_STATE_SYNC' }>, fromPeerId: string): void {
     if (!this.isHost) return;
 
-    const payload = message.payload as RequestStateSyncPayload;
+    const payload = message.payload;
     console.log('State sync requested by:', payload.playerId);
 
     // Send current game state to requesting player
@@ -165,10 +161,10 @@ export class GameSync {
   /**
    * GUEST: Handle receiving player info from host
    */
-  private handlePlayerInfo(message: NetworkMessage): void {
+  private handlePlayerInfo(message: Extract<NetworkMessage, { type: 'PLAYER_INFO' }>): void {
     if (this.isHost) return;
 
-    const payload = message.payload as PlayerInfoPayload;
+    const payload = message.payload;
     console.log('Received player info:', payload.players);
     
     // Update local state (can be used to update UI)
@@ -178,8 +174,8 @@ export class GameSync {
   /**
    * Handle full game state synchronization
    */
-  private handleGameStateSync(message: NetworkMessage): void {
-    const payload = message.payload as GameStateSyncPayload;
+  private handleGameStateSync(message: Extract<NetworkMessage, { type: 'GAME_STATE_SYNC' }>): void {
+    const payload = message.payload;
     console.log('Received game state sync');
     
     // Update local game state
@@ -189,10 +185,10 @@ export class GameSync {
   /**
    * HOST: Handle player action from guest
    */
-  private handlePlayerAction(message: NetworkMessage): void {
+  private handlePlayerAction(message: Extract<NetworkMessage, { type: 'PLAYER_ACTION' }>): void {
     if (!this.isHost) return;
 
-    const payload = message.payload as PlayerActionPayload;
+    const payload = message.payload;
     
     const action: GameAction = {
       type: 'PLAY_CARD',
@@ -226,10 +222,10 @@ export class GameSync {
   /**
    * GUEST: Handle connection acknowledgment from host
    */
-  private handleConnectionAck(message: NetworkMessage): void {
+  private handleConnectionAck(message: Extract<NetworkMessage, { type: 'CONNECTION_ACK' }>): void {
     if (this.isHost) return;
 
-    const payload = message.payload as ConnectionAckPayload;
+    const payload = message.payload;
     console.log('Connection acknowledged by host:', payload.playerName);
   }
 
@@ -242,7 +238,7 @@ export class GameSync {
     const message = createMessage('PLAYER_JOINED', this.localPlayerId, {
       playerId: this.localPlayerId,
       playerName: this.localPlayerName,
-    } as PlayerJoinedPayload);
+    });
 
     this.peerManager.broadcast(message);
   }
@@ -256,7 +252,7 @@ export class GameSync {
     const message = createMessage('RECONNECT', this.localPlayerId, {
       playerId: this.localPlayerId,
       playerName: this.localPlayerName,
-    } as ReconnectPayload);
+    });
 
     this.peerManager.broadcast(message);
   }
@@ -269,7 +265,7 @@ export class GameSync {
 
     const message = createMessage('REQUEST_STATE_SYNC', this.localPlayerId, {
       playerId: this.localPlayerId,
-    } as RequestStateSyncPayload);
+    });
 
     this.peerManager.broadcast(message);
   }

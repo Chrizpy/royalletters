@@ -15,9 +15,11 @@
     addedAt: number;
   }
 
-  export let logs: LogEntry[] = [];
-  export let players: PlayerState[] = [];
-  export let localPlayerId: string = '';
+  let { logs = [], players = [], localPlayerId = '' }: {
+    logs?: LogEntry[];
+    players?: PlayerState[];
+    localPlayerId?: string;
+  } = $props();
   
   // Color for the local player's actions (red to stand out)
   const LOCAL_PLAYER_COLOR = '#FF4444';
@@ -27,11 +29,11 @@
   const MAX_VISIBLE_ITEMS = 8;
   const STAGGER_DELAY_MS = 300; // Delay between each message appearing
 
-  let feedItems: FeedItem[] = [];
-  let pendingItems: PendingItem[] = [];
-  let nextId = 0;
-  let lastLogCount = 0;
-  let processingInterval: ReturnType<typeof setInterval> | null = null;
+  let feedItems = $state<FeedItem[]>([]);
+  let pendingItems = $state<PendingItem[]>([]);
+  let nextId = $state(0);
+  let lastLogCount = $state(0);
+  let processingInterval = $state<ReturnType<typeof setInterval> | null>(null);
 
   // Get player by ID
   function getPlayer(playerId: string | undefined): PlayerState | undefined {
@@ -343,7 +345,7 @@
   }
 
   // Watch for new logs and queue them for staggered display
-  $: {
+  $effect(() => {
     // Reset feed if logs were completely cleared or reset to initial state (when starting a new game)
     // Also reset if logs count decreased (game was restarted with new logs)
     const isGameReset = logs.length === 0 || 
@@ -381,15 +383,15 @@
       
       lastLogCount = logs.length;
     }
-  }
+  });
   
   // Calculate position from top (0 = oldest at top, higher = newer at bottom)
   // For fading, we want older items at the top to fade when there are many items
-  $: itemsWithPosition = feedItems.map((item, index) => ({
+  let itemsWithPosition = $derived(feedItems.map((item, index) => ({
     ...item,
     position: index,  // index 0 = oldest (top), higher index = newer (bottom)
     shouldFade: index < feedItems.length - 5 && feedItems.length > 5  // Fade items beyond the 5 most recent
-  }));
+  })));
 </script>
 
 <div class="game-feed">

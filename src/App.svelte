@@ -11,8 +11,8 @@
 
   // Routing state
   type Screen = 'lobby' | 'host' | 'join' | 'game' | 'rejoin';
-  let currentScreen: Screen = 'lobby';
-  let pendingSession: GameSession | null = null;
+  let currentScreen = $state<Screen>('lobby');
+  let pendingSession = $state<GameSession | null>(null);
 
   // Check for saved session on mount
   onMount(() => {
@@ -24,7 +24,7 @@
   });
 
   // Subscribe to network stores to determine routing
-  $: {
+  $effect(() => {
     // Don't override rejoin screen unless explicitly dismissed
     if (currentScreen !== 'rejoin') {
       if ($isHost === true) {
@@ -36,7 +36,7 @@
         currentScreen = 'lobby';
       }
     }
-  }
+  });
 
   function handleDismissRejoin() {
     pendingSession = null;
@@ -44,7 +44,7 @@
   }
 
   // Only show connection status when not in game and not on rejoin screen
-  $: showConnectionStatus = !$gameStarted && currentScreen !== 'rejoin';
+  let showConnectionStatus = $derived(!$gameStarted && currentScreen !== 'rejoin');
 </script>
 
 <main>

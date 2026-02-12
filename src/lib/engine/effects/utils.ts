@@ -10,8 +10,7 @@ import type { GameState, PlayerState, LogEntry } from '../../types';
  */
 export function eliminatePlayer(
   player: PlayerState,
-  reason: string,
-  _state: GameState
+  reason: string
 ): void {
   // Move all cards from hand to discard pile
   while (player.hand.length > 0) {

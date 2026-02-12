@@ -2,11 +2,13 @@
   import Card from './Card.svelte';
   import { getCardDefinition } from '../engine/deck';
   
-  export let playerHand: string[];
-  export let cardsToReturnCount: number;
-  export let onConfirmReturn: (cardsToReturn: string[]) => void;
+  let { playerHand, cardsToReturnCount, onConfirmReturn }: {
+    playerHand: string[];
+    cardsToReturnCount: number;
+    onConfirmReturn: (cardsToReturn: string[]) => void;
+  } = $props();
   
-  let selectedIndices: number[] = [];
+  let selectedIndices = $state<number[]>([]);
   
   function toggleCard(cardIndex: number) {
     const indexInSelection = selectedIndices.indexOf(cardIndex);
@@ -76,7 +78,7 @@
     <p class="selected-count">Selected: {selectedIndices.length}/{cardsToReturnCount}</p>
     
     {#if selectedIndices.length === cardsToReturnCount}
-      <button class="confirm-btn" on:click={confirmReturn}>
+      <button class="confirm-btn" onclick={confirmReturn}>
         Confirm Return
       </button>
     {/if}

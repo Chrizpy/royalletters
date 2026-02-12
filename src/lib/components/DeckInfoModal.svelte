@@ -2,8 +2,10 @@
   import cardsData from '../data/cards.json';
   import type { CardDefinition, Ruleset, GameState } from '../types';
 
-  export let gameState: GameState;
-  export let onClose: () => void;
+  let { gameState, onClose }: {
+    gameState: GameState;
+    onClose: () => void;
+  } = $props();
 
   // Type for the card data structure
   interface CardRegistry {
@@ -61,7 +63,7 @@
   }
 
   // Get all cards in the current ruleset, sorted by value
-  $: cardsInDeck = (() => {
+  let cardsInDeck = $derived.by(() => {
     const deckDef = registry.decks[gameState.ruleset];
     if (!deckDef) {
       console.error(`Unknown ruleset: ${gameState.ruleset}`);
@@ -82,7 +84,7 @@
         };
       })
       .sort((a, b) => a.value - b.value);
-  })();
+  });
 
   function handleOverlayClick(event: MouseEvent) {
     if (event.target === event.currentTarget) {
@@ -97,15 +99,15 @@
   role="dialog" 
   aria-modal="true" 
   aria-labelledby="deck-info-title"
-  on:click={handleOverlayClick}
-  on:keydown={(e) => e.key === 'Escape' && onClose()}
+  onclick={handleOverlayClick}
+  onkeydown={(e) => e.key === 'Escape' && onClose()}
   tabindex="0"
 >
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="deck-info-modal" on:click|stopPropagation>
+  <div class="deck-info-modal" onclick={(e) => e.stopPropagation()}>
     <div class="modal-header">
       <h3 id="deck-info-title">📚 Deck Information</h3>
-      <button class="close-btn" on:click={onClose} aria-label="Close modal">✕</button>
+      <button class="close-btn" onclick={onClose} aria-label="Close modal">✕</button>
     </div>
 
     <p class="subtitle">Cards in the {gameState.ruleset === 'classic' ? 'Classic' : '2019'} deck</p>
