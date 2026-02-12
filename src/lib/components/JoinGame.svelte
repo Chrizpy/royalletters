@@ -4,7 +4,7 @@
   import { PeerManager } from '../network/peer';
   import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
   import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type PlayerActionPayload, type ChatMessagePayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
   import { saveSession, clearSession } from '../stores/session';
@@ -91,11 +91,11 @@
     console.log('Guest received message:', message.type);
     
     if (message.type === 'GAME_STATE_SYNC') {
-      const payload = message.payload as GameStateSyncPayload;
+      const payload = message.payload;
       setGameState(payload.state);
     } else if (message.type === 'PRIEST_REVEAL') {
       // Host sent us a private Priest reveal - this guest played Priest
-      const payload = message.payload as PriestRevealPayload;
+      const payload = message.payload;
       revealedCard.set({
         cardId: payload.cardId,
         playerName: payload.targetPlayerName,
@@ -103,7 +103,7 @@
       });
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message - add to local store
-      const payload = message.payload as ChatMessagePayload;
+      const payload = message.payload;
       const chatMsg = {
         id: uuidv4(),
         senderId: message.senderId,

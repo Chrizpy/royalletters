@@ -8,6 +8,7 @@ import type {
   LogEntry,
 } from '../types';
 import { createDeck, shuffle, getCardDefinition, getCardValue } from './deck';
+import { SPY } from './cardIds';
 import { getTokensToWin } from './constants';
 import { validateCardPlay } from './validation';
 import {
@@ -20,19 +21,9 @@ import {
 import {
   type EffectContext,
   addLog as addLogUtil,
-  applyGuessCard,
-  applyGuessCardRevenge,
+  effectHandlers,
   applyRevengeGuess,
-  applySeeHand,
-  applyCompareHands,
-  applyProtection,
-  applyForceDiscard,
-  applyTradeHands,
   applyTradeWithBurnedCard,
-  applyConditionalDiscard,
-  applyLoseIfDiscarded,
-  applySpyBonus,
-  applyChancellorDraw,
   applyChancellorReturn,
   validateChancellorReturn,
 } from './effects';
@@ -255,50 +246,21 @@ export class GameEngine {
         activePlayer,
       };
 
-      // Apply card effect using extracted handlers
-      let effectResult;
-      switch (cardDef.effect.type) {
-        case 'GUESS_CARD':
-          effectResult = applyGuessCard(context);
-          break;
-        case 'GUESS_CARD_REVENGE':
-          effectResult = applyGuessCardRevenge(context);
-          // If revenge phase started, don't advance turn yet
-          if (effectResult.skipTurnAdvance) {
-            return this.toActionResult(effectResult);
-          }
-          break;
-        case 'SEE_HAND':
-          effectResult = applySeeHand(context);
-          break;
-        case 'COMPARE_HANDS':
-          effectResult = applyCompareHands(context);
-          break;
-        case 'PROTECTION':
-          effectResult = applyProtection(context);
-          break;
-        case 'FORCE_DISCARD':
-          effectResult = applyForceDiscard(context);
-          break;
-        case 'TRADE_HANDS':
-          effectResult = applyTradeHands(context);
-          break;
-        case 'CONDITIONAL_DISCARD':
-          effectResult = applyConditionalDiscard(context);
-          break;
-        case 'LOSE_IF_DISCARDED':
-          effectResult = applyLoseIfDiscarded(context);
-          break;
-        case 'SPY_BONUS':
-          effectResult = applySpyBonus(context);
-          break;
-        case 'CHANCELLOR_DRAW':
-          effectResult = applyChancellorDraw(context);
-          // Don't advance turn yet - waiting for player to return cards
+      // Apply card effect using registry
+      const handler = effectHandlers[cardDef.effect.type];
+      if (handler) {
+        const effectResult = handler(context);
+
+        // If revenge phase started, don't advance turn yet
+        if (cardDef.effect.type === 'GUESS_CARD_REVENGE' && effectResult.skipTurnAdvance) {
           return this.toActionResult(effectResult);
-      }
-      
-      if (effectResult) {
+        }
+
+        // Chancellor: don't advance turn yet — waiting for player to return cards
+        if (cardDef.effect.type === 'CHANCELLOR_DRAW') {
+          return this.toActionResult(effectResult);
+        }
+
         result = this.toActionResult(effectResult);
       }
     }
@@ -497,7 +459,7 @@ export class GameEngine {
     }
     
     // Find all non-eliminated players who have Spy in their discard pile
-    const playersWithSpy = getPlayersWithCardInDiscard(this.state.players, 'spy', true);
+    const playersWithSpy = getPlayersWithCardInDiscard(this.state.players, SPY, true);
     
     // If exactly one non-eliminated player has a Spy, they get a bonus token
     if (playersWithSpy.length === 1) {

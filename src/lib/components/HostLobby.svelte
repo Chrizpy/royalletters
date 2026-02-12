@@ -4,7 +4,7 @@
   import { PeerManager } from '../network/peer';
   import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
   import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type PlayerJoinedPayload, type ChatMessagePayload, type ReconnectPayload } from '../network/messages';
+  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PriestRevealPayload, type PlayerJoinedPayload, type PlayerActionPayload, type ChatMessagePayload, type ReconnectPayload } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
   import { v4 as uuidv4 } from 'uuid';
@@ -112,124 +112,139 @@
     }
   });
 
+  function handlePlayerJoined(payload: PlayerJoinedPayload, fromPeerId: string) {
+    // Use guest's chosen nickname, or fallback to "Player N" where N = host (1) + existing players + 1
+    const playerName = payload.playerName || `Player ${players.length + 2}`;
+    
+    // Check if player is already in the list (avoid duplicates)
+    if (!players.some(p => p.id === fromPeerId)) {
+      players = [...players, { id: fromPeerId, name: playerName }];
+      connectedPlayers.update(p => [...p, { 
+        id: fromPeerId, 
+        name: playerName,
+        avatarId: 'default',
+        isHost: false
+      }]);
+    }
+  }
+
+  function handlePlayerAction(payload: PlayerActionPayload, senderId: string, fromPeerId: string) {
+    // Check if this is a revenge guess action
+    if (payload.isRevengeGuess) {
+      applyAction({
+        type: 'REVENGE_GUESS',
+        playerId: senderId,
+        targetCardGuess: payload.targetCardGuess
+      });
+    }
+    // Check if this is a Chancellor return action
+    else if (payload.cardsToReturn) {
+      applyAction({
+        type: 'CHANCELLOR_RETURN',
+        playerId: senderId,
+        cardsToReturn: payload.cardsToReturn
+      });
+    } else {
+      const result = applyAction({
+        type: 'PLAY_CARD',
+        playerId: senderId,
+        cardId: payload.cardId,
+        targetPlayerId: payload.targetPlayerId,
+        targetCardGuess: payload.targetCardGuess
+      });
+      
+      // If a Priest reveal happened, send it privately to the player who played Priest
+      if (result?.revealedCard && peerManager) {
+        const engine = getEngine();
+        const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
+        const priestRevealPayload: PriestRevealPayload = {
+          cardId: result.revealedCard,
+          targetPlayerName: targetPlayer?.name || 'Unknown'
+        };
+        const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
+        peerManager.sendTo(fromPeerId, priestRevealMessage);
+      }
+    }
+    
+    // Broadcast updated state to all clients
+    broadcastAndScheduleAI();
+  }
+
+  function handleChatMessage(payload: ChatMessagePayload, message: NetworkMessage, fromPeerId: string) {
+    // Received chat message from a guest - add to local store and broadcast to all except sender
+    const chatMsg = {
+      id: uuidv4(),
+      senderId: message.senderId,
+      senderName: payload.senderName,
+      text: payload.text,
+      timestamp: payload.timestamp
+    };
+    addChatMessage(chatMsg);
+    
+    // Broadcast to all other clients except the original sender
+    peerManager.broadcastExcept(message, fromPeerId);
+  }
+
+  function handleReconnect(payload: ReconnectPayload, fromPeerId: string) {
+    // Handle player reconnecting to existing game
+    console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
+    
+    // Check if this player exists in the game
+    const engine = getEngine();
+    const state = engine?.getState();
+    const existingPlayer = state?.players.find(p => p.id === payload.playerId);
+    
+    if (existingPlayer && $gameStarted) {
+      console.log('Reconnecting existing player:', existingPlayer.name);
+      
+      // Update local players array (might have been removed on disconnect)
+      if (!players.some(p => p.id === payload.playerId)) {
+        players = [...players, { id: payload.playerId, name: existingPlayer.name }];
+      }
+      
+      // Send current game state to reconnected player
+      if (peerManager && state) {
+        const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state });
+        peerManager.sendTo(fromPeerId, syncMessage);
+      }
+      
+      // Resume AI play if it's an AI's turn
+      scheduleAIMove();
+    } else {
+      console.warn('Unknown player trying to reconnect or game not started:', payload.playerId);
+      // Treat as new player if game not started yet
+      if (!$gameStarted && !players.some(p => p.id === fromPeerId)) {
+        players = [...players, { id: fromPeerId, name: payload.playerName }];
+      }
+    }
+  }
+
+  function handleRequestStateSync(fromPeerId: string) {
+    // Handle explicit request for state sync
+    console.log('State sync requested by:', fromPeerId);
+    
+    const engine = getEngine();
+    const state = engine?.getState();
+    
+    if (peerManager && state && $gameStarted) {
+      const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state });
+      peerManager.sendTo(fromPeerId, syncMessage);
+    }
+  }
+
   function handleMessage(message: NetworkMessage, fromPeerId: string) {
     console.log('Host received message:', message.type, 'from:', fromPeerId);
     
     if (message.type === 'PLAYER_JOINED') {
-      const payload = message.payload as PlayerJoinedPayload;
-      // Use guest's chosen nickname, or fallback to "Player N" where N = host (1) + existing players + 1
-      const playerName = payload.playerName || `Player ${players.length + 2}`;
-      
-      // Check if player is already in the list (avoid duplicates)
-      if (!players.some(p => p.id === fromPeerId)) {
-        players = [...players, { id: fromPeerId, name: playerName }];
-        connectedPlayers.update(p => [...p, { 
-          id: fromPeerId, 
-          name: playerName,
-          avatarId: 'default',
-          isHost: false
-        }]);
-      }
+      handlePlayerJoined(message.payload, fromPeerId);
     } else if (message.type === 'PLAYER_ACTION') {
-      const payload = message.payload as PlayerActionPayload;
-      
-      // Check if this is a revenge guess action
-      if (payload.isRevengeGuess) {
-        applyAction({
-          type: 'REVENGE_GUESS',
-          playerId: message.senderId,
-          targetCardGuess: payload.targetCardGuess
-        });
-      }
-      // Check if this is a Chancellor return action
-      else if (payload.cardsToReturn) {
-        applyAction({
-          type: 'CHANCELLOR_RETURN',
-          playerId: message.senderId,
-          cardsToReturn: payload.cardsToReturn
-        });
-      } else {
-        const result = applyAction({
-          type: 'PLAY_CARD',
-          playerId: message.senderId,
-          cardId: payload.cardId,
-          targetPlayerId: payload.targetPlayerId,
-          targetCardGuess: payload.targetCardGuess
-        });
-        
-        // If a Priest reveal happened, send it privately to the player who played Priest
-        if (result?.revealedCard && peerManager) {
-          const engine = getEngine();
-          const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
-          const priestRevealPayload: PriestRevealPayload = {
-            cardId: result.revealedCard,
-            targetPlayerName: targetPlayer?.name || 'Unknown'
-          };
-          const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
-          peerManager.sendTo(fromPeerId, priestRevealMessage);
-        }
-      }
-      
-      // Broadcast updated state to all clients
-      broadcastAndScheduleAI();
+      handlePlayerAction(message.payload, message.senderId, fromPeerId);
     } else if (message.type === 'CHAT_MESSAGE') {
-      // Received chat message from a guest - add to local store and broadcast to all except sender
-      const payload = message.payload as ChatMessagePayload;
-      const chatMsg = {
-        id: uuidv4(),
-        senderId: message.senderId,
-        senderName: payload.senderName,
-        text: payload.text,
-        timestamp: payload.timestamp
-      };
-      addChatMessage(chatMsg);
-      
-      // Broadcast to all other clients except the original sender
-      peerManager.broadcastExcept(message, fromPeerId);
+      handleChatMessage(message.payload, message, fromPeerId);
     } else if (message.type === 'RECONNECT') {
-      // Handle player reconnecting to existing game
-      const payload = message.payload as ReconnectPayload;
-      console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
-      
-      // Check if this player exists in the game
-      const engine = getEngine();
-      const state = engine?.getState();
-      const existingPlayer = state?.players.find(p => p.id === payload.playerId);
-      
-      if (existingPlayer && $gameStarted) {
-        console.log('Reconnecting existing player:', existingPlayer.name);
-        
-        // Update local players array (might have been removed on disconnect)
-        if (!players.some(p => p.id === payload.playerId)) {
-          players = [...players, { id: payload.playerId, name: existingPlayer.name }];
-        }
-        
-        // Send current game state to reconnected player
-        if (peerManager && state) {
-          const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state } as GameStateSyncPayload);
-          peerManager.sendTo(fromPeerId, syncMessage);
-        }
-        
-        // Resume AI play if it's an AI's turn
-        scheduleAIMove();
-      } else {
-        console.warn('Unknown player trying to reconnect or game not started:', payload.playerId);
-        // Treat as new player if game not started yet
-        if (!$gameStarted && !players.some(p => p.id === fromPeerId)) {
-          players = [...players, { id: fromPeerId, name: payload.playerName }];
-        }
-      }
+      handleReconnect(message.payload, fromPeerId);
     } else if (message.type === 'REQUEST_STATE_SYNC') {
-      // Handle explicit request for state sync
-      console.log('State sync requested by:', fromPeerId);
-      
-      const engine = getEngine();
-      const state = engine?.getState();
-      
-      if (peerManager && state && $gameStarted) {
-        const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state } as GameStateSyncPayload);
-        peerManager.sendTo(fromPeerId, syncMessage);
-      }
+      handleRequestStateSync(fromPeerId);
     }
   }
 

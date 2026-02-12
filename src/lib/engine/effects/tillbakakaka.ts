@@ -7,6 +7,7 @@ import type { GameState, PlayerState, GameAction } from '../../types';
 import type { EffectContext, EffectResult } from './types';
 import { getCardDefinition } from '../deck';
 import { eliminatePlayer, addLog } from './utils';
+import { GUARD, TILLBAKAKAKA } from '../cardIds';
 
 export function applyGuessCardRevenge(context: EffectContext): EffectResult {
   const { state, action, activePlayer } = context;
@@ -80,7 +81,7 @@ export function applyRevengeGuess(
   }
 
   // Cannot guess guard or tillbakakaka on revenge
-  if (action.targetCardGuess === 'guard' || action.targetCardGuess === 'tillbakakaka') {
+  if (action.targetCardGuess === GUARD || action.targetCardGuess === TILLBAKAKAKA) {
     return {
       success: false,
       message: 'Cannot guess Guard',

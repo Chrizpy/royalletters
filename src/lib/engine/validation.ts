@@ -5,6 +5,7 @@
 
 import type { GameState, GameAction, PlayerState } from '../types';
 import { getCardDefinition } from './deck';
+import { COUNTESS, KING, PRINCE, GUARD, TILLBAKAKAKA } from './cardIds';
 
 /**
  * Result of a validation check
@@ -38,11 +39,11 @@ export function validateCountessRule(
   hand: string[],
   cardToPlay: string
 ): ValidationResult {
-  const hasCountess = hand.includes('countess');
-  const hasKing = hand.includes('king');
-  const hasPrince = hand.includes('prince');
+  const hasCountess = hand.includes(COUNTESS);
+  const hasKing = hand.includes(KING);
+  const hasPrince = hand.includes(PRINCE);
   
-  if (hasCountess && (hasKing || hasPrince) && cardToPlay !== 'countess') {
+  if (hasCountess && (hasKing || hasPrince) && cardToPlay !== COUNTESS) {
     return { valid: false, error: 'Must play Countess when holding King or Prince' };
   }
   
@@ -102,8 +103,8 @@ export function validateGuardGuess(
   cardId: string,
   targetCardGuess: string | undefined
 ): ValidationResult {
-  if ((cardId === 'guard' || cardId === 'tillbakakaka') && 
-      (targetCardGuess === 'guard' || targetCardGuess === 'tillbakakaka')) {
+  if ((cardId === GUARD || cardId === TILLBAKAKAKA) && 
+      (targetCardGuess === GUARD || targetCardGuess === TILLBAKAKAKA)) {
     return { valid: false, error: 'Cannot guess Guard' };
   }
   return { valid: true };

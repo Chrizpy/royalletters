@@ -2,7 +2,7 @@
  * Types and interfaces for card effect handlers
  */
 
-import type { GameState, GameAction, ActionResult, PlayerState, EffectType } from '../../types';
+import type { GameState, GameAction, PlayerState } from '../../types';
 
 /**
  * Context passed to effect handlers
@@ -12,23 +12,6 @@ export interface EffectContext {
   action: GameAction;
   activePlayer: PlayerState;
   targetPlayer?: PlayerState;
-}
-
-/**
- * Interface that all card effect handlers must implement
- */
-export interface EffectHandler {
-  /**
-   * The effect type this handler processes
-   */
-  readonly effectType: EffectType;
-
-  /**
-   * Apply the card effect
-   * @param context The effect context with state, action, and players
-   * @returns The action result with updated state
-   */
-  apply(context: EffectContext): EffectResult;
 }
 
 /**
@@ -60,11 +43,3 @@ export type AddLogFn = (
   actorId?: string,
   cardId?: string
 ) => void;
-
-/**
- * Shared utilities passed to effect handlers
- */
-export interface EffectUtils {
-  eliminatePlayer: EliminatePlayerFn;
-  addLog: AddLogFn;
-}

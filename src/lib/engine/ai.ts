@@ -1,21 +1,31 @@
 import type { GameState, GameAction, PlayerState, Ruleset } from '../types';
 import { getCardDefinition, getCardValue, createDeck } from './deck';
 import { getValidTargets } from './validation';
+import { PRIEST, BARON, HANDMAID, PRINCE, KING, COUNTESS, PRINCESS, SPY, CHANCELLOR } from './cardIds';
 
 /**
  * AI player decision-making engine
  * Implements a basic strategy for playing Love Letter
  */
 
+/** Module-level cache: deck composition never changes for a given ruleset */
+const deckCompositionCache: Partial<Record<Ruleset, Record<string, number>>> = {};
+
 /**
  * Get deck composition for a ruleset by counting cards in a created deck
  */
 function getDeckComposition(ruleset: Ruleset): Record<string, number> {
+  const cached = deckCompositionCache[ruleset];
+  if (cached) {
+    return cached;
+  }
+
   const deck = createDeck(ruleset);
   const composition: Record<string, number> = {};
   for (const card of deck) {
     composition[card] = (composition[card] || 0) + 1;
   }
+  deckCompositionCache[ruleset] = composition;
   return composition;
 }
 
@@ -25,10 +35,10 @@ function getDeckComposition(ruleset: Ruleset): Record<string, number> {
  * Get possible card guesses for Guard (excludes Guard and tillbakakaka, and Spy if classic ruleset)
  */
 function getPossibleGuesses(ruleset: Ruleset): string[] {
-  const guesses = ['priest', 'baron', 'handmaid', 'prince', 'king', 'countess', 'princess'];
+  const guesses = [PRIEST, BARON, HANDMAID, PRINCE, KING, COUNTESS, PRINCESS];
   if (ruleset === '2019' || ruleset === 'house') {
     // In 2019/house edition, can also guess Spy and Chancellor
-    guesses.push('spy', 'chancellor');
+    guesses.push(SPY, CHANCELLOR);
   }
   return guesses;
 }
@@ -76,7 +86,7 @@ function chooseGuardGuess(
   
   if (remainingCards.length === 0) {
     // Fallback: just guess priest (common and low-value)
-    return 'priest';
+    return PRIEST;
   }
   
   // Weight towards higher-value cards (Princess, Countess, King, Prince)
@@ -102,16 +112,16 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
   const hand = [...player.hand];
   
   // Countess rule: If player has Countess + (King or Prince), must play Countess
-  const hasCountess = hand.includes('countess');
-  const hasKing = hand.includes('king');
-  const hasPrince = hand.includes('prince');
+  const hasCountess = hand.includes(COUNTESS);
+  const hasKing = hand.includes(KING);
+  const hasPrince = hand.includes(PRINCE);
   
   if (hasCountess && (hasKing || hasPrince)) {
-    return 'countess';
+    return COUNTESS;
   }
   
   // Basic strategy: avoid playing Princess (auto-lose)
-  const nonPrincessCards = hand.filter((c) => c !== 'princess');
+  const nonPrincessCards = hand.filter((c) => c !== PRINCESS);
   if (nonPrincessCards.length > 0) {
     // Prefer to play lower value cards first to avoid elimination in Baron comparisons
     nonPrincessCards.sort((a, b) => {
@@ -154,7 +164,7 @@ function chooseTarget(
   }
   
   // If Prince and no other targets, can target self
-  if (cardId === 'prince' && canTargetSelf) {
+  if (cardId === PRINCE && canTargetSelf) {
     const self = validTargets.find((p) => p.id === playerId);
     if (self) {
       return self.id;
