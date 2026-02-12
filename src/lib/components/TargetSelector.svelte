@@ -1,21 +1,23 @@
 <script lang="ts">
   import type { PlayerState } from '../types';
 
-  export let validTargets: PlayerState[] = [];
-  export let onSelect: (targetId: string) => void;
-  export let onCancel: () => void;
-  export let cardName: string = '';
+  let { validTargets = [], onSelect, onCancel, cardName = '' }: {
+    validTargets?: PlayerState[];
+    onSelect: (targetId: string) => void;
+    onCancel: () => void;
+    cardName?: string;
+  } = $props();
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="target-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={onCancel} on:keydown={(e) => e.key === 'Escape' && onCancel()}>
+<div class="target-selector-overlay" role="dialog" aria-modal="true" tabindex="0" onclick={onCancel} onkeydown={(e) => e.key === 'Escape' && onCancel()}>
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="target-selector" on:click|stopPropagation>
+  <div class="target-selector" onclick={(e) => e.stopPropagation()}>
     <h3>Select a target for {cardName}</h3>
     
     <div class="target-list">
       {#each validTargets as target}
-        <button class="target-btn" on:click={() => onSelect(target.id)}>
+        <button class="target-btn" onclick={() => onSelect(target.id)}>
           <span class="target-icon">👤</span>
           <span class="target-name">{target.name}</span>
           <span class="target-tokens">
@@ -34,7 +36,7 @@
       {/if}
     </div>
 
-    <button class="cancel-btn" on:click={onCancel}>Cancel</button>
+    <button class="cancel-btn" onclick={onCancel}>Cancel</button>
   </div>
 </div>
 

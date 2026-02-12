@@ -9,16 +9,18 @@
   import { type GameSession, clearSession, getSessionAge } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
-  export let session: GameSession;
-  export let onDismiss: () => void;
+  let { session, onDismiss }: {
+    session: GameSession;
+    onDismiss: () => void;
+  } = $props();
 
   let peerManager: PeerManager;
-  let localConnectionState: string = 'disconnected';
-  let isReconnecting = false;
-  let error = '';
+  let localConnectionState = $state('disconnected');
+  let isReconnecting = $state(false);
+  let error = $state('');
 
   // Subscribe to game started state
-  $: inGame = $gameStarted;
+  let inGame = $derived($gameStarted);
 
   onDestroy(() => {
     if (peerManager && !inGame) {

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { getCardDefinition } from '../engine/deck';
 
-  export let cardId: string;
-  export let playerName: string;
-  export let onDismiss: () => void;
+  let { cardId, playerName, onDismiss }: {
+    cardId: string;
+    playerName: string;
+    onDismiss: () => void;
+  } = $props();
 
-  $: card = getCardDefinition(cardId);
+  let card = $derived(getCardDefinition(cardId));
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
@@ -36,7 +38,7 @@
   }
 </script>
 
-<div class="reveal-overlay" role="dialog" aria-modal="true" tabindex="0" on:keydown={(e) => e.key === 'Escape' && onDismiss()}>
+<div class="reveal-overlay" role="dialog" aria-modal="true" tabindex="0" onkeydown={(e) => e.key === 'Escape' && onDismiss()}>
   <div class="reveal-modal">
     <h3>👁️ {playerName}'s Card Revealed!</h3>
     
@@ -49,7 +51,7 @@
       <p class="card-description">{card.description}</p>
     {/if}
     
-    <button class="dismiss-btn" on:click={onDismiss}>Got it!</button>
+    <button class="dismiss-btn" onclick={onDismiss}>Got it!</button>
   </div>
 </div>
 

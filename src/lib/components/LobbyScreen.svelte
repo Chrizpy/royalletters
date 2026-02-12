@@ -16,13 +16,13 @@
     <p class="subtitle">A Game of Risk, Deduction, and Luck</p>
     
     <div class="menu-buttons">
-      <button class="menu-btn host-btn" on:click={handleHost}>
+      <button class="menu-btn host-btn" onclick={handleHost}>
         <span class="btn-icon">👑</span>
         <span class="btn-text">Host Game</span>
         <span class="btn-description">Create a new game and share QR code</span>
       </button>
       
-      <button class="menu-btn join-btn" on:click={handleJoin}>
+      <button class="menu-btn join-btn" onclick={handleJoin}>
         <span class="btn-icon">📱</span>
         <span class="btn-text">Join Game</span>
         <span class="btn-description">Scan QR code to join</span>

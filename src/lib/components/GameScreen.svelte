@@ -15,168 +15,117 @@
   import { getValidTargets } from '../engine/validation';
   import { getTokensToWin } from '../engine/constants';
   import { formatPlayerNames } from '../engine/player';
+  import { reorderPlayersClockwise } from '../utils/playerLayout';
   import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
   import type { PlayerState } from '../types';
 
   // Props
-  export let localPlayerId: string;
-  export let onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
-  export let onChancellorReturn: ((cardsToReturn: string[]) => void) | undefined = undefined;
-  export let onRevengeGuess: ((targetCardGuess: string) => void) | undefined = undefined;
-  export let onStartRound: () => void;
-  export let onPlayAgain: (() => void) | undefined = undefined;
-  export let isHost: boolean = false;
-  export let onSendChat: ((text: string) => void) | undefined = undefined;
+  let { localPlayerId, onPlayCard, onChancellorReturn = undefined, onRevengeGuess = undefined, onStartRound, onPlayAgain = undefined, isHost = false, onSendChat = undefined }: {
+    localPlayerId: string;
+    onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
+    onChancellorReturn?: ((cardsToReturn: string[]) => void) | undefined;
+    onRevengeGuess?: ((targetCardGuess: string) => void) | undefined;
+    onStartRound: () => void;
+    onPlayAgain?: (() => void) | undefined;
+    isHost?: boolean;
+    onSendChat?: ((text: string) => void) | undefined;
+  } = $props();
 
   // Local state
-  let selectedCard: string | null = null;
-  let selectingTarget: boolean = false;
-  let selectingGuess: boolean = false;
-  let pendingCardId: string | null = null;
-  let pendingTargetId: string | null = null;
-  let cardEffectAnimation: { actorId: string | null; targetId: string | null; cardId: string | null } = { actorId: null, targetId: null, cardId: null };
-  let effectAnimationTimeout: number | null = null;
-  let prevActivePlayerIndex: number | undefined = undefined;
-  let showDeckInfoModal = false;
-  let showCountessRuleModal = false;
-  let countessConflictCard: 'king' | 'prince' = 'king';
-
-
-  /**
-   * Reorder all players for clockwise display in a 2-column grid.
-   * The grid fills left-to-right, but we want visual clockwise order starting from local player:
-   * - Top-left: local player (always first)
-   * - Top-right: next player clockwise
-   * - Then down the right column
-   * - Then along bottom (right to left)
-   * - Then up the left column
-   * 
-   * For example, with 4 players where local is at index 0:
-   * Turn order: [Local, P1, P2, P3]
-   * Desired visual (clockwise):
-   *   Local  P1
-   *   P3     P2
-   * Grid positions 0,1,2,3 should map to players: Local, P1, P3, P2
-   */
-  function reorderPlayersClockwise(players: PlayerState[], localPlayerId: string): PlayerState[] {
-    if (players.length <= 2) {
-      return players;
-    }
-
-    const localIndex = players.findIndex(p => p.id === localPlayerId);
-    if (localIndex === -1) return players;
-
-    const count = players.length;
-    const cols = 2;
-    const rows = Math.ceil(count / cols);
-    const reordered: PlayerState[] = [];
-    
-    // Map each grid position to the correct player in clockwise order
-    for (let gridPos = 0; gridPos < count; gridPos++) {
-      const row = Math.floor(gridPos / cols);
-      const col = gridPos % cols;
-      
-      let playerOffset: number; // Offset from local player in turn order
-      
-      if (gridPos === 0) {
-        // Top-left is always the local player
-        playerOffset = 0;
-      } else if (row === 0) {
-        // Top row after local player: continue clockwise (next player in turn order)
-        playerOffset = col;
-      } else if (col === 1) {
-        // Right column going down: continue in turn order
-        playerOffset = row + 1;
-      } else {
-        // Left column going up from bottom
-        playerOffset = count - row;
-      }
-      
-      const playerIndex = (localIndex + playerOffset) % count;
-      reordered.push(players[playerIndex]);
-    }
-    
-    return reordered;
-  }
+  let selectedCard = $state<string | null>(null);
+  let selectingTarget = $state(false);
+  let selectingGuess = $state(false);
+  let pendingCardId = $state<string | null>(null);
+  let pendingTargetId = $state<string | null>(null);
+  let cardEffectAnimation = $state<{ actorId: string | null; targetId: string | null; cardId: string | null }>({ actorId: null, targetId: null, cardId: null });
+  let effectAnimationTimeout = $state<number | null>(null);
+  let prevActivePlayerIndex = $state<number | undefined>(undefined);
+  let showDeckInfoModal = $state(false);
+  let showCountessRuleModal = $state(false);
+  let countessConflictCard = $state<'king' | 'prince'>('king');
 
   // Get state from store for reactivity
-  $: gameState = $gameStateStore;
-  $: revealed = $revealedCard;
-  $: localPlayer = gameState?.players.find(p => p.id === localPlayerId);
-  $: isMyTurn = gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId;
-  $: activePlayer = gameState?.players[gameState?.activePlayerIndex];
-  $: allPlayersClockwise = reorderPlayersClockwise(gameState?.players || [], localPlayerId);
-  $: validTargetIds = new Set(getLocalValidTargets().map(t => t.id));
-  $: canPlay = isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION';
-  $: isChancellorPhase = gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn;
-  $: isRevengePhase = gameState?.phase === 'WAITING_FOR_REVENGE_GUESS';
-  $: isMyRevengeGuess = isRevengePhase && gameState?.revengeGuess?.revengerId === localPlayerId;
-  $: revengeTargetPlayer = isRevengePhase ? gameState?.players.find(p => p.id === gameState?.revengeGuess?.targetId) : null;
-  $: tokensToWin = getTokensToWin(gameState?.players.length || 2);
+  let gameState = $derived($gameStateStore);
+  let revealed = $derived($revealedCard);
+  let localPlayer = $derived(gameState?.players.find(p => p.id === localPlayerId));
+  let isMyTurn = $derived(gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId);
+  let activePlayer = $derived(gameState?.players[gameState?.activePlayerIndex]);
+  let allPlayersClockwise = $derived(reorderPlayersClockwise(gameState?.players || [], localPlayerId));
+  let validTargetIds = $derived(new Set(getLocalValidTargets().map(t => t.id)));
+  let canPlay = $derived(isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION');
+  let isChancellorPhase = $derived(gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn);
+  let isRevengePhase = $derived(gameState?.phase === 'WAITING_FOR_REVENGE_GUESS');
+  let isMyRevengeGuess = $derived(isRevengePhase && gameState?.revengeGuess?.revengerId === localPlayerId);
+  let revengeTargetPlayer = $derived(isRevengePhase ? gameState?.players.find(p => p.id === gameState?.revengeGuess?.targetId) : null);
+  let tokensToWin = $derived(getTokensToWin(gameState?.players.length || 2));
   // During Chancellor resolution, display the deck count as it will be after cards are returned
   // (current deck + cards to be returned, which is hand.length - 1 since player keeps 1 card)
-  $: displayedDeckCount = gameState?.phase === 'CHANCELLOR_RESOLVING' 
+  let displayedDeckCount = $derived(gameState?.phase === 'CHANCELLOR_RESOLVING' 
     ? (gameState?.deck.length || 0) + ((gameState?.players[gameState?.activePlayerIndex]?.hand.length || 0) - 1)
-    : gameState?.deck.length || 0;
+    : gameState?.deck.length || 0);
   
   // Track card effects for animations
-  $: if (gameState?.logs && gameState.logs.length > 0) {
-    const lastLog = gameState.logs[gameState.logs.length - 1];
-    
-    // Check if this is a card play action (has actorId and cardId)
-    if (lastLog.actorId && lastLog.cardId) {
-      const message = lastLog.message.toLowerCase();
+  $effect(() => {
+    if (gameState?.logs && gameState.logs.length > 0) {
+      const lastLog = gameState.logs[gameState.logs.length - 1];
       
-      // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
-      let targetPlayerId: string | null = null;
-      
-      // Find target player by checking if their name appears after certain keywords
-      for (const player of gameState.players) {
-        const playerName = player.name.toLowerCase();
+      // Check if this is a card play action (has actorId and cardId)
+      if (lastLog.actorId && lastLog.cardId) {
+        const message = lastLog.message.toLowerCase();
         
-        // Skip if this is the actor
-        if (player.id === lastLog.actorId) continue;
+        // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
+        let targetPlayerId: string | null = null;
         
-        // Check various message patterns that indicate targeting
-        if (message.includes(`${playerName} was eliminated`) ||
-            message.includes(`${playerName} discarded`) ||
-            message.includes(`saw ${playerName}'s hand`) ||
-            message.includes(`and ${playerName} traded`) ||
-            message.includes(`guessed ${playerName}`) ||
-            message.match(new RegExp(`(on|to|with)\\s+${playerName}`, 'i'))) {
-          targetPlayerId = player.id;
-          break;
+        // Find target player by checking if their name appears after certain keywords
+        for (const player of gameState.players) {
+          const playerName = player.name.toLowerCase();
+          
+          // Skip if this is the actor
+          if (player.id === lastLog.actorId) continue;
+          
+          // Check various message patterns that indicate targeting
+          if (message.includes(`${playerName} was eliminated`) ||
+              message.includes(`${playerName} discarded`) ||
+              message.includes(`saw ${playerName}'s hand`) ||
+              message.includes(`and ${playerName} traded`) ||
+              message.includes(`guessed ${playerName}`) ||
+              message.match(new RegExp(`(on|to|with)\\s+${playerName}`, 'i'))) {
+            targetPlayerId = player.id;
+            break;
+          }
+        }
+        
+        // Set animation state - borders persist until cleared by next action
+        // For Handmaid, the border persists on the protected player until their next turn
+        cardEffectAnimation = {
+          actorId: lastLog.actorId,
+          targetId: targetPlayerId,
+          cardId: lastLog.cardId
+        };
+        
+        // Clear previous timeout (no longer using timeout to auto-clear)
+        if (effectAnimationTimeout) {
+          clearTimeout(effectAnimationTimeout);
+          effectAnimationTimeout = null;
         }
       }
-      
-      // Set animation state - borders persist until cleared by next action
-      // For Handmaid, the border persists on the protected player until their next turn
-      cardEffectAnimation = {
-        actorId: lastLog.actorId,
-        targetId: targetPlayerId,
-        cardId: lastLog.cardId
-      };
-      
-      // Clear previous timeout (no longer using timeout to auto-clear)
-      if (effectAnimationTimeout) {
-        clearTimeout(effectAnimationTimeout);
-        effectAnimationTimeout = null;
-      }
     }
-  }
+  });
   
   // Clear non-Handmaid animations when active player changes
-  $: if (gameState?.activePlayerIndex !== undefined && prevActivePlayerIndex !== gameState.activePlayerIndex) {
-    // Check if the current animation is for Handmaid (card ID 'handmaid')
-    if (cardEffectAnimation.cardId !== 'handmaid') {
-      // Clear animation for non-Handmaid cards when turn changes
-      cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
-    } else if (cardEffectAnimation.actorId && gameState.players.length > gameState.activePlayerIndex && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
-      // Clear Handmaid animation when it's the protected player's turn again
-      cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+  $effect(() => {
+    if (gameState?.activePlayerIndex !== undefined && prevActivePlayerIndex !== gameState.activePlayerIndex) {
+      // Check if the current animation is for Handmaid (card ID 'handmaid')
+      if (cardEffectAnimation.cardId !== 'handmaid') {
+        // Clear animation for non-Handmaid cards when turn changes
+        cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+      } else if (cardEffectAnimation.actorId && gameState.players.length > gameState.activePlayerIndex && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
+        // Clear Handmaid animation when it's the protected player's turn again
+        cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
+      }
+      prevActivePlayerIndex = gameState.activePlayerIndex;
     }
-    prevActivePlayerIndex = gameState.activePlayerIndex;
-  }
+  });
 
   function handleChancellorReturn(cardsToReturn: string[]) {
     if (onChancellorReturn) {
@@ -340,7 +289,7 @@
   <div class="center-area">
     <div class="deck-area">
       <div class="deck" class:can-draw={gameState.phase === 'TURN_START' && isMyTurn}>
-        <button class="deck-card" on:click={handleDraw} aria-label="Draw a card">
+        <button class="deck-card" onclick={handleDraw} aria-label="Draw a card">
           <span class="deck-icon">📚</span>
           <span class="deck-count">{displayedDeckCount}</span>
         </button>
@@ -353,7 +302,7 @@
     {#if gameState.phase === 'LOBBY' || (gameState.phase === 'ROUND_END' && gameState.winnerIds.length === 0)}
       <div class="start-area">
         {#if isHost}
-          <button class="start-round-btn" on:click={handleStartRound}>
+          <button class="start-round-btn" onclick={handleStartRound}>
             {gameState.roundCount === 0 ? 'Start Game' : 'Next Round'}
           </button>
         {:else}
@@ -373,7 +322,7 @@
           {/if}
         </div>
         {#if isHost && onPlayAgain}
-          <button class="play-again-btn" on:click={onPlayAgain}>
+          <button class="play-again-btn" onclick={onPlayAgain}>
             🔄 Play Again
           </button>
         {:else if !isHost}

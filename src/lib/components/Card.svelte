@@ -2,16 +2,18 @@
   import { getCardDefinition, getCardValue } from '../engine/deck';
   import { gameState } from '../stores/game';
   
-  export let cardId: string;
-  export let isSelected: boolean = false;
-  export let isPlayable: boolean = false;
-  export let onClick: () => void = () => {};
-  export let delay: number = 0;
+  let { cardId, isSelected = false, isPlayable = false, onClick = () => {}, delay = 0 }: {
+    cardId: string;
+    isSelected?: boolean;
+    isPlayable?: boolean;
+    onClick?: () => void;
+    delay?: number;
+  } = $props();
 
-  $: card = getCardDefinition(cardId);
-  $: ruleset = $gameState?.ruleset || 'classic';
-  $: cardValue = getCardValue(cardId, ruleset);
-  $: cardColor = getCardColor(cardId);
+  let card = $derived(getCardDefinition(cardId));
+  let ruleset = $derived($gameState?.ruleset || 'classic');
+  let cardValue = $derived(getCardValue(cardId, ruleset));
+  let cardColor = $derived(getCardColor(cardId));
 
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
@@ -53,7 +55,7 @@
   class:selected={isSelected}
   class:playable={isPlayable}
   style="--card-color: {cardColor}; --delay: {delay}ms;"
-  on:click={onClick}
+  onclick={onClick}
   disabled={!isPlayable}
 >
   <div class="card-inner">

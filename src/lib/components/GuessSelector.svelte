@@ -4,16 +4,18 @@
   import { gameState } from '../stores/game';
   import { getCardDefinition } from '../engine/deck';
 
-  export let onSelect: (cardGuess: string) => void;
-  export let onCancel: () => void;
-  export let title: string = 'Guess their card!';
-  export let subtitle: string = 'Which card do you think they have?';
-  export let showCancel: boolean = true;
-  export let headerIcon: string = '';
-  export let headerStyle: 'default' | 'revenge' = 'default';
-  export let players: PlayerState[] = [];
-  export let localPlayerId: string = '';
-  export let originalGuess: string | undefined = undefined;
+  let { onSelect, onCancel, title = 'Guess their card!', subtitle = 'Which card do you think they have?', showCancel = true, headerIcon = '', headerStyle = 'default', players = [], localPlayerId = '', originalGuess = undefined }: {
+    onSelect: (cardGuess: string) => void;
+    onCancel: () => void;
+    title?: string;
+    subtitle?: string;
+    showCancel?: boolean;
+    headerIcon?: string;
+    headerStyle?: 'default' | 'revenge';
+    players?: PlayerState[];
+    localPlayerId?: string;
+    originalGuess?: string | undefined;
+  } = $props();
   
   // Type for the new card data structure
   interface CardRegistry {
@@ -25,25 +27,27 @@
   const registry = cardsData as unknown as CardRegistry;
   
   // Get current ruleset from game state
-  $: ruleset = $gameState?.ruleset || 'classic';
+  let ruleset = $derived($gameState?.ruleset || 'classic');
   
   // Get cards available in current deck, excluding Guard and tillbakakaka (can't guess Guard, but CAN guess Spy)
-  $: guessableCards = Object.values(registry.cards)
-    .filter(card => {
-      // Can't guess Guard or tillbakakaka
-      if (card.id === 'guard' || card.id === 'tillbakakaka') return false;
-      // Only include cards that are in the current deck
-      const deckDef = registry.decks[ruleset];
-      return deckDef && deckDef[card.id] !== undefined;
-    })
-    .map(card => ({
-      ...card,
-      // Use classic values for classic ruleset
-      value: ruleset === 'classic' && registry.classicCardValues[card.id] !== undefined 
-        ? registry.classicCardValues[card.id] 
-        : card.value
-    }))
-    .sort((a, b) => a.value - b.value);
+  let guessableCards = $derived(
+    Object.values(registry.cards)
+      .filter(card => {
+        // Can't guess Guard or tillbakakaka
+        if (card.id === 'guard' || card.id === 'tillbakakaka') return false;
+        // Only include cards that are in the current deck
+        const deckDef = registry.decks[ruleset];
+        return deckDef && deckDef[card.id] !== undefined;
+      })
+      .map(card => ({
+        ...card,
+        // Use classic values for classic ruleset
+        value: ruleset === 'classic' && registry.classicCardValues[card.id] !== undefined 
+          ? registry.classicCardValues[card.id] 
+          : card.value
+      }))
+      .sort((a, b) => a.value - b.value)
+  );
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
@@ -78,13 +82,13 @@
   }
 
   // Filter players who have played cards (non-empty discard pile)
-  $: playersWithCards = players.filter(p => p.discardPile.length > 0);
+  let playersWithCards = $derived(players.filter(p => p.discardPile.length > 0));
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" on:click={showCancel ? onCancel : undefined} on:keydown={(e) => e.key === 'Escape' && showCancel && onCancel()}>
+<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" onclick={showCancel ? onCancel : undefined} onkeydown={(e) => e.key === 'Escape' && showCancel && onCancel()}>
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="guess-selector" class:revenge-style={headerStyle === 'revenge'} on:click|stopPropagation>
+  <div class="guess-selector" class:revenge-style={headerStyle === 'revenge'} onclick={(e) => e.stopPropagation()}>
     {#if headerIcon}
       <div class="header-icon">{headerIcon}</div>
     {/if}
@@ -132,7 +136,7 @@
         <button 
           class="guess-card"
           style="--card-color: {getCardColor(card.id)}"
-          on:click={() => onSelect(card.id)}
+          onclick={() => onSelect(card.id)}
         >
           <div class="guess-value">{card.value}</div>
           <div class="guess-emoji">{getCardEmoji(card.id)}</div>
@@ -142,7 +146,7 @@
     </div>
 
     {#if showCancel}
-      <button class="cancel-btn" on:click={onCancel}>Cancel</button>
+      <button class="cancel-btn" onclick={onCancel}>Cancel</button>
     {/if}
   </div>
 </div>

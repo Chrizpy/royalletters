@@ -1,387 +1,106 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import QRCode from 'qrcode';
-  import { PeerManager } from '../network/peer';
-  import { peerId, connectionState, connectedPlayers, isHost } from '../stores/network';
-  import { gameState, gameStarted, initGame, startRound, applyAction, getEngine, checkIfAITurn, executeAIMove } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PriestRevealPayload, type PlayerJoinedPayload, type PlayerActionPayload, type ChatMessagePayload, type ReconnectPayload } from '../network/messages';
+  import { gameState, gameStarted } from '../stores/game';
+  import {
+    hostPeerId,
+    hostError,
+    hostConnectionState,
+    hostPlayers,
+    hostQrCodeDataUrl,
+    initializeHost,
+    handleStartGame as storeStartGame,
+    handleHostPlayCard,
+    handleHostChancellorReturn,
+    handleHostRevengeGuess,
+    handleHostStartRound,
+    handleHostPlayAgain,
+    sendHostChat,
+    syncAIPlayers,
+    setAIMoveDelay,
+    cleanupHost,
+    handleHostBack,
+  } from '../stores/hostGame';
   import GameScreen from './GameScreen.svelte';
-  import { addChatMessage } from '../stores/chat';
-  import { v4 as uuidv4 } from 'uuid';
   import type { Ruleset } from '../types';
   import { getTokensToWin } from '../engine/constants';
 
-  let qrCodeDataUrl = '';
-  let generatedPeerId = '';
-  let peerManager: PeerManager;
-  let error = '';
-  let localConnectionState: string = 'disconnected';
-  let players: Array<{ id: string; name: string; isAI?: boolean }> = [];
-  let hostName = 'Host';
-  let selectedRuleset: Ruleset = 'house';
-  let aiCounter = 1;  // Counter for AI player names
-  let aiMoveDelayMs = 2000;  // Default AI move delay (configurable)
-  let aiCount = 0;  // Desired number of AI players (controlled by slider)
-  let showAIOptions = false;  // Toggle for AI options visibility
-  let tokensToWin: number | null = null;  // null means use default based on player count
-  let hasCustomTokens = false;  // Track if user has manually adjusted tokens
+  // UI-only local state
+  let hostName = $state('Host');
+  let selectedRuleset = $state<Ruleset>('house');
+  let aiMoveDelayMs = $state(2000);
+  let aiCount = $state(0);
+  let showAIOptions = $state(false);
+  let tokensToWin = $state<number | null>(null);
+  let hasCustomTokens = $state(false);
+
+  // Derived from stores
+  let players = $derived($hostPlayers);
+  let generatedPeerId = $derived($hostPeerId);
+  let error = $derived($hostError);
+  let localConnectionState = $derived($hostConnectionState);
+  let qrCodeDataUrl = $derived($hostQrCodeDataUrl);
 
   // Max players depends on ruleset: classic = 4, 2019/house = 6
-  $: maxPlayers = (selectedRuleset === '2019' || selectedRuleset === 'house') ? 6 : 4;
+  let maxPlayers = $derived((selectedRuleset === '2019' || selectedRuleset === 'house') ? 6 : 4);
   
   // Total players including host
-  $: totalPlayers = players.length + 1;
+  let totalPlayers = $derived(players.length + 1);
   
   // Default tokens for current player count
-  $: defaultTokens = getTokensToWin(totalPlayers);
+  let defaultTokens = $derived(getTokensToWin(totalPlayers));
   
   // Update tokensToWin when player count changes (only if user hasn't customized)
-  $: if (!hasCustomTokens) {
-    tokensToWin = defaultTokens;
-  }
+  $effect(() => {
+    if (!hasCustomTokens) {
+      tokensToWin = defaultTokens;
+    }
+  });
   
   // Effective tokens value (use custom or default)
-  $: effectiveTokens = tokensToWin ?? defaultTokens;
+  let effectiveTokens = $derived(tokensToWin ?? defaultTokens);
   
   // Maximum AI players that can be added
-  $: maxAI = maxPlayers - 1;  // Leave room for at least the host
+  let maxAI = $derived(maxPlayers - 1);  // Leave room for at least the host
   
   // Count of human players (non-AI, excluding host)
-  $: humanPlayerCount = players.filter(p => !p.isAI).length;
+  let humanPlayerCount = $derived(players.filter(p => !p.isAI).length);
   
   // Available slots for AI after accounting for humans
-  $: availableAISlots = maxPlayers - 1 - humanPlayerCount;
+  let availableAISlots = $derived(maxPlayers - 1 - humanPlayerCount);
 
   // Subscribe to game started state
-  $: inGame = $gameStarted;
+  let inGame = $derived($gameStarted);
 
-  onMount(async () => {
-    try {
-      // Generate unique peer ID
-      const randomSuffix = Math.random().toString(36).substring(2, 6);
-      generatedPeerId = `royal-${randomSuffix}`;
-      
-      // Create peer manager
-      peerManager = new PeerManager();
-      
-      // Set up state listener
-      peerManager.onStateChange((state) => {
-        localConnectionState = state;
-        connectionState.set(state);
-      });
-      
-      // Set up connection listener - just log the connection, player info comes via PLAYER_JOINED message
-      peerManager.onConnection((newPeerId) => {
-        console.log('New player connected:', newPeerId);
-        // Player will be added when we receive their PLAYER_JOINED message with nickname
-      });
-
-      // Set up message handler for player actions
-      peerManager.onMessage((message, conn) => {
-        handleMessage(message, conn.peer);
-      });
-      
-      // Create host
-      await peerManager.createHost(generatedPeerId);
-      peerId.set(generatedPeerId);
-      
-      // Generate QR code
-      const qrData = JSON.stringify({
-        peerId: generatedPeerId,
-        game: 'royalletters',
-        version: '1.0'
-      });
-      
-      qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        }
-      });
-    } catch (err) {
-      error = `Failed to create host: ${err}`;
-      console.error(err);
-    }
+  onMount(() => {
+    initializeHost();
   });
 
   onDestroy(() => {
-    if (peerManager) {
-      peerManager.disconnect();
-    }
+    cleanupHost();
   });
 
-  function handlePlayerJoined(payload: PlayerJoinedPayload, fromPeerId: string) {
-    // Use guest's chosen nickname, or fallback to "Player N" where N = host (1) + existing players + 1
-    const playerName = payload.playerName || `Player ${players.length + 2}`;
-    
-    // Check if player is already in the list (avoid duplicates)
-    if (!players.some(p => p.id === fromPeerId)) {
-      players = [...players, { id: fromPeerId, name: playerName }];
-      connectedPlayers.update(p => [...p, { 
-        id: fromPeerId, 
-        name: playerName,
-        avatarId: 'default',
-        isHost: false
-      }]);
-    }
-  }
-
-  function handlePlayerAction(payload: PlayerActionPayload, senderId: string, fromPeerId: string) {
-    // Check if this is a revenge guess action
-    if (payload.isRevengeGuess) {
-      applyAction({
-        type: 'REVENGE_GUESS',
-        playerId: senderId,
-        targetCardGuess: payload.targetCardGuess
-      });
-    }
-    // Check if this is a Chancellor return action
-    else if (payload.cardsToReturn) {
-      applyAction({
-        type: 'CHANCELLOR_RETURN',
-        playerId: senderId,
-        cardsToReturn: payload.cardsToReturn
-      });
-    } else {
-      const result = applyAction({
-        type: 'PLAY_CARD',
-        playerId: senderId,
-        cardId: payload.cardId,
-        targetPlayerId: payload.targetPlayerId,
-        targetCardGuess: payload.targetCardGuess
-      });
-      
-      // If a Priest reveal happened, send it privately to the player who played Priest
-      if (result?.revealedCard && peerManager) {
-        const engine = getEngine();
-        const targetPlayer = engine?.getState().players.find(p => p.id === payload.targetPlayerId);
-        const priestRevealPayload: PriestRevealPayload = {
-          cardId: result.revealedCard,
-          targetPlayerName: targetPlayer?.name || 'Unknown'
-        };
-        const priestRevealMessage = createMessage('PRIEST_REVEAL', generatedPeerId, priestRevealPayload);
-        peerManager.sendTo(fromPeerId, priestRevealMessage);
-      }
-    }
-    
-    // Broadcast updated state to all clients
-    broadcastAndScheduleAI();
-  }
-
-  function handleChatMessage(payload: ChatMessagePayload, message: NetworkMessage, fromPeerId: string) {
-    // Received chat message from a guest - add to local store and broadcast to all except sender
-    const chatMsg = {
-      id: uuidv4(),
-      senderId: message.senderId,
-      senderName: payload.senderName,
-      text: payload.text,
-      timestamp: payload.timestamp
-    };
-    addChatMessage(chatMsg);
-    
-    // Broadcast to all other clients except the original sender
-    peerManager.broadcastExcept(message, fromPeerId);
-  }
-
-  function handleReconnect(payload: ReconnectPayload, fromPeerId: string) {
-    // Handle player reconnecting to existing game
-    console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
-    
-    // Check if this player exists in the game
-    const engine = getEngine();
-    const state = engine?.getState();
-    const existingPlayer = state?.players.find(p => p.id === payload.playerId);
-    
-    if (existingPlayer && $gameStarted) {
-      console.log('Reconnecting existing player:', existingPlayer.name);
-      
-      // Update local players array (might have been removed on disconnect)
-      if (!players.some(p => p.id === payload.playerId)) {
-        players = [...players, { id: payload.playerId, name: existingPlayer.name }];
-      }
-      
-      // Send current game state to reconnected player
-      if (peerManager && state) {
-        const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state });
-        peerManager.sendTo(fromPeerId, syncMessage);
-      }
-      
-      // Resume AI play if it's an AI's turn
-      scheduleAIMove();
-    } else {
-      console.warn('Unknown player trying to reconnect or game not started:', payload.playerId);
-      // Treat as new player if game not started yet
-      if (!$gameStarted && !players.some(p => p.id === fromPeerId)) {
-        players = [...players, { id: fromPeerId, name: payload.playerName }];
-      }
-    }
-  }
-
-  function handleRequestStateSync(fromPeerId: string) {
-    // Handle explicit request for state sync
-    console.log('State sync requested by:', fromPeerId);
-    
-    const engine = getEngine();
-    const state = engine?.getState();
-    
-    if (peerManager && state && $gameStarted) {
-      const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state });
-      peerManager.sendTo(fromPeerId, syncMessage);
-    }
-  }
-
-  function handleMessage(message: NetworkMessage, fromPeerId: string) {
-    console.log('Host received message:', message.type, 'from:', fromPeerId);
-    
-    if (message.type === 'PLAYER_JOINED') {
-      handlePlayerJoined(message.payload, fromPeerId);
-    } else if (message.type === 'PLAYER_ACTION') {
-      handlePlayerAction(message.payload, message.senderId, fromPeerId);
-    } else if (message.type === 'CHAT_MESSAGE') {
-      handleChatMessage(message.payload, message, fromPeerId);
-    } else if (message.type === 'RECONNECT') {
-      handleReconnect(message.payload, fromPeerId);
-    } else if (message.type === 'REQUEST_STATE_SYNC') {
-      handleRequestStateSync(fromPeerId);
-    }
-  }
-
   function handleStartGame() {
-    console.log('Starting game...');
-    
-    // Build player list with host first
-    const allPlayers = [
-      { id: generatedPeerId, name: hostName, isHost: true, isAI: false },
-      ...players.map(p => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false }))
-    ];
-    
-    // Initialize and start the game with selected ruleset and tokens to win
-    initGame(allPlayers, selectedRuleset, effectiveTokens);
-    startRound();
-    
-    // Broadcast state to all connected players
-    broadcastAndScheduleAI();
-  }
-
-  function broadcastGameState() {
-    const engine = getEngine();
-    if (!engine || !peerManager) return;
-    
-    const state = engine.getState();
-    const payload: GameStateSyncPayload = { state };
-    const message = createMessage('GAME_STATE_SYNC', generatedPeerId, payload);
-    
-    peerManager.broadcast(message);
-  }
-
-  function broadcastAndScheduleAI() {
-    broadcastGameState();
-    scheduleAIMove();
-  }
-  
-  /**
-   * Schedule AI move if it's an AI player's turn
-   * Uses setTimeout to allow state updates to propagate and create natural pacing
-   */
-  function scheduleAIMove() {
-    setTimeout(() => {
-      processAITurn();
-    }, aiMoveDelayMs);
-  }
-  
-  /**
-   * Process AI turn if it's an AI player's turn
-   */
-  function processAITurn() {
-    if (!checkIfAITurn()) return;
-    
-    const result = executeAIMove();
-    if (result) {
-      // Broadcast updated state
-      broadcastAndScheduleAI();
-    }
+    storeStartGame(hostName, players, selectedRuleset, effectiveTokens);
   }
 
   function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
-    // Host applies actions directly
-    applyAction({
-      type: 'PLAY_CARD',
-      playerId: generatedPeerId,
-      cardId,
-      targetPlayerId,
-      targetCardGuess
-    });
-    
-    // Broadcast updated state to all clients
-    broadcastAndScheduleAI();
+    handleHostPlayCard(cardId, targetPlayerId, targetCardGuess);
   }
   
   function handleChancellorReturn(cardsToReturn: string[]) {
-    // Host applies Chancellor return action directly
-    applyAction({
-      type: 'CHANCELLOR_RETURN',
-      playerId: generatedPeerId,
-      cardsToReturn
-    });
-    
-    // Broadcast updated state to all clients
-    broadcastAndScheduleAI();
+    handleHostChancellorReturn(cardsToReturn);
   }
 
   function handleRevengeGuess(targetCardGuess: string) {
-    // Host applies revenge guess action directly
-    applyAction({
-      type: 'REVENGE_GUESS',
-      playerId: generatedPeerId,
-      targetCardGuess
-    });
-    
-    // Broadcast updated state to all clients
-    broadcastAndScheduleAI();
+    handleHostRevengeGuess(targetCardGuess);
   }
 
   function handleStartRound() {
-    startRound();
-    broadcastAndScheduleAI();
+    handleHostStartRound();
   }
 
   function handlePlayAgain() {
-    // Re-initialize the game with the same players and ruleset
-    const allPlayers = [
-      { id: generatedPeerId, name: hostName, isHost: true, isAI: false },
-      ...players.map(p => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false }))
-    ];
-    
-    initGame(allPlayers, selectedRuleset, effectiveTokens);
-    startRound();
-    broadcastAndScheduleAI();
-  }
-  
-  // Sync AI players with slider value
-  function syncAIPlayers(targetCount: number) {
-    const currentAIs = players.filter(p => p.isAI);
-    const currentAICount = currentAIs.length;
-    
-    if (targetCount > currentAICount) {
-      // Add more AI players
-      const toAdd = targetCount - currentAICount;
-      const newAIs = [];
-      for (let i = 0; i < toAdd; i++) {
-        newAIs.push({
-          id: `ai-${uuidv4().substring(0, 8)}`,
-          name: `AI ${aiCounter++}`,
-          isAI: true
-        });
-      }
-      players = [...players, ...newAIs];
-    } else if (targetCount < currentAICount) {
-      // Remove AI players (from the end)
-      const toRemove = currentAICount - targetCount;
-      const aiIds = currentAIs.slice(-toRemove).map(p => p.id);
-      players = players.filter(p => !aiIds.includes(p.id));
-    }
+    handleHostPlayAgain(hostName, players, selectedRuleset, effectiveTokens);
   }
   
   // Handle AI count slider change
@@ -391,50 +110,37 @@
     aiCount = newCount;
     syncAIPlayers(newCount);
   }
+
+  // Keep AI delay in sync with the store
+  $effect(() => {
+    setAIMoveDelay(aiMoveDelayMs);
+  });
   
   // Clamp aiCount when human players join (reduces available AI slots)
-  $: if (aiCount > availableAISlots) {
-    aiCount = availableAISlots;
-    syncAIPlayers(aiCount);
-  }
+  $effect(() => {
+    if (aiCount > availableAISlots) {
+      aiCount = availableAISlots;
+      syncAIPlayers(aiCount);
+    }
+  });
   
   // Handle AI options toggle - add 1 AI when enabled, remove all when disabled
-  $: if (showAIOptions && aiCount === 0) {
-    aiCount = 1;
-    syncAIPlayers(1);
-  } else if (!showAIOptions && aiCount > 0) {
-    aiCount = 0;
-    syncAIPlayers(0);
-  }
+  $effect(() => {
+    if (showAIOptions && aiCount === 0) {
+      aiCount = 1;
+      syncAIPlayers(1);
+    } else if (!showAIOptions && aiCount > 0) {
+      aiCount = 0;
+      syncAIPlayers(0);
+    }
+  });
 
   function handleSendChat(text: string) {
-    // Create chat message
-    const chatMsg = {
-      id: uuidv4(),
-      senderId: generatedPeerId,
-      senderName: hostName,
-      text,
-      timestamp: Date.now()
-    };
-    
-    // Add to local store
-    addChatMessage(chatMsg);
-    
-    // Broadcast to all clients
-    const payload: ChatMessagePayload = {
-      text,
-      senderName: hostName,
-      timestamp: chatMsg.timestamp
-    };
-    const message = createMessage('CHAT_MESSAGE', generatedPeerId, payload);
-    peerManager.broadcast(message);
+    sendHostChat(text, hostName);
   }
 
   function handleBack() {
-    if (peerManager) {
-      peerManager.disconnect();
-    }
-    isHost.set(null);
+    handleHostBack();
   }
 </script>
 
@@ -503,7 +209,7 @@
               max="10" 
               step="1"
               bind:value={tokensToWin}
-              on:input={() => hasCustomTokens = true}
+              oninput={() => hasCustomTokens = true}
               class="tokens-slider"
             />
             <span class="tokens-value">{effectiveTokens}</span>
@@ -518,7 +224,7 @@
             {/if}
             <button 
               class="reset-tokens-btn" 
-              on:click={() => { hasCustomTokens = false; tokensToWin = defaultTokens; }}
+              onclick={() => { hasCustomTokens = false; tokensToWin = defaultTokens; }}
               disabled={!hasCustomTokens}
             >
               Reset
@@ -547,7 +253,7 @@
                     min="1"
                     max={availableAISlots}
                     bind:value={aiCount}
-                    on:input={handleAICountChange}
+                    oninput={handleAICountChange}
                   />
                   <span class="ai-count-value">{aiCount}</span>
                 </div>
@@ -596,12 +302,12 @@
         <div class="button-group">
           <button 
             class="start-btn" 
-            on:click={handleStartGame}
+            onclick={handleStartGame}
             disabled={players.length === 0}
           >
             Start Game
           </button>
-          <button class="back-btn" on:click={handleBack}>Cancel</button>
+          <button class="back-btn" onclick={handleBack}>Cancel</button>
         </div>
         
         <div class="players-section">
