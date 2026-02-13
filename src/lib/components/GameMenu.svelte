@@ -2,7 +2,6 @@
   import type { LogEntry, PlayerState } from '../types';
   import {
     chatMessages,
-    unreadChatCount,
     clearUnreadChatCount,
   } from '../stores/chat';
 
@@ -33,7 +32,6 @@
   let lastSeenLogCount = $state(0);
 
   let messages = $derived($chatMessages);
-  let unreadChats = $derived($unreadChatCount);
   let unreadLogs = $derived(logs.length - lastSeenLogCount);
   let isChatInputEmpty = $derived(!chatInput.trim());
 
@@ -157,17 +155,6 @@
         <span class="tooltip">Exit</span>
       </button>
       <button
-        class="mini-fab chat-fab"
-        onclick={() => openModal('chat')}
-        aria-label="Open chat"
-      >
-        <span class="mini-fab-icon">💬</span>
-        <span class="tooltip">Chat</span>
-        {#if unreadChats > 0}
-          <span class="mini-badge">{unreadChats}</span>
-        {/if}
-      </button>
-      <button
         class="mini-fab log-fab-mini"
         onclick={() => openModal('log')}
         aria-label="Open game log"
@@ -191,6 +178,15 @@
     <span class="fab-icon">{isMenuOpen ? '✕' : '☰'}</span>
   </button>
 </div>
+
+<!-- Chat FAB (always visible, bottom-left) -->
+<button
+  class="chat-fab-left"
+  onclick={() => openModal('chat')}
+  aria-label="Open chat"
+>
+  <span class="chat-fab-icon">💬</span>
+</button>
 
 <!-- Log Modal -->
 {#if activeModal === 'log'}
@@ -310,6 +306,35 @@
 {/if}
 
 <style>
+  /* Chat FAB (left side, always visible) */
+  .chat-fab-left {
+    position: fixed;
+    bottom: 1rem;
+    left: 1rem;
+    z-index: 40;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .chat-fab-left:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 184, 148, 0.6);
+  }
+
+  .chat-fab-icon {
+    font-size: 1.5rem;
+  }
+
   /* Menu Container */
   .menu-container {
     position: fixed;
@@ -355,10 +380,6 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     transition: all 0.2s ease;
     position: relative;
-  }
-
-  .chat-fab {
-    background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
   }
 
   .log-fab-mini {
@@ -689,6 +710,17 @@
 
   /* Mobile optimizations */
   @media (max-width: 480px) {
+    .chat-fab-left {
+      bottom: 0.75rem;
+      left: 0.75rem;
+      width: 48px;
+      height: 48px;
+    }
+
+    .chat-fab-icon {
+      font-size: 1.25rem;
+    }
+
     .menu-container {
       bottom: 0.75rem;
       right: 0.75rem;

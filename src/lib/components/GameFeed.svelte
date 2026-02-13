@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { LogEntry, PlayerState } from '../types';
+  import { chatMessages, type ChatMessage } from '../stores/chat';
 
   interface FeedItem {
     id: number;
@@ -8,6 +9,8 @@
     timeoutId: ReturnType<typeof setTimeout>;
     isFadingOut: boolean;
     actorId?: string;
+    isChat?: boolean;
+    senderName?: string;
   }
 
   interface PendingItem {
@@ -37,7 +40,10 @@
   let pendingItems = $state<PendingItem[]>([]);
   let nextId = $state(0);
   let lastLogCount = $state(0);
+  let lastChatCount = $state(0);
   let processingInterval = $state<ReturnType<typeof setInterval> | null>(null);
+
+  let messages = $derived($chatMessages);
 
   // Get player by ID
   function getPlayer(playerId: string | undefined): PlayerState | undefined {
@@ -411,6 +417,65 @@
     }
   });
 
+  // Watch for new chat messages and add them directly to the feed
+  $effect(() => {
+    if (messages.length > lastChatCount) {
+      for (let i = lastChatCount; i < messages.length; i++) {
+        addChatToFeed(messages[i]);
+      }
+      lastChatCount = messages.length;
+    }
+  });
+
+  // Add a chat message directly to the feed (no stagger delay)
+  function addChatToFeed(msg: ChatMessage) {
+    const itemId = nextId++;
+
+    // Schedule fade for the previous last item
+    if (feedItems.length > 0) {
+      const previousLastItem = feedItems[feedItems.length - 1];
+      if (previousLastItem && !previousLastItem.isFadingOut) {
+        clearTimeout(previousLastItem.timeoutId);
+        const newTimeoutId = setTimeout(() => {
+          startFadeOut(previousLastItem.id);
+        }, FEED_DISPLAY_TIME_MS);
+        feedItems = feedItems.map((f) =>
+          f.id === previousLastItem.id
+            ? { ...f, timeoutId: newTimeoutId }
+            : f,
+        );
+      }
+    }
+
+    const timeoutId = setTimeout(() => {}, 0);
+    clearTimeout(timeoutId);
+
+    const item: FeedItem = {
+      id: itemId,
+      message: msg.text,
+      timestamp: msg.timestamp,
+      timeoutId,
+      isFadingOut: false,
+      actorId: msg.senderId,
+      isChat: true,
+      senderName: msg.senderName,
+    };
+    feedItems = [...feedItems, item];
+
+    // Enforce max visible items
+    while (
+      feedItems.filter((f) => !f.isFadingOut).length > MAX_VISIBLE_ITEMS
+    ) {
+      const oldestNonFading = feedItems.find((f) => !f.isFadingOut);
+      if (oldestNonFading) {
+        clearTimeout(oldestNonFading.timeoutId);
+        startFadeOut(oldestNonFading.id);
+      } else {
+        break;
+      }
+    }
+  }
+
   // Calculate position from top (0 = oldest at top, higher = newer at bottom)
   // For fading, we want older items at the top to fade when there are many items
   let itemsWithPosition = $derived(
@@ -428,9 +493,12 @@
       class="feed-item"
       class:fading={item.shouldFade}
       class:fade-out={item.isFadingOut}
-      class:self-action={item.actorId === localPlayerId}
+      class:self-action={!item.isChat && item.actorId === localPlayerId}
+      class:chat-message={item.isChat}
     >
-      {#if item.actorId === localPlayerId}
+      {#if item.isChat}
+        <span class="chat-sender-name" style="color: {getActorColor(item.actorId)}">{item.senderName}</span>: {item.message}
+      {:else if item.actorId === localPlayerId}
         You {item.message
           .replace(getActorName(item.actorId) + ' ', '')
           .replace(getActorName(item.actorId) + "'s ", 'your ')
@@ -492,6 +560,17 @@
   .feed-item.self-action {
     color: #ff4444;
     font-weight: 700;
+  }
+
+  .feed-item.chat-message {
+    color: #a8e6cf;
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  .chat-sender-name {
+    font-weight: 700;
+    font-style: normal;
   }
 
   @keyframes slide-in {
