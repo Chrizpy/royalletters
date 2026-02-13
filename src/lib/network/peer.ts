@@ -16,6 +16,9 @@ export class PeerManager {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 2000;
+  private signalingReconnectAttempts = 0;
+  private maxSignalingReconnectAttempts = 5;
+  private visibilityHandler: (() => void) | null = null;
 
   /**
    * Initialize as host with a unique peer ID
@@ -29,7 +32,18 @@ export class PeerManager {
           console.log('Peer created with ID:', id);
           this.setState('connected');
           this.setupHostListeners();
+          this.setupVisibilityHandler();
           resolve(id);
+        });
+
+        this.peer.on('disconnected', () => {
+          console.warn('Host lost connection to signaling server');
+          this.reconnectSignalingServer();
+        });
+
+        this.peer.on('close', () => {
+          console.log('Peer destroyed');
+          this.setState('disconnected');
         });
 
         this.peer.on('error', (error) => {
@@ -57,6 +71,7 @@ export class PeerManager {
         
         this.peer.on('open', (id) => {
           console.log('Guest peer created with ID:', id);
+          this.setupVisibilityHandler();
           
           // Connect to host
           const conn = this.peer!.connect(hostPeerId);
@@ -67,6 +82,16 @@ export class PeerManager {
             this.setState('connected');
             resolve();
           });
+        });
+
+        this.peer.on('disconnected', () => {
+          console.warn('Guest lost connection to signaling server');
+          this.reconnectSignalingServer();
+        });
+
+        this.peer.on('close', () => {
+          console.log('Peer destroyed');
+          this.setState('disconnected');
         });
 
         this.peer.on('error', (error) => {
@@ -152,6 +177,84 @@ export class PeerManager {
         this.setupConnection(conn);
       }
     }, delay);
+  }
+
+  /**
+   * Reconnect to the PeerJS signaling server (not to a specific peer).
+   * This is needed when the browser tab is backgrounded on mobile and the
+   * WebSocket to the signaling server times out.
+   */
+  private reconnectSignalingServer(): void {
+    if (!this.peer || this.peer.destroyed) {
+      console.log('Peer is destroyed, cannot reconnect to signaling server');
+      this.setState('disconnected');
+      return;
+    }
+
+    if (this.signalingReconnectAttempts >= this.maxSignalingReconnectAttempts) {
+      console.log('Max signaling reconnect attempts reached');
+      this.setState('error');
+      return;
+    }
+
+    this.signalingReconnectAttempts++;
+    console.log(
+      `Reconnecting to signaling server (attempt ${this.signalingReconnectAttempts})`
+    );
+
+    try {
+      this.peer.reconnect();
+      // Reset counter on success — the 'open' event won't re-fire,
+      // but 'disconnected' won't fire again either unless it drops again.
+      this.signalingReconnectAttempts = 0;
+    } catch (err) {
+      console.error('Failed to reconnect to signaling server:', err);
+
+      const delay = Math.min(
+        this.reconnectDelay * Math.pow(2, this.signalingReconnectAttempts - 1),
+        30000
+      );
+      setTimeout(() => this.reconnectSignalingServer(), delay);
+    }
+  }
+
+  /**
+   * Listen for the page becoming visible again (e.g. user switches back to
+   * the browser on mobile). When that happens, proactively check whether the
+   * signaling server connection is still alive and reconnect if needed.
+   */
+  setupVisibilityHandler(): void {
+    if (this.visibilityHandler) return; // already set up
+
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && this.peer) {
+        console.log('Page became visible, checking peer connection…');
+
+        if (this.peer.destroyed) {
+          console.warn('Peer was destroyed while in background');
+          this.setState('disconnected');
+          return;
+        }
+
+        if (this.peer.disconnected) {
+          console.warn('Peer disconnected from signaling server while in background, reconnecting…');
+          this.signalingReconnectAttempts = 0;
+          this.reconnectSignalingServer();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityHandler);
+  }
+
+  /**
+   * Remove the visibilitychange listener.
+   */
+  private cleanupVisibilityHandler(): void {
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
   }
 
   /**
@@ -241,6 +344,7 @@ export class PeerManager {
    * Disconnect from all peers and destroy the peer
    */
   disconnect(): void {
+    this.cleanupVisibilityHandler();
     this.connections.forEach((conn) => conn.close());
     this.connections.clear();
     
