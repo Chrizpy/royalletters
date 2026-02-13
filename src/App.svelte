@@ -14,12 +14,28 @@
   let currentScreen = $state<Screen>('lobby');
   let pendingSession = $state<GameSession | null>(null);
 
-  // Check for saved session on mount
+  // Check URL for join link (?join=<peerId>)
+  let autoJoinPeerId = $state<string | null>(null);
+
+  // Check for saved session or join link on mount
   onMount(() => {
     const session = loadSession();
     if (session) {
       pendingSession = session;
       currentScreen = 'rejoin';
+      return;
+    }
+
+    // Check for ?join= query parameter
+    const params = new URLSearchParams(window.location.search);
+    const joinId = params.get('join');
+    if (joinId) {
+      // Clean the URL so the param doesn't persist on refresh
+      const cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', cleanUrl);
+
+      autoJoinPeerId = joinId;
+      isHost.set(false); // route to join screen
     }
   });
 
@@ -59,7 +75,7 @@
   {:else if currentScreen === 'host'}
     <HostLobby />
   {:else if currentScreen === 'join'}
-    <JoinGame />
+    <JoinGame autoJoinPeerId={autoJoinPeerId} />
   {:else if currentScreen === 'game'}
     <div class="game-screen">
       <h1>Game Screen</h1>

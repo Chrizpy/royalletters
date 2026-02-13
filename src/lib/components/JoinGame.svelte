@@ -10,6 +10,11 @@
   import { saveSession, clearSession } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
+  interface Props {
+    autoJoinPeerId?: string | null;
+  }
+  let { autoJoinPeerId = null }: Props = $props();
+
   let manualPeerId = $state('');
   let error = $state('');
   let showManualInput = $state(false);
@@ -25,7 +30,23 @@
   // Subscribe to game started state
   let inGame = $derived($gameStarted);
 
+  // Pre-fill the peer ID when arriving via a join link.
+  // Uses $effect so it fires reliably even if the prop arrives
+  // after the component has mounted.
+  $effect(() => {
+    if (autoJoinPeerId && !manualPeerId) {
+      manualPeerId = autoJoinPeerId;
+      showManualInput = true;
+    }
+  });
+
   onMount(async () => {
+    if (autoJoinPeerId) {
+      // Join link flow — skip the camera scanner, manual input
+      // is shown via the $effect above
+      return;
+    }
+
     try {
       // Try to start camera scanner
       await startScanner();
@@ -66,20 +87,38 @@
   }
 
   function onScanSuccess(decodedText: string) {
+    let hostId: string | null = null;
+
+    // Try URL format first (new: ?join=<peerId>)
     try {
-      const data = JSON.parse(decodedText);
-      if (data.game === 'royalletters' && data.peerId) {
-        // Stop scanner
-        if (scanner) {
-          scanner.stop().catch(console.error);
-        }
-        isScanning = false;
-        
-        // Connect to host
-        connectToHost(data.peerId);
+      const url = new URL(decodedText);
+      const joinParam = url.searchParams.get('join');
+      if (joinParam) {
+        hostId = joinParam;
       }
-    } catch (err) {
-      console.error('Invalid QR code:', err);
+    } catch {
+      // Not a URL — try legacy JSON format
+    }
+
+    // Fallback: legacy JSON format { game, peerId }
+    if (!hostId) {
+      try {
+        const data = JSON.parse(decodedText);
+        if (data.game === 'royalletters' && data.peerId) {
+          hostId = data.peerId;
+        }
+      } catch {
+        // Not valid JSON either
+      }
+    }
+
+    if (hostId) {
+      // Stop scanner
+      if (scanner) {
+        scanner.stop().catch(console.error);
+      }
+      isScanning = false;
+      connectToHost(hostId);
     }
   }
 

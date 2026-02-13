@@ -74,14 +74,10 @@ export async function initializeHost(): Promise<void> {
     peerId.set(generatedPeerId);
     hostPeerId.set(generatedPeerId);
 
-    // Generate QR code
-    const qrData = JSON.stringify({
-      peerId: generatedPeerId,
-      game: 'royalletters',
-      version: '1.0',
-    });
+    // Generate QR code with the join URL so native camera apps open the browser
+    const joinUrl = `${window.location.origin}${window.location.pathname}?join=${generatedPeerId}`;
 
-    const dataUrl = await QRCode.toDataURL(qrData, {
+    const dataUrl = await QRCode.toDataURL(joinUrl, {
       width: 300,
       margin: 2,
       color: { dark: '#000000', light: '#ffffff' },

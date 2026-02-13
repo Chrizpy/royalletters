@@ -25,7 +25,7 @@
       <button class="menu-btn join-btn" onclick={handleJoin}>
         <span class="btn-icon">📱</span>
         <span class="btn-text">Join Game</span>
-        <span class="btn-description">Scan QR code to join</span>
+        <span class="btn-description">Scan QR code, enter code, or use a join link</span>
       </button>
     </div>
   </div>

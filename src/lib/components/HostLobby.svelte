@@ -32,6 +32,7 @@
   let showAIOptions = $state(false);
   let tokensToWin = $state<number | null>(null);
   let hasCustomTokens = $state(false);
+  let linkCopied = $state(false);
 
   // Derived from stores
   let players = $derived($hostPlayers);
@@ -142,6 +143,34 @@
   function handleBack() {
     handleHostBack();
   }
+
+  async function shareJoinLink() {
+    const joinUrl = `${window.location.origin}${window.location.pathname}?join=${generatedPeerId}`;
+
+    // Use Web Share API on mobile if available
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join my Royal Letters game!',
+          text: 'Tap this link to join my game:',
+          url: joinUrl,
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed – fall through to clipboard
+      }
+    }
+
+    // Fallback: copy to clipboard
+    try {
+      await navigator.clipboard.writeText(joinUrl);
+      linkCopied = true;
+      setTimeout(() => (linkCopied = false), 2000);
+    } catch {
+      // Very old browsers – prompt user
+      window.prompt('Copy this join link:', joinUrl);
+    }
+  }
 </script>
 
 {#if inGame && $gameState}
@@ -175,6 +204,14 @@
             <p class="peer-id-label">Or enter this code manually:</p>
             <div class="peer-id-display">{generatedPeerId}</div>
           </div>
+
+          <button class="share-link-btn" class:copied={linkCopied} onclick={shareJoinLink}>
+            {#if linkCopied}
+              Link Copied!
+            {:else}
+              Share Join Link
+            {/if}
+          </button>
         </div>
 
         <div class="ruleset-section">
@@ -722,6 +759,36 @@
     padding: 0.75rem;
     border-radius: 8px;
     border: 2px solid #d4a64a;
+  }
+
+  .share-link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #e8d5b0 0%, #d9c49a 100%);
+    color: #3d2a22;
+    border: 2px solid #c4a574;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .share-link-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(212, 166, 74, 0.3);
+    background: linear-gradient(135deg, #dcc89e 0%, #cdb78d 100%);
+    border-color: #d4a64a;
+  }
+
+  .share-link-btn.copied {
+    background: linear-gradient(135deg, #5c4033 0%, #3d2a22 100%);
+    color: #d4a64a;
+    border-color: #d4a64a;
   }
 
   .players-section {
