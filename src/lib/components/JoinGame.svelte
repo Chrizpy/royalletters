@@ -87,20 +87,38 @@
   }
 
   function onScanSuccess(decodedText: string) {
+    let hostId: string | null = null;
+
+    // Try URL format first (new: ?join=<peerId>)
     try {
-      const data = JSON.parse(decodedText);
-      if (data.game === 'royalletters' && data.peerId) {
-        // Stop scanner
-        if (scanner) {
-          scanner.stop().catch(console.error);
-        }
-        isScanning = false;
-        
-        // Connect to host
-        connectToHost(data.peerId);
+      const url = new URL(decodedText);
+      const joinParam = url.searchParams.get('join');
+      if (joinParam) {
+        hostId = joinParam;
       }
-    } catch (err) {
-      console.error('Invalid QR code:', err);
+    } catch {
+      // Not a URL — try legacy JSON format
+    }
+
+    // Fallback: legacy JSON format { game, peerId }
+    if (!hostId) {
+      try {
+        const data = JSON.parse(decodedText);
+        if (data.game === 'royalletters' && data.peerId) {
+          hostId = data.peerId;
+        }
+      } catch {
+        // Not valid JSON either
+      }
+    }
+
+    if (hostId) {
+      // Stop scanner
+      if (scanner) {
+        scanner.stop().catch(console.error);
+      }
+      isScanning = false;
+      connectToHost(hostId);
     }
   }
 
