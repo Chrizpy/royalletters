@@ -440,9 +440,7 @@
           startFadeOut(previousLastItem.id);
         }, FEED_DISPLAY_TIME_MS);
         feedItems = feedItems.map((f) =>
-          f.id === previousLastItem.id
-            ? { ...f, timeoutId: newTimeoutId }
-            : f,
+          f.id === previousLastItem.id ? { ...f, timeoutId: newTimeoutId } : f,
         );
       }
     }
@@ -463,9 +461,7 @@
     feedItems = [...feedItems, item];
 
     // Enforce max visible items
-    while (
-      feedItems.filter((f) => !f.isFadingOut).length > MAX_VISIBLE_ITEMS
-    ) {
+    while (feedItems.filter((f) => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
       const oldestNonFading = feedItems.find((f) => !f.isFadingOut);
       if (oldestNonFading) {
         clearTimeout(oldestNonFading.timeoutId);
@@ -497,7 +493,10 @@
       class:chat-message={item.isChat}
     >
       {#if item.isChat}
-        <span class="chat-sender-name" style="color: {getActorColor(item.actorId)}">{item.senderName}</span>: {item.message}
+        <span
+          class="chat-sender-name"
+          style="color: {getActorColor(item.actorId)}">{item.senderName}</span
+        >: {item.message}
       {:else if item.actorId === localPlayerId}
         You {item.message
           .replace(getActorName(item.actorId) + ' ', '')

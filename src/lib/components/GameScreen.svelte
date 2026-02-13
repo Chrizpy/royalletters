@@ -11,6 +11,7 @@
   import ChancellorModal from './ChancellorModal.svelte';
   import DeckInfoModal from './DeckInfoModal.svelte';
   import CountessRuleModal from './CountessRuleModal.svelte';
+  import KingSwapModal from './KingSwapModal.svelte';
   import { getCardDefinition } from '../engine/deck';
   import { getValidTargets } from '../engine/validation';
   import { getTokensToWin } from '../engine/constants';
@@ -20,6 +21,8 @@
     gameState as gameStateStore,
     revealedCard,
     clearRevealedCard,
+    kingSwapInfo,
+    clearKingSwapInfo,
   } from '../stores/game';
   import type { PlayerState } from '../types';
 
@@ -68,6 +71,7 @@
   // Get state from store for reactivity
   let gameState = $derived($gameStateStore);
   let revealed = $derived($revealedCard);
+  let kingSwap = $derived($kingSwapInfo);
   let localPlayer = $derived(
     gameState?.players.find((p) => p.id === localPlayerId),
   );
@@ -515,6 +519,16 @@
       <CountessRuleModal
         conflictingCard={countessConflictCard}
         onDismiss={() => (showCountessRuleModal = false)}
+      />
+    {/if}
+
+    <!-- King swap modal - show when someone plays King on the local player -->
+    {#if kingSwap && kingSwap.targetPlayerId === localPlayerId}
+      <KingSwapModal
+        actorName={kingSwap.actorName}
+        cardGiven={kingSwap.cardGiven}
+        cardReceived={kingSwap.cardReceived}
+        onDismiss={clearKingSwapInfo}
       />
     {/if}
   </div>

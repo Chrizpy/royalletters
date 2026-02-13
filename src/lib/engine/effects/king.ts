@@ -13,6 +13,10 @@ export function applyTradeHands(context: EffectContext): EffectResult {
     (p) => p.id === action.targetPlayerId,
   )!;
 
+  // Capture cards before the swap so we can notify the target
+  const cardTargetGave = targetPlayer.hand[0];
+  const cardTargetReceived = activePlayer.hand[0];
+
   const temp = activePlayer.hand;
   activePlayer.hand = targetPlayer.hand;
   targetPlayer.hand = temp;
@@ -25,6 +29,13 @@ export function applyTradeHands(context: EffectContext): EffectResult {
 
   return {
     message: `You traded hands with ${targetPlayer.name}`,
+    kingSwap: {
+      actorId: activePlayer.id,
+      actorName: activePlayer.name,
+      targetId: targetPlayer.id,
+      cardGiven: cardTargetGave,
+      cardReceived: cardTargetReceived,
+    },
   };
 }
 

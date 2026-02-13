@@ -318,12 +318,20 @@ export class GameEngine {
     message: string;
     revealedCard?: string;
     eliminatedPlayerId?: string;
+    kingSwap?: {
+      actorId: string;
+      actorName: string;
+      targetId: string;
+      cardGiven: string;
+      cardReceived: string;
+    };
   }): ActionResult {
     return {
       success: true,
       message: effectResult.message,
       revealedCard: effectResult.revealedCard,
       eliminatedPlayerId: effectResult.eliminatedPlayerId,
+      kingSwap: effectResult.kingSwap,
       newState: this.state,
     };
   }

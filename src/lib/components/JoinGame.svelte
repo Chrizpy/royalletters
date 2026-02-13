@@ -13,6 +13,7 @@
     gameStarted,
     setGameState,
     revealedCard,
+    kingSwapInfo,
   } from '../stores/game';
   import {
     createMessage,
@@ -155,6 +156,15 @@
         cardId: payload.cardId,
         playerName: payload.targetPlayerName,
         viewerPlayerId: guestPeerId, // This guest is the viewer
+      });
+    } else if (message.type === 'KING_SWAP') {
+      // Host sent us a King swap notification - someone played King on us
+      const payload = message.payload;
+      kingSwapInfo.set({
+        actorName: payload.actorName,
+        cardGiven: payload.cardGiven,
+        cardReceived: payload.cardReceived,
+        targetPlayerId: guestPeerId, // This guest is the target
       });
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message - add to local store

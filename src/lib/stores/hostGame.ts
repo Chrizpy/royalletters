@@ -16,6 +16,7 @@ import {
   type NetworkMessage,
   type GameStateSyncPayload,
   type PriestRevealPayload,
+  type KingSwapPayload,
   type PlayerActionPayload,
   type ChatMessagePayload,
   type ReconnectPayload,
@@ -170,6 +171,24 @@ function handlePlayerAction(
         priestRevealPayload,
       );
       peerManager.sendTo(fromPeerId, priestRevealMessage);
+    }
+
+    // If a King swap happened, send private notification to the target player
+    if (result?.kingSwap && peerManager) {
+      const generatedId = get(hostPeerId);
+      const kingSwapPayload: KingSwapPayload = {
+        actorName: result.kingSwap.actorName,
+        cardGiven: result.kingSwap.cardGiven,
+        cardReceived: result.kingSwap.cardReceived,
+      };
+      const kingSwapMessage = createMessage(
+        'KING_SWAP',
+        generatedId,
+        kingSwapPayload,
+      );
+      // Send to the target player (not the actor)
+      const targetPeerId = result.kingSwap.targetId;
+      peerManager.sendTo(targetPeerId, kingSwapMessage);
     }
   }
 

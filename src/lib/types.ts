@@ -110,6 +110,13 @@ export interface ActionResult {
   message: string;
   revealedCard?: string;
   eliminatedPlayerId?: string;
+  kingSwap?: {
+    actorId: string;
+    actorName: string;
+    targetId: string;
+    cardGiven: string;
+    cardReceived: string;
+  };
   newState: GameState;
 }
 

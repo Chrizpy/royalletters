@@ -1,9 +1,6 @@
 <script lang="ts">
   import type { LogEntry, PlayerState } from '../types';
-  import {
-    chatMessages,
-    clearUnreadChatCount,
-  } from '../stores/chat';
+  import { chatMessages, clearUnreadChatCount } from '../stores/chat';
 
   const SCROLL_DELAY_MS = 100;
 

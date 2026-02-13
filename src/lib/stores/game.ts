@@ -23,6 +23,21 @@ export const revealedCard = writable<{
   viewerPlayerId: string;
 } | null>(null);
 
+// King swap notification - shown to the target of a King card
+export const kingSwapInfo = writable<{
+  actorName: string;
+  cardGiven: string;
+  cardReceived: string;
+  targetPlayerId: string; // Only this player should see the modal
+} | null>(null);
+
+/**
+ * Clear the king swap info (after user acknowledges)
+ */
+export function clearKingSwapInfo() {
+  kingSwapInfo.set(null);
+}
+
 /**
  * Initialize the game engine with players
  */
@@ -89,6 +104,18 @@ export function applyAction(action: GameAction): ActionResult | undefined {
       cardId: result.revealedCard,
       playerName: targetPlayer?.name || 'Unknown',
       viewerPlayerId: action.playerId, // Only the player who played Priest should see this
+    });
+  }
+
+  // Handle King swap - store info so the target player sees a notification
+  // (For networked games, the host sends a private message to the remote target;
+  //  this branch covers the case where the host IS the target.)
+  if (result.kingSwap) {
+    kingSwapInfo.set({
+      actorName: result.kingSwap.actorName,
+      cardGiven: result.kingSwap.cardGiven,
+      cardReceived: result.kingSwap.cardReceived,
+      targetPlayerId: result.kingSwap.targetId,
     });
   }
 

@@ -8,6 +8,7 @@ export type MessageType =
   | 'ROUND_START' // Host starts a new round (includes RNG seed)
   | 'CONNECTION_ACK' // Acknowledge connection established
   | 'PRIEST_REVEAL' // Private reveal for Priest card effect
+  | 'KING_SWAP' // Private notification for King swap target
   | 'CHAT_MESSAGE' // In-game chat message
   | 'RECONNECT' // Player reconnecting to existing game
   | 'REQUEST_STATE_SYNC'; // Request current game state from host
@@ -25,6 +26,7 @@ export type NetworkMessage =
   | ({ type: 'ROUND_START'; payload: RoundStartPayload } & MessageBase)
   | ({ type: 'CONNECTION_ACK'; payload: ConnectionAckPayload } & MessageBase)
   | ({ type: 'PRIEST_REVEAL'; payload: PriestRevealPayload } & MessageBase)
+  | ({ type: 'KING_SWAP'; payload: KingSwapPayload } & MessageBase)
   | ({ type: 'CHAT_MESSAGE'; payload: ChatMessagePayload } & MessageBase)
   | ({ type: 'RECONNECT'; payload: ReconnectPayload } & MessageBase)
   | ({
@@ -71,6 +73,12 @@ export interface ConnectionAckPayload {
 export interface PriestRevealPayload {
   cardId: string;
   targetPlayerName: string;
+}
+
+export interface KingSwapPayload {
+  actorName: string;
+  cardGiven: string;
+  cardReceived: string;
 }
 
 export interface ChatMessagePayload {

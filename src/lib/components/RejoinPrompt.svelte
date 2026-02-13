@@ -12,6 +12,7 @@
     gameStarted,
     setGameState,
     revealedCard,
+    kingSwapInfo,
   } from '../stores/game';
   import {
     createMessage,
@@ -19,6 +20,7 @@
     type GameStateSyncPayload,
     type PlayerActionPayload,
     type PriestRevealPayload,
+    type KingSwapPayload,
     type ChatMessagePayload,
     type ReconnectPayload,
   } from '../network/messages';
@@ -66,6 +68,14 @@
         playerName: payload.targetPlayerName,
         viewerPlayerId: session.guestPeerId,
       });
+    } else if (message.type === 'KING_SWAP') {
+      const payload = message.payload as KingSwapPayload;
+      kingSwapInfo.set({
+        actorName: payload.actorName,
+        cardGiven: payload.cardGiven,
+        cardReceived: payload.cardReceived,
+        targetPlayerId: session.guestPeerId, // This guest is the target
+      });
     } else if (message.type === 'CHAT_MESSAGE') {
       const payload = message.payload as ChatMessagePayload;
       const chatMsg = {
@@ -85,6 +95,7 @@
 
     // Clear stale state from previous session
     revealedCard.set(null);
+    kingSwapInfo.set(null);
     clearChatMessages();
     gameState.set(null);
     gameStarted.set(false);

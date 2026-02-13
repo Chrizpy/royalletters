@@ -24,6 +24,14 @@ export interface EffectResult {
   eliminatedPlayerId?: string;
   /** If true, turn should not advance after this effect */
   skipTurnAdvance?: boolean;
+  /** Info about a King swap, so the target player can be notified */
+  kingSwap?: {
+    actorId: string;
+    actorName: string;
+    targetId: string;
+    cardGiven: string; // Card the target lost
+    cardReceived: string; // Card the target received
+  };
 }
 
 /**
