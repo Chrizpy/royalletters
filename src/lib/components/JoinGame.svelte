@@ -10,6 +10,11 @@
   import { saveSession, clearSession } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
+  interface Props {
+    autoJoinPeerId?: string | null;
+  }
+  let { autoJoinPeerId = null }: Props = $props();
+
   let manualPeerId = $state('');
   let error = $state('');
   let showManualInput = $state(false);
@@ -25,7 +30,23 @@
   // Subscribe to game started state
   let inGame = $derived($gameStarted);
 
+  // Pre-fill the peer ID when arriving via a join link.
+  // Uses $effect so it fires reliably even if the prop arrives
+  // after the component has mounted.
+  $effect(() => {
+    if (autoJoinPeerId && !manualPeerId) {
+      manualPeerId = autoJoinPeerId;
+      showManualInput = true;
+    }
+  });
+
   onMount(async () => {
+    if (autoJoinPeerId) {
+      // Join link flow — skip the camera scanner, manual input
+      // is shown via the $effect above
+      return;
+    }
+
     try {
       // Try to start camera scanner
       await startScanner();
