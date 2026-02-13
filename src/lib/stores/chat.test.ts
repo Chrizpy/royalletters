@@ -5,7 +5,7 @@ import {
   unreadChatCount,
   addChatMessage,
   clearUnreadChatCount,
-  clearChatMessages
+  clearChatMessages,
 } from './chat';
 import type { ChatMessage } from './chat';
 
@@ -31,7 +31,7 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'Hello!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       addChatMessage(msg);
@@ -47,7 +47,7 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'Hello!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       addChatMessage(msg);
@@ -63,14 +63,14 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'First',
-        timestamp: 1000
+        timestamp: 1000,
       };
       const msg2: ChatMessage = {
         id: 'msg2',
         senderId: 'p2',
         senderName: 'Bob',
         text: 'Second',
-        timestamp: 2000
+        timestamp: 2000,
       };
 
       addChatMessage(msg1);
@@ -89,14 +89,14 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'Hello!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
       addChatMessage({
         id: 'msg2',
         senderId: 'p1',
         senderName: 'Alice',
         text: 'World!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       expect(get(unreadChatCount)).toBe(2);
@@ -112,7 +112,7 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'Hello!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       clearUnreadChatCount();
@@ -128,7 +128,7 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'Hello!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       clearChatMessages();
@@ -142,7 +142,7 @@ describe('Chat Store', () => {
         senderId: 'p1',
         senderName: 'Alice',
         text: 'Hello!',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       clearChatMessages();

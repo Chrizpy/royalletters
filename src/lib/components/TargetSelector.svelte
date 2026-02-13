@@ -1,7 +1,12 @@
 <script lang="ts">
   import type { PlayerState } from '../types';
 
-  let { validTargets = [], onSelect, onCancel, cardName = '' }: {
+  let {
+    validTargets = [],
+    onSelect,
+    onCancel,
+    cardName = '',
+  }: {
     validTargets?: PlayerState[];
     onSelect: (targetId: string) => void;
     onCancel: () => void;
@@ -10,18 +15,25 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="target-selector-overlay" role="dialog" aria-modal="true" tabindex="0" onclick={onCancel} onkeydown={(e) => e.key === 'Escape' && onCancel()}>
+<div
+  class="target-selector-overlay"
+  role="dialog"
+  aria-modal="true"
+  tabindex="0"
+  onclick={onCancel}
+  onkeydown={(e) => e.key === 'Escape' && onCancel()}
+>
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="target-selector" onclick={(e) => e.stopPropagation()}>
     <h3>Select a target for {cardName}</h3>
-    
+
     <div class="target-list">
-      {#each validTargets as target}
+      {#each validTargets as target (target.id)}
         <button class="target-btn" onclick={() => onSelect(target.id)}>
           <span class="target-icon">👤</span>
           <span class="target-name">{target.name}</span>
           <span class="target-tokens">
-            {#each Array(target.tokens) as _}
+            {#each Array(target.tokens) as _, i (i)}
               <span class="token">💎</span>
             {/each}
             {#if target.tokens === 0}
@@ -53,8 +65,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .target-selector {
@@ -68,8 +84,14 @@
   }
 
   @keyframes modal-pop {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   h3 {

@@ -30,11 +30,17 @@ export function getCardDefinition(cardId: string): CardDefinition | undefined {
  * In classic mode, cards have their classic values (no Spy/Chancellor)
  * In 2019 mode, cards have their new values
  */
-export function getCardValue(cardId: string, ruleset: Ruleset = 'classic'): number {
+export function getCardValue(
+  cardId: string,
+  ruleset: Ruleset = 'classic',
+): number {
   const card = registry.cards[cardId];
   if (!card) return 0;
-  
-  if (ruleset === 'classic' && registry.classicCardValues[cardId] !== undefined) {
+
+  if (
+    ruleset === 'classic' &&
+    registry.classicCardValues[cardId] !== undefined
+  ) {
     return registry.classicCardValues[cardId];
   }
   return card.value;
@@ -47,17 +53,17 @@ export function getCardValue(cardId: string, ruleset: Ruleset = 'classic'): numb
 export function createDeck(ruleset: Ruleset = 'classic'): string[] {
   const deck: string[] = [];
   const deckDefinition = registry.decks[ruleset];
-  
+
   if (!deckDefinition) {
     throw new Error(`Unknown ruleset: ${ruleset}`);
   }
-  
+
   for (const [cardId, count] of Object.entries(deckDefinition)) {
     for (let i = 0; i < count; i++) {
       deck.push(cardId);
     }
   }
-  
+
   return deck;
 }
 
@@ -68,11 +74,11 @@ export function createDeck(ruleset: Ruleset = 'classic'): string[] {
 export function shuffle(deck: string[], seed: string): string[] {
   const shuffled = [...deck];
   const rng = createRng(seed);
-  
+
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  
+
   return shuffled;
 }

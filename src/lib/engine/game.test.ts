@@ -34,15 +34,15 @@ describe('Deck Tests', () => {
 
   it('should have correct card counts', () => {
     const deck = createDeck();
-    
-    const guardCount = deck.filter(c => c === 'guard').length;
-    const priestCount = deck.filter(c => c === 'priest').length;
-    const baronCount = deck.filter(c => c === 'baron').length;
-    const handmaidCount = deck.filter(c => c === 'handmaid').length;
-    const princeCount = deck.filter(c => c === 'prince').length;
-    const kingCount = deck.filter(c => c === 'king').length;
-    const countessCount = deck.filter(c => c === 'countess').length;
-    const princessCount = deck.filter(c => c === 'princess').length;
+
+    const guardCount = deck.filter((c) => c === 'guard').length;
+    const priestCount = deck.filter((c) => c === 'priest').length;
+    const baronCount = deck.filter((c) => c === 'baron').length;
+    const handmaidCount = deck.filter((c) => c === 'handmaid').length;
+    const princeCount = deck.filter((c) => c === 'prince').length;
+    const kingCount = deck.filter((c) => c === 'king').length;
+    const countessCount = deck.filter((c) => c === 'countess').length;
+    const princessCount = deck.filter((c) => c === 'princess').length;
 
     expect(guardCount).toBe(5);
     expect(priestCount).toBe(2);
@@ -148,7 +148,7 @@ describe('Round Start Tests', () => {
     game.startRound();
     const state = game.getState();
 
-    state.players.forEach(player => {
+    state.players.forEach((player) => {
       expect(player.hand).toHaveLength(1);
     });
   });
@@ -183,18 +183,18 @@ describe('Round Start Tests', () => {
   it('should reset eliminated players to PLAYING status on new round', () => {
     game.startRound();
     let state = game.getState();
-    
+
     // Simulate player being eliminated
     state.players[1].status = 'ELIMINATED';
     game.setState(state);
-    
+
     // Verify player is eliminated
     expect(game.getState().players[1].status).toBe('ELIMINATED');
-    
+
     // Start a new round
     game.startRound();
     state = game.getState();
-    
+
     // All players should be PLAYING in the new round
     expect(state.players[0].status).toBe('PLAYING');
     expect(state.players[1].status).toBe('PLAYING');
@@ -247,7 +247,7 @@ describe('Validation Tests', () => {
     game.drawPhase();
   });
 
-  it('should reject move if not player\'s turn', () => {
+  it("should reject move if not player's turn", () => {
     const state = game.getState();
     const cardInHand = state.players[1].hand[0]; // Bob's card
 
@@ -264,11 +264,19 @@ describe('Validation Tests', () => {
   it('should reject card not in hand', () => {
     const state = game.getState();
     const aliceHand = state.players[0].hand;
-    
+
     // Find a card that Alice definitely doesn't have
-    const cardsNotInHand = ['guard', 'priest', 'baron', 'handmaid', 'prince', 'king', 'countess', 'princess']
-      .filter(card => !aliceHand.includes(card));
-    
+    const cardsNotInHand = [
+      'guard',
+      'priest',
+      'baron',
+      'handmaid',
+      'prince',
+      'king',
+      'countess',
+      'princess',
+    ].filter((card) => !aliceHand.includes(card));
+
     const action: GameAction = {
       type: 'PLAY_CARD',
       playerId: 'p1',
@@ -412,7 +420,7 @@ describe('Card Effect Tests', () => {
   });
 
   describe('Priest Tests', () => {
-    it('should reveal target\'s hand', () => {
+    it("should reveal target's hand", () => {
       const state = game.getState();
       state.players[0].hand = ['priest', 'guard'];
       state.players[1].hand = ['baron'];
@@ -514,7 +522,6 @@ describe('Card Effect Tests', () => {
       };
 
       const result = game.applyMove(action);
-      const newState = result.newState;
 
       // After advanceTurn, the protection is reset to PLAYING
       // So we need to check differently
@@ -574,7 +581,7 @@ describe('Card Effect Tests', () => {
       state = game3.getState();
       // After Alice plays Handmaid, she should be PROTECTED
       expect(state.players[0].status).toBe('PROTECTED');
-      
+
       // Bob's turn - try to target Alice with Guard
       game3.drawPhase();
       state = game3.getState();
@@ -591,7 +598,7 @@ describe('Card Effect Tests', () => {
       });
       expect(validation.valid).toBe(false);
       expect(validation.error).toContain('protected');
-      
+
       // Alice should still be protected after Bob's turn ends
       expect(state.players[0].status).toBe('PROTECTED');
     });
@@ -852,7 +859,7 @@ describe('Card Effect Tests', () => {
         playerId: 'p1',
         cardId: 'tillbakakaka',
         targetPlayerId: 'p2',
-        targetCardGuess: 'princess',  // Wrong guess
+        targetCardGuess: 'princess', // Wrong guess
       };
 
       const result = game.applyMove(action);
@@ -870,7 +877,7 @@ describe('Card Effect Tests', () => {
       const state = game.getState();
       state.ruleset = 'house';
       state.phase = 'WAITING_FOR_REVENGE_GUESS';
-      state.players[0].hand = ['priest'];  // Alice has priest after playing tillbakakaka
+      state.players[0].hand = ['priest']; // Alice has priest after playing tillbakakaka
       state.players[1].hand = ['baron'];
       state.revengeGuess = {
         revengerId: 'p2',
@@ -882,7 +889,7 @@ describe('Card Effect Tests', () => {
       const action: GameAction = {
         type: 'REVENGE_GUESS',
         playerId: 'p2',
-        targetCardGuess: 'priest',  // Correct revenge guess
+        targetCardGuess: 'priest', // Correct revenge guess
       };
 
       const result = game.applyMove(action);
@@ -911,7 +918,7 @@ describe('Card Effect Tests', () => {
       const action: GameAction = {
         type: 'REVENGE_GUESS',
         playerId: 'p2',
-        targetCardGuess: 'princess',  // Wrong revenge guess
+        targetCardGuess: 'princess', // Wrong revenge guess
       };
 
       const result = game.applyMove(action);
@@ -989,7 +996,7 @@ describe('Card Effect Tests', () => {
 
       const action: GameAction = {
         type: 'REVENGE_GUESS',
-        playerId: 'p1',  // Wrong player - should be p2
+        playerId: 'p1', // Wrong player - should be p2
         targetCardGuess: 'baron',
       };
 
@@ -1293,7 +1300,7 @@ describe('Game End Tests', () => {
     expect(newState.players[1].tokens).toBe(5);
     // Charlie gets Spy bonus (now 5)
     expect(newState.players[2].tokens).toBe(5);
-    
+
     // Only Alice and Bob should win (they won the round, not Charlie)
     expect(newState.phase).toBe('GAME_END');
     expect(newState.winnerIds).toContain('p1');
@@ -1337,7 +1344,7 @@ describe('Game End Tests', () => {
     expect(newState.players[0].tokens).toBe(4);
     // Charlie gets Spy bonus (now 5, reaching threshold)
     expect(newState.players[2].tokens).toBe(5);
-    
+
     // Only Charlie should win (only one who reached threshold)
     expect(newState.phase).toBe('GAME_END');
     expect(newState.winnerIds).toEqual(['p3']);
@@ -1378,7 +1385,7 @@ describe('Game End Tests', () => {
     expect(newState.players[0].tokens).toBe(6);
     // Charlie stays at 5
     expect(newState.players[2].tokens).toBe(5);
-    
+
     // Both reached threshold, but only Alice won the round
     expect(newState.phase).toBe('GAME_END');
     expect(newState.winnerIds).toEqual(['p1']);
@@ -1422,7 +1429,7 @@ describe('State Serialization Tests', () => {
 describe('Full Round Simulation', () => {
   it('should simulate a complete round with deterministic outcome', () => {
     const game = new GameEngine();
-    
+
     // Initialize with 2 players
     game.init({
       players: [
@@ -1434,7 +1441,7 @@ describe('Full Round Simulation', () => {
     // Start round
     game.startRound();
     let state = game.getState();
-    
+
     expect(state.phase).toBe('TURN_START');
     expect(state.roundCount).toBe(1);
 
@@ -1446,11 +1453,13 @@ describe('Full Round Simulation', () => {
 
     // Get Alice's cards and play one that doesn't require a target or play Handmaid
     const aliceCards = state.players[0].hand;
-    let cardToPlay: string = aliceCards.find(c => c === 'handmaid' || c === 'countess') || aliceCards[0];
+    const cardToPlay: string =
+      aliceCards.find((c) => c === 'handmaid' || c === 'countess') ||
+      aliceCards[0];
 
     const cardDef = getCardDefinition(cardToPlay);
-    
-    let action: GameAction = {
+
+    const action: GameAction = {
       type: 'PLAY_CARD',
       playerId: 'p1',
       cardId: cardToPlay,
@@ -1533,7 +1542,7 @@ describe('Advance Turn Tests', () => {
     state.players[0].hand = ['guard'];
     state.players[1].hand = ['priest'];
     state.players[2].hand = ['baron'];
-    state.activePlayerIndex = 2;  // Charlie's turn
+    state.activePlayerIndex = 2; // Charlie's turn
     game.setState(state);
 
     // Advance from Charlie (index 2) to Alice (index 0) - protected player's turn now begins
@@ -1560,19 +1569,19 @@ describe('2019 Ruleset Tests', () => {
 
     it('should have Spy and Chancellor in 2019 deck', () => {
       const deck = createDeck('2019');
-      expect(deck.filter(c => c === 'spy').length).toBe(2);
-      expect(deck.filter(c => c === 'chancellor').length).toBe(2);
+      expect(deck.filter((c) => c === 'spy').length).toBe(2);
+      expect(deck.filter((c) => c === 'chancellor').length).toBe(2);
     });
 
     it('should have 6 Guards in 2019 deck', () => {
       const deck = createDeck('2019');
-      expect(deck.filter(c => c === 'guard').length).toBe(6);
+      expect(deck.filter((c) => c === 'guard').length).toBe(6);
     });
 
     it('should NOT have Spy or Chancellor in classic deck', () => {
       const deck = createDeck('classic');
-      expect(deck.filter(c => c === 'spy').length).toBe(0);
-      expect(deck.filter(c => c === 'chancellor').length).toBe(0);
+      expect(deck.filter((c) => c === 'spy').length).toBe(0);
+      expect(deck.filter((c) => c === 'chancellor').length).toBe(0);
     });
   });
 
@@ -1584,7 +1593,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: 'classic'
+        ruleset: 'classic',
       });
       game.startRound();
       const state = game.getState();
@@ -1603,7 +1612,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p2', name: 'Bob' },
           { id: 'p3', name: 'Charlie' },
         ],
-        ruleset: 'classic'
+        ruleset: 'classic',
       });
       game.startRound();
       const state = game.getState();
@@ -1623,7 +1632,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1652,7 +1661,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1679,7 +1688,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: 'classic'
+        ruleset: 'classic',
       });
       game.startRound();
       game.drawPhase();
@@ -1707,7 +1716,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p2', name: 'Bob' },
           { id: 'p3', name: 'Charlie' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1742,7 +1751,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1773,7 +1782,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: 'house'
+        ruleset: 'house',
       });
       game.startRound();
       game.drawPhase();
@@ -1804,7 +1813,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1817,7 +1826,7 @@ describe('2019 Ruleset Tests', () => {
       const action: GameAction = {
         type: 'PLAY_CARD',
         playerId: 'p1',
-        cardId: 'chancellor'
+        cardId: 'chancellor',
       };
 
       game.applyMove(action);
@@ -1836,7 +1845,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1850,12 +1859,12 @@ describe('2019 Ruleset Tests', () => {
       game.applyMove({
         type: 'PLAY_CARD',
         playerId: 'p1',
-        cardId: 'chancellor'
+        cardId: 'chancellor',
       });
 
       state = game.getState();
       expect(state.phase).toBe('CHANCELLOR_RESOLVING');
-      
+
       // Get the cards in hand (should be guard, priest, baron)
       const handAfterDraw = state.players[0].hand;
       expect(handAfterDraw).toHaveLength(3);
@@ -1865,21 +1874,23 @@ describe('2019 Ruleset Tests', () => {
       const result = game.applyMove({
         type: 'CHANCELLOR_RETURN',
         playerId: 'p1',
-        cardsToReturn
+        cardsToReturn,
       });
 
       expect(result.success).toBe(true);
       state = game.getState();
-      
+
       // Should now be Bob's turn
       expect(state.activePlayerIndex).toBe(1);
       expect(state.phase).toBe('TURN_START');
-      
+
       // Alice should have 1 card left
       expect(state.players[0].hand).toHaveLength(1);
-      
+
       // Returned cards should be at bottom of deck
-      expect(state.deck.slice(-2)).toEqual(expect.arrayContaining(cardsToReturn));
+      expect(state.deck.slice(-2)).toEqual(
+        expect.arrayContaining(cardsToReturn),
+      );
     });
 
     it('should place first-selected card at the very bottom of deck', () => {
@@ -1890,7 +1901,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
@@ -1904,28 +1915,28 @@ describe('2019 Ruleset Tests', () => {
       game.applyMove({
         type: 'PLAY_CARD',
         playerId: 'p1',
-        cardId: 'chancellor'
+        cardId: 'chancellor',
       });
 
       state = game.getState();
       // Hand should now be: guard, priest, baron (in some order)
       expect(state.phase).toBe('CHANCELLOR_RESOLVING');
-      
+
       // Return cards in specific order: priest first (should be at very bottom), baron second
       const result = game.applyMove({
         type: 'CHANCELLOR_RETURN',
         playerId: 'p1',
-        cardsToReturn: ['priest', 'baron']  // priest selected first, baron selected second
+        cardsToReturn: ['priest', 'baron'], // priest selected first, baron selected second
       });
 
       expect(result.success).toBe(true);
       state = game.getState();
-      
+
       // The deck should now have: [..., baron, priest]
       // priest is at the very end (true bottom), baron is above it
       const deckLength = state.deck.length;
-      expect(state.deck[deckLength - 1]).toBe('priest');  // Very bottom (last to be drawn)
-      expect(state.deck[deckLength - 2]).toBe('baron');   // Second from bottom
+      expect(state.deck[deckLength - 1]).toBe('priest'); // Very bottom (last to be drawn)
+      expect(state.deck[deckLength - 2]).toBe('baron'); // Second from bottom
     });
 
     it('should reject Chancellor return with wrong number of cards', () => {
@@ -1935,12 +1946,12 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
 
-      let state = game.getState();
+      const state = game.getState();
       state.phase = 'CHANCELLOR_RESOLVING';
       state.players[0].hand = ['guard', 'priest', 'baron'];
       game.setState(state);
@@ -1949,7 +1960,7 @@ describe('2019 Ruleset Tests', () => {
       const result = game.applyMove({
         type: 'CHANCELLOR_RETURN',
         playerId: 'p1',
-        cardsToReturn: ['guard']
+        cardsToReturn: ['guard'],
       });
 
       expect(result.success).toBe(false);
@@ -1965,12 +1976,12 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p1', name: 'Alice' },
           { id: 'p2', name: 'Bob' },
         ],
-        ruleset: '2019'
+        ruleset: '2019',
       });
       game.startRound();
       game.drawPhase();
 
-      let state = game.getState();
+      const state = game.getState();
       state.players[0].hand = ['guard', 'priest'];
       state.players[1].hand = ['spy'];
       game.setState(state);
@@ -1980,12 +1991,12 @@ describe('2019 Ruleset Tests', () => {
         playerId: 'p1',
         cardId: 'guard',
         targetPlayerId: 'p2',
-        targetCardGuess: 'spy'
+        targetCardGuess: 'spy',
       };
 
       const validation = game.validateMove('p1', action);
       expect(validation.valid).toBe(true);
-      
+
       // Actually play the card
       const result = game.applyMove(action);
       expect(result.success).toBe(true);
@@ -2024,10 +2035,10 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p3', name: 'Charlie' },
         ],
       });
-      
+
       // Start first round
       game.startRound();
-      
+
       // Simulate round end with Bob (player 1) winning
       const state = game.getState();
       state.players[0].hand = ['guard'];
@@ -2035,19 +2046,19 @@ describe('2019 Ruleset Tests', () => {
       state.players[2].hand = ['baron'];
       state.deck = [];
       game.setState(state);
-      
+
       game.checkRoundEnd();
       const afterRound1 = game.getState();
-      
+
       // Bob should have won
       expect(afterRound1.players[1].tokens).toBe(1);
       expect(afterRound1.players[1].status).toBe('WON_ROUND');
       expect(afterRound1.lastRoundWinnerId).toBe('p2');
-      
+
       // Start second round
       game.startRound();
       const round2State = game.getState();
-      
+
       // Round 2 should start with Bob (player 1)
       expect(round2State.activePlayerIndex).toBe(1);
     });
@@ -2060,7 +2071,7 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p3', name: 'Charlie' },
         ],
       });
-      
+
       // Round 1: Bob wins
       game.startRound();
       let state = game.getState();
@@ -2070,7 +2081,7 @@ describe('2019 Ruleset Tests', () => {
       state.deck = [];
       game.setState(state);
       game.checkRoundEnd();
-      
+
       // Round 2: Charlie wins
       game.startRound();
       state = game.getState();
@@ -2080,10 +2091,10 @@ describe('2019 Ruleset Tests', () => {
       state.deck = [];
       game.setState(state);
       game.checkRoundEnd();
-      
+
       const afterRound2 = game.getState();
       expect(afterRound2.lastRoundWinnerId).toBe('p3');
-      
+
       // Round 3 should start with Charlie (player 2)
       game.startRound();
       const round3State = game.getState();
@@ -2097,16 +2108,16 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p2', name: 'Bob' },
         ],
       });
-      
+
       // Round 1 with a tie
       game.startRound();
       const state = game.getState();
       state.players[0].hand = ['guard'];
-      state.players[1].hand = ['guard'];  // Same card value - tie
+      state.players[1].hand = ['guard']; // Same card value - tie
       state.deck = [];
       game.setState(state);
       game.checkRoundEnd();
-      
+
       const afterRound1 = game.getState();
       // Both players should receive a token
       expect(afterRound1.players[0].tokens).toBe(1);
@@ -2115,7 +2126,7 @@ describe('2019 Ruleset Tests', () => {
       expect(afterRound1.players[1].status).toBe('WON_ROUND');
       // First winner should be stored for turn order
       expect(afterRound1.lastRoundWinnerId).toBe('p1');
-      
+
       // Round 2 should start with player 0 (first winner in tie)
       game.startRound();
       const round2State = game.getState();
@@ -2131,10 +2142,10 @@ describe('2019 Ruleset Tests', () => {
           { id: 'p4', name: 'David' },
         ],
       });
-      
+
       // Round 1: David (player 3) wins
       game.startRound();
-      let state = game.getState();
+      const state = game.getState();
       state.players[0].hand = ['guard'];
       state.players[1].hand = ['priest'];
       state.players[2].hand = ['baron'];
@@ -2142,10 +2153,10 @@ describe('2019 Ruleset Tests', () => {
       state.deck = [];
       game.setState(state);
       game.checkRoundEnd();
-      
+
       const afterRound1 = game.getState();
       expect(afterRound1.lastRoundWinnerId).toBe('p4');
-      
+
       // Round 2 should start with David (player 3)
       game.startRound();
       const round2State = game.getState();

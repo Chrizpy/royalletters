@@ -9,7 +9,9 @@ import { eliminatePlayer, addLog } from './utils';
 
 export function applyGuessCard(context: EffectContext): EffectResult {
   const { state, action, activePlayer } = context;
-  const targetPlayer = state.players.find(p => p.id === action.targetPlayerId)!;
+  const targetPlayer = state.players.find(
+    (p) => p.id === action.targetPlayerId,
+  )!;
   const guess = action.targetCardGuess!;
   const guessCardDef = getCardDefinition(guess);
   const guessName = guessCardDef?.name || guess;
@@ -17,10 +19,14 @@ export function applyGuessCard(context: EffectContext): EffectResult {
   if (targetPlayer.hand.includes(guess)) {
     eliminatePlayer(
       targetPlayer,
-      `${activePlayer.name} correctly guessed you had ${guessName}`
+      `${activePlayer.name} correctly guessed you had ${guessName}`,
     );
-    addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, state, targetPlayer.id);
-    
+    addLog(
+      `${targetPlayer.name} was eliminated (had ${guessName})`,
+      state,
+      targetPlayer.id,
+    );
+
     return {
       message: `Correct guess! ${targetPlayer.name} is eliminated`,
       eliminatedPlayerId: targetPlayer.id,
@@ -29,9 +35,9 @@ export function applyGuessCard(context: EffectContext): EffectResult {
     addLog(
       `${activePlayer.name} guessed ${targetPlayer.name} had ${guessName} (incorrectly)`,
       state,
-      activePlayer.id
+      activePlayer.id,
     );
-    
+
     return {
       message: 'Incorrect guess',
     };

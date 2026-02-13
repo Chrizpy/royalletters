@@ -5,7 +5,7 @@
   import JoinGame from './lib/components/JoinGame.svelte';
   import RejoinPrompt from './lib/components/RejoinPrompt.svelte';
   import ConnectionStatus from './lib/components/ConnectionStatus.svelte';
-  import { isHost, connectionState } from './lib/stores/network';
+  import { isHost } from './lib/stores/network';
   import { gameStarted } from './lib/stores/game';
   import { loadSession, type GameSession } from './lib/stores/session';
 
@@ -60,7 +60,9 @@
   }
 
   // Only show connection status when not in game and not on rejoin screen
-  let showConnectionStatus = $derived(!$gameStarted && currentScreen !== 'rejoin');
+  let showConnectionStatus = $derived(
+    !$gameStarted && currentScreen !== 'rejoin',
+  );
 </script>
 
 <main>
@@ -75,7 +77,7 @@
   {:else if currentScreen === 'host'}
     <HostLobby />
   {:else if currentScreen === 'join'}
-    <JoinGame autoJoinPeerId={autoJoinPeerId} />
+    <JoinGame {autoJoinPeerId} />
   {:else if currentScreen === 'game'}
     <div class="game-screen">
       <h1>Game Screen</h1>

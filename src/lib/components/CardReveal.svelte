@@ -1,7 +1,11 @@
 <script lang="ts">
   import { getCardDefinition } from '../engine/deck';
 
-  let { cardId, playerName, onDismiss }: {
+  let {
+    cardId,
+    playerName,
+    onDismiss,
+  }: {
     cardId: string;
     playerName: string;
     onDismiss: () => void;
@@ -38,10 +42,16 @@
   }
 </script>
 
-<div class="reveal-overlay" role="dialog" aria-modal="true" tabindex="0" onkeydown={(e) => e.key === 'Escape' && onDismiss()}>
+<div
+  class="reveal-overlay"
+  role="dialog"
+  aria-modal="true"
+  tabindex="0"
+  onkeydown={(e) => e.key === 'Escape' && onDismiss()}
+>
   <div class="reveal-modal">
     <h3>👁️ {playerName}'s Card Revealed!</h3>
-    
+
     {#if card}
       <div class="revealed-card" style="--card-color: {getCardColor(cardId)}">
         <div class="card-value">{card.value}</div>
@@ -50,7 +60,7 @@
       </div>
       <p class="card-description">{card.description}</p>
     {/if}
-    
+
     <button class="dismiss-btn" onclick={onDismiss}>Got it!</button>
   </div>
 </div>
@@ -71,8 +81,12 @@
   }
 
   @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .reveal-modal {
@@ -88,8 +102,14 @@
   }
 
   @keyframes pop-in {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   h3 {
@@ -99,7 +119,11 @@
   }
 
   .revealed-card {
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--card-color) 0%,
+      color-mix(in srgb, var(--card-color) 70%, black) 100%
+    );
     border-radius: 15px;
     padding: 1.5rem;
     margin: 0 auto 1rem;
@@ -109,15 +133,21 @@
   }
 
   @keyframes reveal-pop {
-    0% { transform: rotateY(90deg); opacity: 0; }
-    100% { transform: rotateY(0deg); opacity: 1; }
+    0% {
+      transform: rotateY(90deg);
+      opacity: 0;
+    }
+    100% {
+      transform: rotateY(0deg);
+      opacity: 1;
+    }
   }
 
   .card-value {
     font-size: 2rem;
     font-weight: bold;
     color: white;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
   }
 
   .card-emoji {
@@ -148,7 +178,9 @@
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .dismiss-btn:hover {

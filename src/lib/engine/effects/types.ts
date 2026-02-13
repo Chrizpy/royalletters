@@ -29,10 +29,7 @@ export interface EffectResult {
 /**
  * Helper function type for eliminating a player
  */
-export type EliminatePlayerFn = (
-  player: PlayerState,
-  reason: string
-) => void;
+export type EliminatePlayerFn = (player: PlayerState, reason: string) => void;
 
 /**
  * Helper function type for adding log entries
@@ -41,5 +38,5 @@ export type AddLogFn = (
   message: string,
   state: GameState,
   actorId?: string,
-  cardId?: string
+  cardId?: string,
 ) => void;

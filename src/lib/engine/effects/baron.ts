@@ -9,8 +9,10 @@ import { eliminatePlayer, addLog } from './utils';
 
 export function applyCompareHands(context: EffectContext): EffectResult {
   const { state, action, activePlayer } = context;
-  const targetPlayer = state.players.find(p => p.id === action.targetPlayerId)!;
-  
+  const targetPlayer = state.players.find(
+    (p) => p.id === action.targetPlayerId,
+  )!;
+
   const activeCard = activePlayer.hand[0];
   const targetCard = targetPlayer.hand[0];
 
@@ -28,10 +30,14 @@ export function applyCompareHands(context: EffectContext): EffectResult {
   if (activeValue < targetValue) {
     eliminatePlayer(
       activePlayer,
-      `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`
+      `Lost Baron comparison to ${targetPlayer.name} (your ${activeCardDef?.name || activeCard} vs their ${targetCardDef?.name || targetCard})`,
     );
-    addLog(`${activePlayer.name} was eliminated (lower card)`, state, activePlayer.id);
-    
+    addLog(
+      `${activePlayer.name} was eliminated (lower card)`,
+      state,
+      activePlayer.id,
+    );
+
     return {
       message: `You lost the comparison and are eliminated`,
       eliminatedPlayerId: activePlayer.id,
@@ -39,17 +45,21 @@ export function applyCompareHands(context: EffectContext): EffectResult {
   } else if (targetValue < activeValue) {
     eliminatePlayer(
       targetPlayer,
-      `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`
+      `Lost Baron comparison to ${activePlayer.name} (your ${targetCardDef?.name || targetCard} vs their ${activeCardDef?.name || activeCard})`,
     );
-    addLog(`${targetPlayer.name} was eliminated (lower card)`, state, targetPlayer.id);
-    
+    addLog(
+      `${targetPlayer.name} was eliminated (lower card)`,
+      state,
+      targetPlayer.id,
+    );
+
     return {
       message: `${targetPlayer.name} had lower card and is eliminated`,
       eliminatedPlayerId: targetPlayer.id,
     };
   } else {
     addLog('Comparison was a tie', state, activePlayer.id);
-    
+
     return {
       message: 'Tie - no one eliminated',
     };

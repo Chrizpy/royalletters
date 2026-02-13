@@ -3,7 +3,6 @@ import QRCode from 'qrcode';
 import { PeerManager } from '../network/peer';
 import { peerId, connectionState, connectedPlayers, isHost } from './network';
 import {
-  gameState,
   gameStarted,
   initGame,
   startRound,
@@ -32,7 +31,9 @@ import type { Ruleset } from '../types';
 export const hostPeerId = writable<string>('');
 export const hostError = writable<string>('');
 export const hostConnectionState = writable<string>('disconnected');
-export const hostPlayers = writable<Array<{ id: string; name: string; isAI?: boolean }>>([]);
+export const hostPlayers = writable<
+  Array<{ id: string; name: string; isAI?: boolean }>
+>([]);
 export const hostQrCodeDataUrl = writable<string>('');
 
 // ---------------------------------------------------------------------------
@@ -109,7 +110,10 @@ function handleMessage(message: NetworkMessage, fromPeerId: string): void {
   }
 }
 
-function handlePlayerJoined(payload: PlayerJoinedPayload, fromPeerId: string): void {
+function handlePlayerJoined(
+  payload: PlayerJoinedPayload,
+  fromPeerId: string,
+): void {
   const players = get(hostPlayers);
   const playerName = payload.playerName || `Player ${players.length + 2}`;
 
@@ -189,7 +193,12 @@ function handleChatMessage(
 }
 
 function handleReconnect(payload: ReconnectPayload, fromPeerId: string): void {
-  console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
+  console.log(
+    'Player reconnecting:',
+    payload.playerName,
+    'with ID:',
+    payload.playerId,
+  );
 
   const engine = getEngine();
   const state = engine?.getState();
@@ -200,22 +209,33 @@ function handleReconnect(payload: ReconnectPayload, fromPeerId: string): void {
 
     const players = get(hostPlayers);
     if (!players.some((p) => p.id === payload.playerId)) {
-      hostPlayers.update((p) => [...p, { id: payload.playerId, name: existingPlayer.name }]);
+      hostPlayers.update((p) => [
+        ...p,
+        { id: payload.playerId, name: existingPlayer.name },
+      ]);
     }
 
     if (peerManager && state) {
       const generatedPeerId = get(hostPeerId);
-      const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state });
+      const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, {
+        state,
+      });
       peerManager.sendTo(fromPeerId, syncMessage);
     }
 
     scheduleAIMove();
   } else {
-    console.warn('Unknown player trying to reconnect or game not started:', payload.playerId);
+    console.warn(
+      'Unknown player trying to reconnect or game not started:',
+      payload.playerId,
+    );
     if (!get(gameStarted)) {
       const players = get(hostPlayers);
       if (!players.some((p) => p.id === fromPeerId)) {
-        hostPlayers.update((p) => [...p, { id: fromPeerId, name: payload.playerName }]);
+        hostPlayers.update((p) => [
+          ...p,
+          { id: fromPeerId, name: payload.playerName },
+        ]);
       }
     }
   }
@@ -229,7 +249,9 @@ function handleRequestStateSync(fromPeerId: string): void {
   const generatedPeerId = get(hostPeerId);
 
   if (peerManager && state && get(gameStarted)) {
-    const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, { state });
+    const syncMessage = createMessage('GAME_STATE_SYNC', generatedPeerId, {
+      state,
+    });
     peerManager.sendTo(fromPeerId, syncMessage);
   }
 }
@@ -284,7 +306,12 @@ export function handleStartGame(
   const generatedPeerId = get(hostPeerId);
   const allPlayers = [
     { id: generatedPeerId, name: hostName, isHost: true, isAI: false },
-    ...players.map((p) => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false })),
+    ...players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: false,
+      isAI: p.isAI || false,
+    })),
   ];
 
   initGame(allPlayers, selectedRuleset, effectiveTokens);
@@ -342,7 +369,12 @@ export function handleHostPlayAgain(
   const generatedPeerId = get(hostPeerId);
   const allPlayers = [
     { id: generatedPeerId, name: hostName, isHost: true, isAI: false },
-    ...players.map((p) => ({ id: p.id, name: p.name, isHost: false, isAI: p.isAI || false })),
+    ...players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: false,
+      isAI: p.isAI || false,
+    })),
   ];
 
   initGame(allPlayers, selectedRuleset, effectiveTokens);

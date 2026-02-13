@@ -6,12 +6,12 @@
  * Color palette for player colors (distinct, readable on dark backgrounds)
  */
 export const PLAYER_COLORS = [
-  '#00D4FF',  // Cyan
-  '#FFD93D',  // Gold
-  '#32CD32',  // Lime Green
-  '#A855F7',  // Purple
-  '#FF69B4',  // Hot Pink
-  '#FF8C42',  // Orange
+  '#00D4FF', // Cyan
+  '#FFD93D', // Gold
+  '#32CD32', // Lime Green
+  '#A855F7', // Purple
+  '#FF69B4', // Hot Pink
+  '#FF8C42', // Orange
 ] as const;
 
 /**

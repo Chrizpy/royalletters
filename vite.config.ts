@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { defineConfig } from 'vitest/config';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,4 +8,4 @@ export default defineConfig({
     globals: true,
     environment: 'node',
   },
-})
+});

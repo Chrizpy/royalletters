@@ -1,5 +1,8 @@
 <script lang="ts">
-  let { conflictingCard, onDismiss }: {
+  let {
+    conflictingCard,
+    onDismiss,
+  }: {
     conflictingCard: 'king' | 'prince';
     onDismiss: () => void;
   } = $props();
@@ -13,15 +16,14 @@
     <div class="countess-icon">👸</div>
     <h2 class="countess-title">Countess Must Be Played!</h2>
     <p class="countess-reason">
-      You're holding the <strong>Countess</strong> along with the <strong>{cardEmoji} {cardName}</strong>.
+      You're holding the <strong>Countess</strong> along with the
+      <strong>{cardEmoji} {cardName}</strong>.
     </p>
     <p class="countess-rule">
-      According to the rules, when you have the Countess together with the King or Prince, 
-      you <em>must</em> play the Countess.
+      According to the rules, when you have the Countess together with the King
+      or Prince, you <em>must</em> play the Countess.
     </p>
-    <button class="dismiss-btn" onclick={onDismiss}>
-      Got it!
-    </button>
+    <button class="dismiss-btn" onclick={onDismiss}> Got it! </button>
   </div>
 </div>
 
@@ -39,8 +41,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .countess-modal {
@@ -56,14 +62,14 @@
   }
 
   @keyframes modal-pop {
-    0% { 
+    0% {
       transform: scale(0.8);
       opacity: 0;
     }
     50% {
       transform: scale(1.05);
     }
-    100% { 
+    100% {
       transform: scale(1);
       opacity: 1;
     }
@@ -76,8 +82,13 @@
   }
 
   @keyframes icon-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
   }
 
   .countess-title {

@@ -15,12 +15,16 @@
     addedAt: number;
   }
 
-  let { logs = [], players = [], localPlayerId = '' }: {
+  let {
+    logs = [],
+    players = [],
+    localPlayerId = '',
+  }: {
     logs?: LogEntry[];
     players?: PlayerState[];
     localPlayerId?: string;
   } = $props();
-  
+
   // Color for the local player's actions (red to stand out)
   const LOCAL_PLAYER_COLOR = '#FF4444';
 
@@ -38,18 +42,18 @@
   // Get player by ID
   function getPlayer(playerId: string | undefined): PlayerState | undefined {
     if (!playerId) return undefined;
-    return players.find(p => p.id === playerId);
+    return players.find((p) => p.id === playerId);
   }
 
   // Get the display color for an actor
   function getActorColor(actorId: string | undefined): string | null {
     if (!actorId) return null;
-    
+
     // If this is the local player's action, use red
     if (actorId === localPlayerId) {
       return LOCAL_PLAYER_COLOR;
     }
-    
+
     // Otherwise use the player's assigned color
     const player = getPlayer(actorId);
     return player?.color || null;
@@ -65,16 +69,16 @@
   // Filter function to exclude verbose messages
   function shouldShowInFeed(message: string): boolean {
     const excludePatterns = [
-      /drew.*card/i,          // Matches "drew a card", "drew 1 card", "drew 2 cards", etc.
-      /returned.*card/i,      // Matches "returned 1 card", "returned 2 cards", etc.
-      /Round.*started/i,      // Round start messages
-      /Game initialized/i,    // Game initialization
-      /Burned face-up/i,      // Burned card info
-      /gained a token from Spy bonus/i,  // Spy bonus messages
-      /drew a new card/i,     // "Drew a new card" from Prince effect
+      /drew.*card/i, // Matches "drew a card", "drew 1 card", "drew 2 cards", etc.
+      /returned.*card/i, // Matches "returned 1 card", "returned 2 cards", etc.
+      /Round.*started/i, // Round start messages
+      /Game initialized/i, // Game initialization
+      /Burned face-up/i, // Burned card info
+      /gained a token from Spy bonus/i, // Spy bonus messages
+      /drew a new card/i, // "Drew a new card" from Prince effect
     ];
-    
-    return !excludePatterns.some(pattern => pattern.test(message));
+
+    return !excludePatterns.some((pattern) => pattern.test(message));
   }
 
   // Condense messages into concise one-liners
@@ -88,17 +92,21 @@
     }
 
     // Pattern: "Player was eliminated (had X)" -> filter (will be merged with Guard play)
-    const elimGuardMatch = message.match(/^(.+?) was eliminated \(had (.+?)\)$/);
+    const elimGuardMatch = message.match(
+      /^(.+?) was eliminated \(had (.+?)\)$/,
+    );
     if (elimGuardMatch) {
       return ''; // Will be merged with Guard play
     }
-    
+
     // Pattern: "Player was eliminated (lower card)" -> filter (will be merged with Baron play)
-    const elimBaronMatch = message.match(/^(.+?) was eliminated \(lower card\)$/);
+    const elimBaronMatch = message.match(
+      /^(.+?) was eliminated \(lower card\)$/,
+    );
     if (elimBaronMatch) {
       return ''; // Will be merged with Baron play
     }
-    
+
     // Pattern: "Player was eliminated (other reasons)" -> "Player was eliminated"
     const elimOtherMatch = message.match(/^(.+?) was eliminated/);
     if (elimOtherMatch) {
@@ -107,8 +115,12 @@
 
     // Pattern: "Player guessed Target had CardName (incorrectly)" OR "Player guessed CardName (incorrectly)"
     // -> filter (will be merged with Guard)
-    const guessMatch = message.match(/^(.+?) guessed (.+?) had (.+?) \(incorrectly\)$/);
-    const guessMatchOld = message.match(/^(.+?) guessed (.+?) \(incorrectly\)$/);
+    const guessMatch = message.match(
+      /^(.+?) guessed (.+?) had (.+?) \(incorrectly\)$/,
+    );
+    const guessMatchOld = message.match(
+      /^(.+?) guessed (.+?) \(incorrectly\)$/,
+    );
     if (guessMatch || guessMatchOld) {
       return ''; // Filter out, will be merged with Guard
     }
@@ -149,26 +161,28 @@
     if (guardMatch && nextMessage) {
       const player = guardMatch[1];
       const target = guardMatch[2];
-      
+
       // Check for incorrect guess
-      const nextGuessMatch = nextMessage.match(/guessed .+? had (.+?) \(incorrectly\)$/);
+      const nextGuessMatch = nextMessage.match(
+        /guessed .+? had (.+?) \(incorrectly\)$/,
+      );
       if (nextGuessMatch) {
         return `${player} played Guard on ${target}, guessed ${nextGuessMatch[1]}`;
       }
-      
+
       // Check for elimination (correct guess)
       const nextElimMatch = nextMessage.match(/was eliminated \(had (.+?)\)$/);
       if (nextElimMatch) {
         return `${player} played Guard on ${target}, guessed ${nextElimMatch[1]} ✓`;
       }
     }
-    
+
     // Fallback: Guard without target (all protected)
     const guardNoTargetMatch = message.match(/^(.+?) played Guard$/);
     if (guardNoTargetMatch) {
       return message;
     }
-    
+
     // Pattern: "Player played Spy" - check if this is a duplicate
     // The game engine logs "Player played Spy" twice (once generic, once in applySpyBonus)
     // We want to filter out the second one
@@ -197,7 +211,7 @@
         return `${player} played Baron on ${target} — tie`;
       }
     }
-    
+
     // Fallback: Baron without target (all protected)
     const baronNoTargetMatch = message.match(/^(.+?) played Baron$/);
     if (baronNoTargetMatch) {
@@ -209,7 +223,7 @@
     if (priestMatch) {
       return `${priestMatch[1]} played Priest on ${priestMatch[2]}`;
     }
-    
+
     // Fallback: Priest without target (all protected)
     const priestNoTargetMatch = message.match(/^(.+?) played Priest$/);
     if (priestNoTargetMatch) {
@@ -221,7 +235,7 @@
     if (kingMatch) {
       return `${kingMatch[1]} ↔ ${kingMatch[2]}`;
     }
-    
+
     // Fallback: King without target (swapped with burned card or all protected)
     const kingNoTargetMatch = message.match(/^(.+?) played King$/);
     if (kingNoTargetMatch) {
@@ -238,7 +252,7 @@
       }
       return `${player} played Prince on ${target}`;
     }
-    
+
     // Fallback: Prince without target (shouldn't happen, but handle gracefully)
     const princeNoTargetMatch = message.match(/^(.+?) played Prince$/);
     if (princeNoTargetMatch) {
@@ -252,14 +266,14 @@
 
     // Patterns to keep as-is (already concise)
     const keepAsIsPatterns = [
-      /played/,              // "Player played CardName" (for cards not handled above)
-      /won with/,            // "Player won with Card (value)!"
-      /tied with/,           // "Player and Player tied with Card (value)!"
-      /won the game/,        // "Player won the game!"
-      /Round ended/          // "Round ended in a tie"
+      /played/, // "Player played CardName" (for cards not handled above)
+      /won with/, // "Player won with Card (value)!"
+      /tied with/, // "Player and Player tied with Card (value)!"
+      /won the game/, // "Player won the game!"
+      /Round ended/, // "Round ended in a tie"
     ];
-    
-    if (keepAsIsPatterns.some(pattern => pattern.test(message))) {
+
+    if (keepAsIsPatterns.some((pattern) => pattern.test(message))) {
       return message;
     }
 
@@ -270,13 +284,13 @@
   // Start fade out animation, then remove
   function startFadeOut(itemId: number) {
     // First set the flag to trigger the fade animation
-    feedItems = feedItems.map(f => 
-      f.id === itemId ? { ...f, isFadingOut: true } : f
+    feedItems = feedItems.map((f) =>
+      f.id === itemId ? { ...f, isFadingOut: true } : f,
     );
-    
+
     // Remove after fade animation completes
     setTimeout(() => {
-      feedItems = feedItems.filter(f => f.id !== itemId);
+      feedItems = feedItems.filter((f) => f.id !== itemId);
     }, FADE_OUT_DURATION_MS);
   }
 
@@ -284,14 +298,15 @@
   function processPendingItems() {
     if (pendingItems.length > 0) {
       const current = pendingItems.shift()!;
-      const nextMessage = pendingItems.length > 0 ? pendingItems[0].log.message : undefined;
-      
+      const nextMessage =
+        pendingItems.length > 0 ? pendingItems[0].log.message : undefined;
+
       const condensed = condenseMessage(current.log.message, nextMessage);
-      
+
       // Skip if message was condensed to empty string (intentionally filtered or merged)
       if (condensed) {
         const itemId = nextId++;
-        
+
         // Cancel the fade timeout for the previous last item (if any) so the new item becomes the persistent one
         // The last item should always stay visible
         if (feedItems.length > 0) {
@@ -302,30 +317,34 @@
             const newTimeoutId = setTimeout(() => {
               startFadeOut(previousLastItem.id);
             }, FEED_DISPLAY_TIME_MS);
-            feedItems = feedItems.map(f => 
-              f.id === previousLastItem.id ? { ...f, timeoutId: newTimeoutId } : f
+            feedItems = feedItems.map((f) =>
+              f.id === previousLastItem.id
+                ? { ...f, timeoutId: newTimeoutId }
+                : f,
             );
           }
         }
-        
+
         // Don't schedule fade for this item - it will be scheduled when a new item arrives
         // This ensures the last item always stays visible
         const timeoutId = setTimeout(() => {}, 0); // Placeholder timeout that does nothing
         clearTimeout(timeoutId); // Clear it immediately
-        
+
         const item: FeedItem = {
           id: itemId,
           message: condensed,
           timestamp: Date.now(),
           timeoutId,
           isFadingOut: false,
-          actorId: current.log.actorId
+          actorId: current.log.actorId,
         };
         feedItems = [...feedItems, item];
-        
+
         // If we exceed max items, fade out the oldest ones
-        while (feedItems.filter(f => !f.isFadingOut).length > MAX_VISIBLE_ITEMS) {
-          const oldestNonFading = feedItems.find(f => !f.isFadingOut);
+        while (
+          feedItems.filter((f) => !f.isFadingOut).length > MAX_VISIBLE_ITEMS
+        ) {
+          const oldestNonFading = feedItems.find((f) => !f.isFadingOut);
           if (oldestNonFading) {
             clearTimeout(oldestNonFading.timeoutId);
             startFadeOut(oldestNonFading.id);
@@ -334,10 +353,10 @@
           }
         }
       }
-      
+
       pendingItems = pendingItems; // Trigger reactivity
     }
-    
+
     if (pendingItems.length === 0 && processingInterval) {
       clearInterval(processingInterval);
       processingInterval = null;
@@ -348,11 +367,12 @@
   $effect(() => {
     // Reset feed if logs were completely cleared or reset to initial state (when starting a new game)
     // Also reset if logs count decreased (game was restarted with new logs)
-    const isGameReset = logs.length === 0 || 
+    const isGameReset =
+      logs.length === 0 ||
       (logs.length === 1 && logs[0].message === 'Game initialized') ||
       logs.length < lastLogCount;
     if (isGameReset) {
-      feedItems.forEach(item => clearTimeout(item.timeoutId));
+      feedItems.forEach((item) => clearTimeout(item.timeoutId));
       feedItems = [];
       pendingItems = [];
       if (processingInterval) {
@@ -361,51 +381,67 @@
       }
       lastLogCount = 0;
     }
-    
+
     if (logs.length > lastLogCount) {
       // Queue new log entries (only if they should be shown)
       for (let i = lastLogCount; i < logs.length; i++) {
         if (shouldShowInFeed(logs[i].message)) {
-          pendingItems = [...pendingItems, { log: logs[i], addedAt: Date.now() }];
+          pendingItems = [
+            ...pendingItems,
+            { log: logs[i], addedAt: Date.now() },
+          ];
         }
       }
-      
+
       // Start processing if not already running
       if (!processingInterval && pendingItems.length > 0) {
         // Add the first item immediately
         processPendingItems();
-        
+
         // Process remaining items with stagger delay
         if (pendingItems.length > 0) {
-          processingInterval = setInterval(processPendingItems, STAGGER_DELAY_MS);
+          processingInterval = setInterval(
+            processPendingItems,
+            STAGGER_DELAY_MS,
+          );
         }
       }
-      
+
       lastLogCount = logs.length;
     }
   });
-  
+
   // Calculate position from top (0 = oldest at top, higher = newer at bottom)
   // For fading, we want older items at the top to fade when there are many items
-  let itemsWithPosition = $derived(feedItems.map((item, index) => ({
-    ...item,
-    position: index,  // index 0 = oldest (top), higher index = newer (bottom)
-    shouldFade: index < feedItems.length - 5 && feedItems.length > 5  // Fade items beyond the 5 most recent
-  })));
+  let itemsWithPosition = $derived(
+    feedItems.map((item, index) => ({
+      ...item,
+      position: index, // index 0 = oldest (top), higher index = newer (bottom)
+      shouldFade: index < feedItems.length - 5 && feedItems.length > 5, // Fade items beyond the 5 most recent
+    })),
+  );
 </script>
 
 <div class="game-feed">
   {#each itemsWithPosition as item (item.id)}
-    <div 
-      class="feed-item" 
+    <div
+      class="feed-item"
       class:fading={item.shouldFade}
       class:fade-out={item.isFadingOut}
       class:self-action={item.actorId === localPlayerId}
     >
       {#if item.actorId === localPlayerId}
-        You {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "your ").replace(/^was /, 'were ').replace(/^is /, 'are ')}
+        You {item.message
+          .replace(getActorName(item.actorId) + ' ', '')
+          .replace(getActorName(item.actorId) + "'s ", 'your ')
+          .replace(/^was /, 'were ')
+          .replace(/^is /, 'are ')}
       {:else if getActorName(item.actorId)}
-        <span class="actor-name" style="color: {getActorColor(item.actorId)}">{getActorName(item.actorId)}</span>: {item.message.replace(getActorName(item.actorId) + ' ', '').replace(getActorName(item.actorId) + "'s ", "'s ")}
+        <span class="actor-name" style="color: {getActorColor(item.actorId)}"
+          >{getActorName(item.actorId)}</span
+        >: {item.message
+          .replace(getActorName(item.actorId) + ' ', '')
+          .replace(getActorName(item.actorId) + "'s ", "'s ")}
       {:else}
         {item.message}
       {/if}
@@ -454,7 +490,7 @@
   }
 
   .feed-item.self-action {
-    color: #FF4444;
+    color: #ff4444;
     font-weight: 700;
   }
 

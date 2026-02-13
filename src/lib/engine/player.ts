@@ -2,7 +2,7 @@
  * Player state utilities and helpers
  */
 
-import type { PlayerState, GameConfig } from '../types';
+import type { PlayerState } from '../types';
 import { shuffle } from './deck';
 import { PLAYER_COLORS } from './constants';
 
@@ -22,11 +22,11 @@ export interface PlayerConfig {
  */
 export function createPlayers(
   playerConfigs: PlayerConfig[],
-  colorSeed: string
+  colorSeed: string,
 ): PlayerState[] {
   // Shuffle colors to assign randomly
   const shuffledColors = shuffle([...PLAYER_COLORS], colorSeed);
-  
+
   return playerConfigs.map((p, index) => ({
     id: p.id,
     name: p.name,
@@ -58,7 +58,7 @@ export function resetPlayersForRound(players: PlayerState[]): PlayerState[] {
  * Get active (non-eliminated) players
  */
 export function getActivePlayers(players: PlayerState[]): PlayerState[] {
-  return players.filter(p => p.status !== 'ELIMINATED');
+  return players.filter((p) => p.status !== 'ELIMINATED');
 }
 
 /**
@@ -67,9 +67,9 @@ export function getActivePlayers(players: PlayerState[]): PlayerState[] {
 export function getPlayersWithCardInDiscard(
   players: PlayerState[],
   cardId: string,
-  excludeEliminated = true
+  excludeEliminated = true,
 ): PlayerState[] {
-  return players.filter(p => {
+  return players.filter((p) => {
     if (excludeEliminated && p.status === 'ELIMINATED') return false;
     return p.discardPile.includes(cardId);
   });

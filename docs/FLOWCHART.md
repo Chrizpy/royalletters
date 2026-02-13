@@ -51,6 +51,7 @@ Use this to quickly understand where to look when debugging or adding features.
 ```
 
 **Key files:**
+
 - [App.svelte](../src/App.svelte) - Routing logic
 - [session.ts](../src/lib/stores/session.ts) - Session persistence
 - [LobbyScreen.svelte](../src/lib/components/LobbyScreen.svelte) - Main menu
@@ -111,6 +112,7 @@ Use this to quickly understand where to look when debugging or adding features.
 ```
 
 **Key files:**
+
 - [HostLobby.svelte](../src/lib/components/HostLobby.svelte) - Host UI
 - [network.ts (store)](../src/lib/stores/network.ts) - Network state
 - [peer.ts](../src/lib/network/peer.ts) - PeerJS wrapper
@@ -233,6 +235,7 @@ Use this to quickly understand where to look when debugging or adding features.
 ```
 
 **Key files:**
+
 - [GameScreen.svelte](../src/lib/components/GameScreen.svelte) - UI & interaction
 - [game.ts (store)](../src/lib/stores/game.ts) - Action dispatching
 - [game.ts (engine)](../src/lib/engine/game.ts) - Core logic
@@ -293,9 +296,10 @@ Use this to quickly understand where to look when debugging or adding features.
 ```
 
 **Key files:**
+
 - [effects/index.ts](../src/lib/engine/effects/index.ts) - Effect registry
 - [effects/types.ts](../src/lib/engine/effects/types.ts) - Interfaces
-- [effects/*.ts](../src/lib/engine/effects/) - Individual effect handlers
+- [effects/\*.ts](../src/lib/engine/effects/) - Individual effect handlers
 - [cards.json](../src/lib/data/cards.json) - Card definitions (source of truth)
 
 ---
@@ -426,6 +430,7 @@ Use this to quickly understand where to look when debugging or adding features.
 ```
 
 **Key files:**
+
 - [game.ts (engine)](../src/lib/engine/game.ts) - `advanceTurn()`, `checkRoundEnd()`
 - [constants.ts](../src/lib/engine/constants.ts) - Tokens to win, etc.
 
@@ -541,18 +546,18 @@ Use this to quickly understand where to look when debugging or adding features.
 
 ## Quick Reference: Where to Look
 
-| I want to...                        | Look in...                                    |
-|-------------------------------------|-----------------------------------------------|
-| Add a new card effect               | `engine/effects/` + `data/cards.json`         |
-| Change how cards are validated      | `engine/validation.ts`                        |
-| Modify UI for playing cards         | `components/GameScreen.svelte`                |
-| Add a new network message type      | `network/messages.ts` + `network/sync.ts`     |
-| Change how state syncs              | `network/sync.ts`                             |
-| Modify AI behavior                  | `engine/ai.ts`                                |
-| Add a new game phase                | `types.ts` (GamePhase) + `engine/game.ts`     |
-| Change lobby flow                   | `components/HostLobby.svelte` or `JoinGame.svelte` |
-| Persist data (sessions, settings)   | `stores/session.ts`                           |
-| Add new UI component                | `components/` + import in parent              |
+| I want to...                      | Look in...                                         |
+| --------------------------------- | -------------------------------------------------- |
+| Add a new card effect             | `engine/effects/` + `data/cards.json`              |
+| Change how cards are validated    | `engine/validation.ts`                             |
+| Modify UI for playing cards       | `components/GameScreen.svelte`                     |
+| Add a new network message type    | `network/messages.ts` + `network/sync.ts`          |
+| Change how state syncs            | `network/sync.ts`                                  |
+| Modify AI behavior                | `engine/ai.ts`                                     |
+| Add a new game phase              | `types.ts` (GamePhase) + `engine/game.ts`          |
+| Change lobby flow                 | `components/HostLobby.svelte` or `JoinGame.svelte` |
+| Persist data (sessions, settings) | `stores/session.ts`                                |
+| Add new UI component              | `components/` + import in parent                   |
 
 ---
 
@@ -589,4 +594,4 @@ Use this to quickly understand where to look when debugging or adding features.
 
 ---
 
-*Last updated: February 2026*
+_Last updated: February 2026_

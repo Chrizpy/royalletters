@@ -42,30 +42,29 @@
   let qrCodeDataUrl = $derived($hostQrCodeDataUrl);
 
   // Max players depends on ruleset: classic = 4, 2019/house = 6
-  let maxPlayers = $derived((selectedRuleset === '2019' || selectedRuleset === 'house') ? 6 : 4);
-  
+  let maxPlayers = $derived(
+    selectedRuleset === '2019' || selectedRuleset === 'house' ? 6 : 4,
+  );
+
   // Total players including host
   let totalPlayers = $derived(players.length + 1);
-  
+
   // Default tokens for current player count
   let defaultTokens = $derived(getTokensToWin(totalPlayers));
-  
+
   // Update tokensToWin when player count changes (only if user hasn't customized)
   $effect(() => {
     if (!hasCustomTokens) {
       tokensToWin = defaultTokens;
     }
   });
-  
+
   // Effective tokens value (use custom or default)
   let effectiveTokens = $derived(tokensToWin ?? defaultTokens);
-  
-  // Maximum AI players that can be added
-  let maxAI = $derived(maxPlayers - 1);  // Leave room for at least the host
-  
+
   // Count of human players (non-AI, excluding host)
-  let humanPlayerCount = $derived(players.filter(p => !p.isAI).length);
-  
+  let humanPlayerCount = $derived(players.filter((p) => !p.isAI).length);
+
   // Available slots for AI after accounting for humans
   let availableAISlots = $derived(maxPlayers - 1 - humanPlayerCount);
 
@@ -84,10 +83,14 @@
     storeStartGame(hostName, players, selectedRuleset, effectiveTokens);
   }
 
-  function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
+  function handlePlayCard(
+    cardId: string,
+    targetPlayerId?: string,
+    targetCardGuess?: string,
+  ) {
     handleHostPlayCard(cardId, targetPlayerId, targetCardGuess);
   }
-  
+
   function handleChancellorReturn(cardsToReturn: string[]) {
     handleHostChancellorReturn(cardsToReturn);
   }
@@ -103,7 +106,7 @@
   function handlePlayAgain() {
     handleHostPlayAgain(hostName, players, selectedRuleset, effectiveTokens);
   }
-  
+
   // Handle AI count slider change
   function handleAICountChange(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -116,7 +119,7 @@
   $effect(() => {
     setAIMoveDelay(aiMoveDelayMs);
   });
-  
+
   // Clamp aiCount when human players join (reduces available AI slots)
   $effect(() => {
     if (aiCount > availableAISlots) {
@@ -124,7 +127,7 @@
       syncAIPlayers(aiCount);
     }
   });
-  
+
   // Handle AI options toggle - add 1 AI when enabled, remove all when disabled
   $effect(() => {
     if (showAIOptions && aiCount === 0) {
@@ -156,7 +159,7 @@
           url: joinUrl,
         });
         return;
-      } catch (err) {
+      } catch {
         // User cancelled or share failed – fall through to clipboard
       }
     }
@@ -174,7 +177,7 @@
 </script>
 
 {#if inGame && $gameState}
-  <GameScreen 
+  <GameScreen
     localPlayerId={generatedPeerId}
     onPlayCard={handlePlayCard}
     onChancellorReturn={handleChancellorReturn}
@@ -188,24 +191,28 @@
   <div class="host-lobby">
     <div class="host-container">
       <h2>Host Game</h2>
-      
+
       {#if error}
         <div class="error">{error}</div>
       {/if}
-      
+
       {#if localConnectionState === 'connected' && qrCodeDataUrl}
         <div class="qr-section">
           <p class="instruction">Scan this QR code to join:</p>
           <div class="qr-code">
             <img src={qrCodeDataUrl} alt="QR Code" />
           </div>
-          
+
           <div class="peer-id-section">
             <p class="peer-id-label">Or enter this code manually:</p>
             <div class="peer-id-display">{generatedPeerId}</div>
           </div>
 
-          <button class="share-link-btn" class:copied={linkCopied} onclick={shareJoinLink}>
+          <button
+            class="share-link-btn"
+            class:copied={linkCopied}
+            onclick={shareJoinLink}
+          >
             {#if linkCopied}
               Link Copied!
             {:else}
@@ -216,8 +223,8 @@
 
         <div class="ruleset-section">
           <label for="ruleset">Game Edition:</label>
-          <select 
-            id="ruleset" 
+          <select
+            id="ruleset"
             bind:value={selectedRuleset}
             class="ruleset-select"
           >
@@ -229,7 +236,8 @@
             {#if selectedRuleset === '2019'}
               Includes Spy and Chancellor cards with new mechanics!
             {:else if selectedRuleset === 'house'}
-              2019 Edition with custom rules: King swaps with burned card when no targets!
+              2019 Edition with custom rules: King swaps with burned card when
+              no targets!
             {:else}
               The original Love Letter experience.
             {/if}
@@ -239,14 +247,14 @@
         <div class="tokens-section">
           <label for="tokens-to-win">Tokens to Win:</label>
           <div class="tokens-controls">
-            <input 
-              id="tokens-to-win" 
-              type="range" 
-              min="1" 
-              max="10" 
+            <input
+              id="tokens-to-win"
+              type="range"
+              min="1"
+              max="10"
               step="1"
               bind:value={tokensToWin}
-              oninput={() => hasCustomTokens = true}
+              oninput={() => (hasCustomTokens = true)}
               class="tokens-slider"
             />
             <span class="tokens-value">{effectiveTokens}</span>
@@ -259,25 +267,25 @@
             {:else}
               Longer game
             {/if}
-            <button 
-              class="reset-tokens-btn" 
-              onclick={() => { hasCustomTokens = false; tokensToWin = defaultTokens; }}
+            <button
+              class="reset-tokens-btn"
+              onclick={() => {
+                hasCustomTokens = false;
+                tokensToWin = defaultTokens;
+              }}
               disabled={!hasCustomTokens}
             >
               Reset
             </button>
           </p>
         </div>
-        
+
         <div class="ai-options-section">
           <label class="ai-toggle">
-            <input 
-              type="checkbox" 
-              bind:checked={showAIOptions}
-            />
+            <input type="checkbox" bind:checked={showAIOptions} />
             <span class="ai-toggle-label">🤖 Add AI Players</span>
           </label>
-          
+
           {#if showAIOptions}
             <div class="ai-options-content">
               <div class="ai-option">
@@ -295,23 +303,25 @@
                   <span class="ai-count-value">{aiCount}</span>
                 </div>
               </div>
-              
+
               <div class="ai-option">
                 <label for="ai-delay">AI Speed:</label>
                 <div class="ai-slider-controls">
-                  <input 
-                    id="ai-delay" 
-                    type="range" 
-                    min="500" 
-                    max="5000" 
+                  <input
+                    id="ai-delay"
+                    type="range"
+                    min="500"
+                    max="5000"
                     step="250"
                     bind:value={aiMoveDelayMs}
                     class="ai-delay-slider"
                   />
-                  <span class="ai-delay-value">{(aiMoveDelayMs / 1000).toFixed(1)}s</span>
+                  <span class="ai-delay-value"
+                    >{(aiMoveDelayMs / 1000).toFixed(1)}s</span
+                  >
                 </div>
               </div>
-              
+
               <p class="ai-options-hint">
                 {#if aiMoveDelayMs <= 1000}
                   ⚡ Fast pace
@@ -327,18 +337,18 @@
 
         <div class="name-section">
           <label for="host-name">Your Name:</label>
-          <input 
-            id="host-name" 
-            type="text" 
-            bind:value={hostName} 
+          <input
+            id="host-name"
+            type="text"
+            bind:value={hostName}
             placeholder="Enter your name"
             class="name-input"
           />
         </div>
-        
+
         <div class="button-group">
-          <button 
-            class="start-btn" 
+          <button
+            class="start-btn"
             onclick={handleStartGame}
             disabled={players.length === 0}
           >
@@ -346,7 +356,7 @@
           </button>
           <button class="back-btn" onclick={handleBack}>Cancel</button>
         </div>
-        
+
         <div class="players-section">
           <h3>Players ({players.length + 1}/{maxPlayers})</h3>
           <div class="player-list">
@@ -354,16 +364,18 @@
               <span class="player-icon">👑</span>
               <span class="player-name">{hostName} (You)</span>
             </div>
-            {#each players as player}
+            {#each players as player (player.id)}
               <div class="player-item" class:ai={player.isAI}>
                 <span class="player-icon">{player.isAI ? '🤖' : '👤'}</span>
                 <span class="player-name">{player.name}</span>
               </div>
             {/each}
           </div>
-          
+
           {#if players.length === 0}
-            <p class="waiting">Waiting for players to join or add AI opponents...</p>
+            <p class="waiting">
+              Waiting for players to join or add AI opponents...
+            </p>
           {/if}
         </div>
       {:else}
@@ -382,7 +394,7 @@
     justify-content: center;
     align-items: flex-start;
     height: 100dvh;
-    background: 
+    background:
       radial-gradient(ellipse at top, rgba(139, 0, 0, 0.3) 0%, transparent 50%),
       linear-gradient(135deg, #2c0a0a 0%, #1a0505 50%, #0d0202 100%);
     padding: 1rem;
@@ -396,7 +408,9 @@
     padding: 1.5rem;
     max-width: 500px;
     width: 100%;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(212, 166, 74, 0.15);
+    box-shadow:
+      0 10px 40px rgba(0, 0, 0, 0.4),
+      0 0 30px rgba(212, 166, 74, 0.15);
     margin-top: 1rem;
     margin-bottom: 1rem;
     border: 2px solid #d4a64a;
@@ -437,7 +451,9 @@
     font-size: 1rem;
     font-family: inherit;
     box-sizing: border-box;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
     background: #fffef9;
     color: #2c1810;
   }
@@ -467,7 +483,9 @@
     font-size: 1rem;
     font-family: inherit;
     box-sizing: border-box;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
     background: #fffef9;
     cursor: pointer;
     color: #2c1810;
@@ -503,7 +521,7 @@
     user-select: none;
   }
 
-  .ai-toggle input[type="checkbox"] {
+  .ai-toggle input[type='checkbox'] {
     width: 18px;
     height: 18px;
     accent-color: #8b2020;
@@ -851,7 +869,7 @@
     font-weight: 500;
     flex: 1;
   }
-  
+
   .player-item.ai {
     background: linear-gradient(135deg, #5c4033 0%, #3d2a22 100%);
     color: #fdf6e3;
@@ -870,7 +888,8 @@
     gap: 1rem;
   }
 
-  .start-btn, .back-btn {
+  .start-btn,
+  .back-btn {
     flex: 1;
     padding: 1rem;
     border: none;
@@ -927,7 +946,11 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 </style>

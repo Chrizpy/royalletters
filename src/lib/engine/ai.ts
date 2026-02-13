@@ -1,7 +1,17 @@
 import type { GameState, GameAction, PlayerState, Ruleset } from '../types';
 import { getCardDefinition, getCardValue, createDeck } from './deck';
 import { getValidTargets } from './validation';
-import { PRIEST, BARON, HANDMAID, PRINCE, KING, COUNTESS, PRINCESS, SPY, CHANCELLOR } from './cardIds';
+import {
+  PRIEST,
+  BARON,
+  HANDMAID,
+  PRINCE,
+  KING,
+  COUNTESS,
+  PRINCESS,
+  SPY,
+  CHANCELLOR,
+} from './cardIds';
 
 /**
  * AI player decision-making engine
@@ -9,7 +19,8 @@ import { PRIEST, BARON, HANDMAID, PRINCE, KING, COUNTESS, PRINCESS, SPY, CHANCEL
  */
 
 /** Module-level cache: deck composition never changes for a given ruleset */
-const deckCompositionCache: Partial<Record<Ruleset, Record<string, number>>> = {};
+const deckCompositionCache: Partial<Record<Ruleset, Record<string, number>>> =
+  {};
 
 /**
  * Get deck composition for a ruleset by counting cards in a created deck
@@ -29,8 +40,6 @@ function getDeckComposition(ruleset: Ruleset): Record<string, number> {
   return composition;
 }
 
-
-
 /**
  * Get possible card guesses for Guard (excludes Guard and tillbakakaka, and Spy if classic ruleset)
  */
@@ -49,46 +58,47 @@ function getPossibleGuesses(ruleset: Ruleset): string[] {
  */
 function chooseGuardGuess(
   state: GameState,
-  targetPlayer: PlayerState
+  _targetPlayer: PlayerState,
 ): string {
   const possibleGuesses = getPossibleGuesses(state.ruleset);
-  
+
   // Count cards that have been discarded or burned
   const seenCards: Record<string, number> = {};
-  
+
   // Count discarded cards from all players
   for (const player of state.players) {
     for (const card of player.discardPile) {
       seenCards[card] = (seenCards[card] || 0) + 1;
     }
   }
-  
+
   // Count burned face-up cards (for 2-player games)
   for (const card of state.burnedCardsFaceUp) {
     seenCards[card] = (seenCards[card] || 0) + 1;
   }
-  
+
   // Get deck composition for the ruleset dynamically
   const deckComposition = getDeckComposition(state.ruleset);
-  
+
   // Calculate remaining cards
   const remainingCards: Array<{ cardId: string; count: number }> = [];
-  
+
   for (const guess of possibleGuesses) {
-    const totalCount = deckComposition[guess as keyof typeof deckComposition] || 0;
+    const totalCount =
+      deckComposition[guess as keyof typeof deckComposition] || 0;
     const seenCount = seenCards[guess] || 0;
     const remaining = totalCount - seenCount;
-    
+
     if (remaining > 0) {
       remainingCards.push({ cardId: guess, count: remaining });
     }
   }
-  
+
   if (remainingCards.length === 0) {
     // Fallback: just guess priest (common and low-value)
     return PRIEST;
   }
-  
+
   // Weight towards higher-value cards (Princess, Countess, King, Prince)
   // as eliminating them is more valuable
   const weightedCards = remainingCards.map((card) => {
@@ -97,10 +107,10 @@ function chooseGuardGuess(
     // Weight = remaining count * card value (higher value cards are more valuable to guess)
     return { ...card, weight: card.count * value };
   });
-  
+
   // Sort by weight descending
   weightedCards.sort((a, b) => b.weight - a.weight);
-  
+
   // Return the highest weighted guess
   return weightedCards[0].cardId;
 }
@@ -110,16 +120,16 @@ function chooseGuardGuess(
  */
 function chooseCardToPlay(player: PlayerState, state: GameState): string {
   const hand = [...player.hand];
-  
+
   // Countess rule: If player has Countess + (King or Prince), must play Countess
   const hasCountess = hand.includes(COUNTESS);
   const hasKing = hand.includes(KING);
   const hasPrince = hand.includes(PRINCE);
-  
+
   if (hasCountess && (hasKing || hasPrince)) {
     return COUNTESS;
   }
-  
+
   // Basic strategy: avoid playing Princess (auto-lose)
   const nonPrincessCards = hand.filter((c) => c !== PRINCESS);
   if (nonPrincessCards.length > 0) {
@@ -131,7 +141,7 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
     });
     return nonPrincessCards[0];
   }
-  
+
   // If only Princess left, we have to play it
   return hand[0];
 }
@@ -143,26 +153,28 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
 function chooseTarget(
   state: GameState,
   playerId: string,
-  cardId: string
+  cardId: string,
 ): string | undefined {
   const cardDef = getCardDefinition(cardId);
   if (!cardDef || !cardDef.effect.requiresTargetPlayer) {
     return undefined;
   }
-  
+
   const canTargetSelf = cardDef.effect.canTargetSelf || false;
   const validTargets = getValidTargets(state, playerId, canTargetSelf);
-  
+
   // Filter out self for most cards unless it's Prince and self is only option
   const otherTargets = validTargets.filter((p) => p.id !== playerId);
-  
+
   if (otherTargets.length > 0) {
     // Prioritize targeting the player with the most tokens (closest to winning)
     // Sort by tokens descending, then take the first one
-    const sortedByTokens = [...otherTargets].sort((a, b) => b.tokens - a.tokens);
+    const sortedByTokens = [...otherTargets].sort(
+      (a, b) => b.tokens - a.tokens,
+    );
     return sortedByTokens[0].id;
   }
-  
+
   // If Prince and no other targets, can target self
   if (cardId === PRINCE && canTargetSelf) {
     const self = validTargets.find((p) => p.id === playerId);
@@ -170,7 +182,7 @@ function chooseTarget(
       return self.id;
     }
   }
-  
+
   // No valid targets - card will be played with no effect
   return undefined;
 }
@@ -179,36 +191,39 @@ function chooseTarget(
  * Main AI decision function: given the current game state and AI player,
  * returns the action the AI should take.
  */
-export function decideAIMove(state: GameState, playerId: string): GameAction | null {
+export function decideAIMove(
+  state: GameState,
+  playerId: string,
+): GameAction | null {
   const player = state.players.find((p) => p.id === playerId);
   if (!player || player.status === 'ELIMINATED') {
     return null;
   }
-  
+
   // Handle Chancellor resolving phase
   if (state.phase === 'CHANCELLOR_RESOLVING') {
     return decideChancellorReturn(state, playerId);
   }
-  
+
   // Handle revenge guess phase (tillbakakaka)
   if (state.phase === 'WAITING_FOR_REVENGE_GUESS') {
     return decideRevengeGuess(state, playerId);
   }
-  
+
   if (state.phase !== 'WAITING_FOR_ACTION') {
     return null;
   }
-  
+
   if (player.hand.length === 0) {
     return null;
   }
-  
+
   // Choose which card to play
   const cardToPlay = chooseCardToPlay(player, state);
-  
+
   // Choose target if needed
   const targetPlayerId = chooseTarget(state, playerId, cardToPlay);
-  
+
   // Choose card guess for Guard or tillbakakaka
   let targetCardGuess: string | undefined;
   const cardDef = getCardDefinition(cardToPlay);
@@ -218,7 +233,7 @@ export function decideAIMove(state: GameState, playerId: string): GameAction | n
       targetCardGuess = chooseGuardGuess(state, targetPlayer);
     }
   }
-  
+
   return {
     type: 'PLAY_CARD',
     playerId,
@@ -231,15 +246,18 @@ export function decideAIMove(state: GameState, playerId: string): GameAction | n
 /**
  * Decide which cards to return for Chancellor effect
  */
-function decideChancellorReturn(state: GameState, playerId: string): GameAction | null {
+function decideChancellorReturn(
+  state: GameState,
+  playerId: string,
+): GameAction | null {
   const player = state.players.find((p) => p.id === playerId);
   if (!player || player.hand.length < 2) {
     return null;
   }
-  
+
   // Number of cards to return = hand size - 1 (keep exactly 1 card)
   const cardsToReturnCount = player.hand.length - 1;
-  
+
   // Strategy: keep the highest value card (for round-end comparison)
   // Sort hand by value descending
   const sortedHand = [...player.hand].sort((a, b) => {
@@ -247,10 +265,10 @@ function decideChancellorReturn(state: GameState, playerId: string): GameAction 
     const bValue = getCardValue(b, state.ruleset);
     return bValue - aValue;
   });
-  
+
   // Keep the highest value card, return the rest (up to cardsToReturnCount)
   const cardsToReturn = sortedHand.slice(1, 1 + cardsToReturnCount);
-  
+
   return {
     type: 'CHANCELLOR_RETURN',
     playerId,
@@ -261,20 +279,25 @@ function decideChancellorReturn(state: GameState, playerId: string): GameAction 
 /**
  * Decide what card to guess for revenge (tillbakakaka effect)
  */
-function decideRevengeGuess(state: GameState, playerId: string): GameAction | null {
+function decideRevengeGuess(
+  state: GameState,
+  playerId: string,
+): GameAction | null {
   // Check if this player is the one who should make the revenge guess
   if (!state.revengeGuess || state.revengeGuess.revengerId !== playerId) {
     return null;
   }
-  
-  const targetPlayer = state.players.find(p => p.id === state.revengeGuess!.targetId);
+
+  const targetPlayer = state.players.find(
+    (p) => p.id === state.revengeGuess!.targetId,
+  );
   if (!targetPlayer) {
     return null;
   }
-  
+
   // Use the same logic as Guard guess
   const guess = chooseGuardGuess(state, targetPlayer);
-  
+
   return {
     type: 'REVENGE_GUESS',
     playerId,
@@ -288,10 +311,12 @@ function decideRevengeGuess(state: GameState, playerId: string): GameAction | nu
 export function isActivePlayerAI(state: GameState): boolean {
   // In revenge phase, the "active" player is the revenger
   if (state.phase === 'WAITING_FOR_REVENGE_GUESS' && state.revengeGuess) {
-    const revenger = state.players.find(p => p.id === state.revengeGuess!.revengerId);
+    const revenger = state.players.find(
+      (p) => p.id === state.revengeGuess!.revengerId,
+    );
     return revenger?.isAI === true;
   }
-  
+
   const activePlayer = state.players[state.activePlayerIndex];
   return activePlayer?.isAI === true;
 }
@@ -302,13 +327,15 @@ export function isActivePlayerAI(state: GameState): boolean {
 export function getActiveAIPlayerId(state: GameState): string | null {
   // In revenge phase, the "active" player is the revenger
   if (state.phase === 'WAITING_FOR_REVENGE_GUESS' && state.revengeGuess) {
-    const revenger = state.players.find(p => p.id === state.revengeGuess!.revengerId);
+    const revenger = state.players.find(
+      (p) => p.id === state.revengeGuess!.revengerId,
+    );
     if (revenger?.isAI) {
       return revenger.id;
     }
     return null;
   }
-  
+
   const activePlayer = state.players[state.activePlayerIndex];
   if (activePlayer?.isAI) {
     return activePlayer.id;

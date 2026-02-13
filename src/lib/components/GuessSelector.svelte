@@ -1,10 +1,21 @@
 <script lang="ts">
   import cardsData from '../data/cards.json';
-  import type { CardDefinition, Ruleset, PlayerState } from '../types';
+  import type { CardDefinition, PlayerState } from '../types';
   import { gameState } from '../stores/game';
   import { getCardDefinition } from '../engine/deck';
 
-  let { onSelect, onCancel, title = 'Guess their card!', subtitle = 'Which card do you think they have?', showCancel = true, headerIcon = '', headerStyle = 'default', players = [], localPlayerId = '', originalGuess = undefined }: {
+  let {
+    onSelect,
+    onCancel,
+    title = 'Guess their card!',
+    subtitle = 'Which card do you think they have?',
+    showCancel = true,
+    headerIcon = '',
+    headerStyle = 'default',
+    players = [],
+    localPlayerId = '',
+    originalGuess = undefined,
+  }: {
     onSelect: (cardGuess: string) => void;
     onCancel: () => void;
     title?: string;
@@ -16,79 +27,94 @@
     localPlayerId?: string;
     originalGuess?: string | undefined;
   } = $props();
-  
+
   // Type for the new card data structure
   interface CardRegistry {
     cards: Record<string, CardDefinition>;
     decks: Record<string, Record<string, number>>;
     classicCardValues: Record<string, number>;
   }
-  
+
   const registry = cardsData as unknown as CardRegistry;
-  
+
   // Get current ruleset from game state
   let ruleset = $derived($gameState?.ruleset || 'classic');
-  
+
   // Get cards available in current deck, excluding Guard and tillbakakaka (can't guess Guard, but CAN guess Spy)
   let guessableCards = $derived(
     Object.values(registry.cards)
-      .filter(card => {
+      .filter((card) => {
         // Can't guess Guard or tillbakakaka
         if (card.id === 'guard' || card.id === 'tillbakakaka') return false;
         // Only include cards that are in the current deck
         const deckDef = registry.decks[ruleset];
         return deckDef && deckDef[card.id] !== undefined;
       })
-      .map(card => ({
+      .map((card) => ({
         ...card,
         // Use classic values for classic ruleset
-        value: ruleset === 'classic' && registry.classicCardValues[card.id] !== undefined 
-          ? registry.classicCardValues[card.id] 
-          : card.value
+        value:
+          ruleset === 'classic' &&
+          registry.classicCardValues[card.id] !== undefined
+            ? registry.classicCardValues[card.id]
+            : card.value,
       }))
-      .sort((a, b) => a.value - b.value)
+      .sort((a, b) => a.value - b.value),
   );
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
-      'spy': '🕵️',
-      'priest': '🙏',
-      'baron': '⚖️',
-      'handmaid': '🛡️',
-      'prince': '👑',
-      'chancellor': '📜',
-      'king': '👔',
-      'countess': '💃',
-      'princess': '👸'
+      spy: '🕵️',
+      priest: '🙏',
+      baron: '⚖️',
+      handmaid: '🛡️',
+      prince: '👑',
+      chancellor: '📜',
+      king: '👔',
+      countess: '💃',
+      princess: '👸',
     };
     return emojis[id] || '🎴';
   }
 
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
-      'spy': '#2c3e50',
-      'guard': '#e74c3c',
-      'tillbakakaka': '#e74c3c',
-      'priest': '#9b59b6',
-      'baron': '#3498db',
-      'handmaid': '#1abc9c',
-      'prince': '#f39c12',
-      'chancellor': '#8e44ad',
-      'king': '#e67e22',
-      'countess': '#e91e63',
-      'princess': '#ff69b4'
+      spy: '#2c3e50',
+      guard: '#e74c3c',
+      tillbakakaka: '#e74c3c',
+      priest: '#9b59b6',
+      baron: '#3498db',
+      handmaid: '#1abc9c',
+      prince: '#f39c12',
+      chancellor: '#8e44ad',
+      king: '#e67e22',
+      countess: '#e91e63',
+      princess: '#ff69b4',
     };
     return colors[id] || '#95a5a6';
   }
 
   // Filter players who have played cards (non-empty discard pile)
-  let playersWithCards = $derived(players.filter(p => p.discardPile.length > 0));
+  let playersWithCards = $derived(
+    players.filter((p) => p.discardPile.length > 0),
+  );
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="guess-selector-overlay" role="dialog" aria-modal="true" tabindex="0" onclick={showCancel ? onCancel : undefined} onkeydown={(e) => e.key === 'Escape' && showCancel && onCancel()}>
+<div
+  class="guess-selector-overlay"
+  role="dialog"
+  aria-modal="true"
+  tabindex="0"
+  onclick={showCancel ? onCancel : undefined}
+  onkeydown={(e) => e.key === 'Escape' && showCancel && onCancel()}
+>
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="guess-selector" class:revenge-style={headerStyle === 'revenge'} onclick={(e) => e.stopPropagation()}>
+  <div
+    class="guess-selector"
+    class:revenge-style={headerStyle === 'revenge'}
+    onclick={(e) => e.stopPropagation()}
+  >
     {#if headerIcon}
       <div class="header-icon">{headerIcon}</div>
     {/if}
@@ -99,8 +125,12 @@
       {@const originalCard = getCardDefinition(originalGuess)}
       <div class="original-guess-info">
         <span class="original-guess-label">They guessed you had:</span>
-        <span class="original-guess-card" style="--card-color: {getCardColor(originalGuess)}">
-          {getCardEmoji(originalGuess)} {originalCard?.name} ({originalCard?.value})
+        <span
+          class="original-guess-card"
+          style="--card-color: {getCardColor(originalGuess)}"
+        >
+          {getCardEmoji(originalGuess)}
+          {originalCard?.name} ({originalCard?.value})
         </span>
       </div>
     {/if}
@@ -109,19 +139,26 @@
       <div class="played-cards-summary">
         <div class="summary-header">📜 Played this round:</div>
         <div class="players-played">
-          {#each playersWithCards as player}
-            <div class="player-played" class:is-local={player.id === localPlayerId} class:is-eliminated={player.status === 'ELIMINATED'}>
+          {#each playersWithCards as player (player.id)}
+            <div
+              class="player-played"
+              class:is-local={player.id === localPlayerId}
+              class:is-eliminated={player.status === 'ELIMINATED'}
+            >
               <span class="player-name-tag" style="color: {player.color}">
-                {player.id === localPlayerId ? 'You' : player.name}{player.status === 'ELIMINATED' ? ' 💀' : ''}:
+                {player.id === localPlayerId
+                  ? 'You'
+                  : player.name}{player.status === 'ELIMINATED' ? ' 💀' : ''}:
               </span>
               <span class="played-cards">
-                {#each player.discardPile as cardId}
-                  <span 
-                    class="mini-card" 
+                {#each player.discardPile as cardId, i (i)}
+                  <span
+                    class="mini-card"
                     style="--card-color: {getCardColor(cardId)}"
                     title={getCardDefinition(cardId)?.name}
                   >
-                    {getCardDefinition(cardId)?.value}{#if cardId === 'tillbakakaka'}🍪{/if}
+                    {getCardDefinition(cardId)
+                      ?.value}{#if cardId === 'tillbakakaka'}🍪{/if}
                   </span>
                 {/each}
               </span>
@@ -130,10 +167,10 @@
         </div>
       </div>
     {/if}
-    
+
     <div class="card-grid">
-      {#each guessableCards as card}
-        <button 
+      {#each guessableCards as card (card.id)}
+        <button
           class="guess-card"
           style="--card-color: {getCardColor(card.id)}"
           onclick={() => onSelect(card.id)}
@@ -166,8 +203,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .guess-selector {
@@ -197,8 +238,14 @@
   }
 
   @keyframes modal-pop {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   .header-icon {
@@ -222,12 +269,19 @@
   .guess-selector.revenge-style {
     border-color: #e74c3c;
     box-shadow: 0 0 30px rgba(231, 76, 60, 0.4);
-    animation: modal-pop 0.3s ease-out, revenge-pulse 1.5s ease-in-out infinite;
+    animation:
+      modal-pop 0.3s ease-out,
+      revenge-pulse 1.5s ease-in-out infinite;
   }
 
   @keyframes revenge-pulse {
-    0%, 100% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.4); }
-    50% { box-shadow: 0 0 40px rgba(231, 76, 60, 0.7); }
+    0%,
+    100% {
+      box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(231, 76, 60, 0.7);
+    }
   }
 
   .subtitle {
@@ -260,7 +314,11 @@
     font-size: 1.1rem;
     font-weight: 600;
     color: white;
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--card-color) 0%,
+      color-mix(in srgb, var(--card-color) 70%, black) 100%
+    );
     padding: 0.4rem 0.8rem;
     border-radius: 8px;
   }
@@ -277,7 +335,11 @@
     flex-direction: column;
     align-items: center;
     padding: 1rem 0.5rem;
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--card-color) 0%,
+      color-mix(in srgb, var(--card-color) 70%, black) 100%
+    );
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 12px;
     color: white;
@@ -377,7 +439,11 @@
     min-width: 20px;
     height: 26px;
     padding: 0 4px;
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--card-color) 0%,
+      color-mix(in srgb, var(--card-color) 70%, black) 100%
+    );
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 3px;
     font-size: 0.7rem;

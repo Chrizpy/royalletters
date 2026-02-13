@@ -16,13 +16,30 @@
   import { getTokensToWin } from '../engine/constants';
   import { formatPlayerNames } from '../engine/player';
   import { reorderPlayersClockwise } from '../utils/playerLayout';
-  import { gameState as gameStateStore, drawCard, revealedCard, clearRevealedCard } from '../stores/game';
+  import {
+    gameState as gameStateStore,
+    revealedCard,
+    clearRevealedCard,
+  } from '../stores/game';
   import type { PlayerState } from '../types';
 
   // Props
-  let { localPlayerId, onPlayCard, onChancellorReturn = undefined, onRevengeGuess = undefined, onStartRound, onPlayAgain = undefined, isHost = false, onSendChat = undefined }: {
+  let {
+    localPlayerId,
+    onPlayCard,
+    onChancellorReturn = undefined,
+    onRevengeGuess = undefined,
+    onStartRound,
+    onPlayAgain = undefined,
+    isHost = false,
+    onSendChat = undefined,
+  }: {
     localPlayerId: string;
-    onPlayCard: (cardId: string, targetPlayerId?: string, targetCardGuess?: string) => void;
+    onPlayCard: (
+      cardId: string,
+      targetPlayerId?: string,
+      targetCardGuess?: string,
+    ) => void;
     onChancellorReturn?: ((cardsToReturn: string[]) => void) | undefined;
     onRevengeGuess?: ((targetCardGuess: string) => void) | undefined;
     onStartRound: () => void;
@@ -37,7 +54,11 @@
   let selectingGuess = $state(false);
   let pendingCardId = $state<string | null>(null);
   let pendingTargetId = $state<string | null>(null);
-  let cardEffectAnimation = $state<{ actorId: string | null; targetId: string | null; cardId: string | null }>({ actorId: null, targetId: null, cardId: null });
+  let cardEffectAnimation = $state<{
+    actorId: string | null;
+    targetId: string | null;
+    cardId: string | null;
+  }>({ actorId: null, targetId: null, cardId: null });
   let effectAnimationTimeout = $state<number | null>(null);
   let prevActivePlayerIndex = $state<number | undefined>(undefined);
   let showDeckInfoModal = $state(false);
@@ -47,62 +68,89 @@
   // Get state from store for reactivity
   let gameState = $derived($gameStateStore);
   let revealed = $derived($revealedCard);
-  let localPlayer = $derived(gameState?.players.find(p => p.id === localPlayerId));
-  let isMyTurn = $derived(gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId);
+  let localPlayer = $derived(
+    gameState?.players.find((p) => p.id === localPlayerId),
+  );
+  let isMyTurn = $derived(
+    gameState?.players[gameState?.activePlayerIndex]?.id === localPlayerId,
+  );
   let activePlayer = $derived(gameState?.players[gameState?.activePlayerIndex]);
-  let allPlayersClockwise = $derived(reorderPlayersClockwise(gameState?.players || [], localPlayerId));
-  let validTargetIds = $derived(new Set(getLocalValidTargets().map(t => t.id)));
+  let allPlayersClockwise = $derived(
+    reorderPlayersClockwise(gameState?.players || [], localPlayerId),
+  );
+  let validTargetIds = $derived(
+    new Set(getLocalValidTargets().map((t) => t.id)),
+  );
   let canPlay = $derived(isMyTurn && gameState?.phase === 'WAITING_FOR_ACTION');
-  let isChancellorPhase = $derived(gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn);
-  let isRevengePhase = $derived(gameState?.phase === 'WAITING_FOR_REVENGE_GUESS');
-  let isMyRevengeGuess = $derived(isRevengePhase && gameState?.revengeGuess?.revengerId === localPlayerId);
-  let revengeTargetPlayer = $derived(isRevengePhase ? gameState?.players.find(p => p.id === gameState?.revengeGuess?.targetId) : null);
+  let isChancellorPhase = $derived(
+    gameState?.phase === 'CHANCELLOR_RESOLVING' && isMyTurn,
+  );
+  let isRevengePhase = $derived(
+    gameState?.phase === 'WAITING_FOR_REVENGE_GUESS',
+  );
+  let isMyRevengeGuess = $derived(
+    isRevengePhase && gameState?.revengeGuess?.revengerId === localPlayerId,
+  );
+  let revengeTargetPlayer = $derived(
+    isRevengePhase
+      ? gameState?.players.find(
+          (p) => p.id === gameState?.revengeGuess?.targetId,
+        )
+      : null,
+  );
   let tokensToWin = $derived(getTokensToWin(gameState?.players.length || 2));
   // During Chancellor resolution, display the deck count as it will be after cards are returned
   // (current deck + cards to be returned, which is hand.length - 1 since player keeps 1 card)
-  let displayedDeckCount = $derived(gameState?.phase === 'CHANCELLOR_RESOLVING' 
-    ? (gameState?.deck.length || 0) + ((gameState?.players[gameState?.activePlayerIndex]?.hand.length || 0) - 1)
-    : gameState?.deck.length || 0);
-  
+  let displayedDeckCount = $derived(
+    gameState?.phase === 'CHANCELLOR_RESOLVING'
+      ? (gameState?.deck.length || 0) +
+          ((gameState?.players[gameState?.activePlayerIndex]?.hand.length ||
+            0) -
+            1)
+      : gameState?.deck.length || 0,
+  );
+
   // Track card effects for animations
   $effect(() => {
     if (gameState?.logs && gameState.logs.length > 0) {
       const lastLog = gameState.logs[gameState.logs.length - 1];
-      
+
       // Check if this is a card play action (has actorId and cardId)
       if (lastLog.actorId && lastLog.cardId) {
         const message = lastLog.message.toLowerCase();
-        
+
         // Extract target from message patterns like "played X on Y" or "X and Y traded hands"
         let targetPlayerId: string | null = null;
-        
+
         // Find target player by checking if their name appears after certain keywords
         for (const player of gameState.players) {
           const playerName = player.name.toLowerCase();
-          
+
           // Skip if this is the actor
           if (player.id === lastLog.actorId) continue;
-          
+
           // Check various message patterns that indicate targeting
-          if (message.includes(`${playerName} was eliminated`) ||
-              message.includes(`${playerName} discarded`) ||
-              message.includes(`saw ${playerName}'s hand`) ||
-              message.includes(`and ${playerName} traded`) ||
-              message.includes(`guessed ${playerName}`) ||
-              message.match(new RegExp(`(on|to|with)\\s+${playerName}`, 'i'))) {
+          if (
+            message.includes(`${playerName} was eliminated`) ||
+            message.includes(`${playerName} discarded`) ||
+            message.includes(`saw ${playerName}'s hand`) ||
+            message.includes(`and ${playerName} traded`) ||
+            message.includes(`guessed ${playerName}`) ||
+            message.match(new RegExp(`(on|to|with)\\s+${playerName}`, 'i'))
+          ) {
             targetPlayerId = player.id;
             break;
           }
         }
-        
+
         // Set animation state - borders persist until cleared by next action
         // For Handmaid, the border persists on the protected player until their next turn
         cardEffectAnimation = {
           actorId: lastLog.actorId,
           targetId: targetPlayerId,
-          cardId: lastLog.cardId
+          cardId: lastLog.cardId,
         };
-        
+
         // Clear previous timeout (no longer using timeout to auto-clear)
         if (effectAnimationTimeout) {
           clearTimeout(effectAnimationTimeout);
@@ -111,15 +159,23 @@
       }
     }
   });
-  
+
   // Clear non-Handmaid animations when active player changes
   $effect(() => {
-    if (gameState?.activePlayerIndex !== undefined && prevActivePlayerIndex !== gameState.activePlayerIndex) {
+    if (
+      gameState?.activePlayerIndex !== undefined &&
+      prevActivePlayerIndex !== gameState.activePlayerIndex
+    ) {
       // Check if the current animation is for Handmaid (card ID 'handmaid')
       if (cardEffectAnimation.cardId !== 'handmaid') {
         // Clear animation for non-Handmaid cards when turn changes
         cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
-      } else if (cardEffectAnimation.actorId && gameState.players.length > gameState.activePlayerIndex && gameState.players[gameState.activePlayerIndex]?.id === cardEffectAnimation.actorId) {
+      } else if (
+        cardEffectAnimation.actorId &&
+        gameState.players.length > gameState.activePlayerIndex &&
+        gameState.players[gameState.activePlayerIndex]?.id ===
+          cardEffectAnimation.actorId
+      ) {
         // Clear Handmaid animation when it's the protected player's turn again
         cardEffectAnimation = { actorId: null, targetId: null, cardId: null };
       }
@@ -135,7 +191,7 @@
 
   function selectCard(cardId: string) {
     if (!canPlay) return;
-    
+
     const card = getCardDefinition(cardId);
     if (!card) return;
 
@@ -144,7 +200,7 @@
     const hasCountess = hand.includes('countess');
     const hasKing = hand.includes('king');
     const hasPrince = hand.includes('prince');
-    
+
     if (hasCountess && (hasKing || hasPrince) && cardId !== 'countess') {
       // Player is trying to play King or Prince while holding Countess - show modal
       countessConflictCard = cardId === 'king' ? 'king' : 'prince';
@@ -173,7 +229,7 @@
 
   function selectTarget(targetId: string) {
     pendingTargetId = targetId;
-    
+
     const card = getCardDefinition(pendingCardId!);
     if (card?.effect.requiresTargetCardType) {
       // Need to guess a card (Guard)
@@ -195,7 +251,11 @@
     }
   }
 
-  function playCardWithSelection(cardId: string, targetId?: string, guess?: string) {
+  function playCardWithSelection(
+    cardId: string,
+    targetId?: string,
+    guess?: string,
+  ) {
     onPlayCard(cardId, targetId, guess);
     resetSelection();
   }
@@ -221,7 +281,7 @@
   function handleStartRound() {
     onStartRound();
   }
-  
+
   // Cleanup on component destroy
   onDestroy(() => {
     if (effectAnimationTimeout) {
@@ -233,204 +293,231 @@
     if (!pendingCardId || !gameState) return [];
     const card = getCardDefinition(pendingCardId);
     if (!card) return [];
-    
-    return getValidTargets(gameState, localPlayerId, card.effect.canTargetSelf ?? false);
+
+    return getValidTargets(
+      gameState,
+      localPlayerId,
+      card.effect.canTargetSelf ?? false,
+    );
   }
 </script>
 
 {#if gameState}
-<div class="game-screen">
-  <!-- Status bar -->
-  <div class="status-bar">
-    <div class="round-info">
-      Round {gameState.roundCount} · {tokensToWin} tokens to win
-    </div>
-    <div class="turn-indicator" class:my-turn={isMyTurn || isMyRevengeGuess}>
-      {#if gameState.phase === 'GAME_END'}
-        🎉 Game Over!
-      {:else if gameState.phase === 'ROUND_END'}
-        Round Complete
-      {:else if gameState.phase === 'CHANCELLOR_RESOLVING'}
-        {#if isMyTurn}
-          📜 Select 2 cards to return
-        {:else}
-          {activePlayer?.name} is using Chancellor
-        {/if}
-      {:else if gameState.phase === 'WAITING_FOR_REVENGE_GUESS'}
-        {#if isMyRevengeGuess}
-          🍪 Revenge! Guess {revengeTargetPlayer?.name}'s card!
-        {:else}
-          🍪 {gameState.players.find(p => p.id === gameState.revengeGuess?.revengerId)?.name} gets a revenge guess!
-        {/if}
-      {:else if isMyTurn}
-        Your Turn
-      {:else}
-        {activePlayer?.name}'s Turn
-      {/if}
-    </div>
-  </div>
-
-  <!-- Players area (includes local player and opponents) -->
-  <div class="opponents-area">
-    {#each allPlayersClockwise as player}
-      <PlayerArea 
-        {player}
-        isActive={gameState.players[gameState.activePlayerIndex]?.id === player.id}
-        isTargetable={selectingTarget && player.id !== localPlayerId && validTargetIds.has(player.id)}
-        onSelect={() => selectTarget(player.id)}
-        isCardEffectActor={cardEffectAnimation.actorId === player.id}
-        isCardEffectTarget={cardEffectAnimation.targetId === player.id}
-        cardEffectId={cardEffectAnimation.cardId}
-      />
-    {/each}
-  </div>
-
-  <!-- Center area - deck and messages -->
-  <div class="center-area">
-    <div class="deck-area">
-      <div class="deck" class:can-draw={gameState.phase === 'TURN_START' && isMyTurn}>
-        <button class="deck-card" onclick={handleDraw} aria-label="Draw a card">
-          <span class="deck-icon">📚</span>
-          <span class="deck-count">{displayedDeckCount}</span>
-        </button>
-        {#if gameState.phase === 'TURN_START' && isMyTurn}
-          <div class="draw-prompt">Click to draw!</div>
-        {/if}
+  <div class="game-screen">
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="round-info">
+        Round {gameState.roundCount} · {tokensToWin} tokens to win
       </div>
-    </div>
-
-    {#if gameState.phase === 'LOBBY' || (gameState.phase === 'ROUND_END' && gameState.winnerIds.length === 0)}
-      <div class="start-area">
-        {#if isHost}
-          <button class="start-round-btn" onclick={handleStartRound}>
-            {gameState.roundCount === 0 ? 'Start Game' : 'Next Round'}
-          </button>
-        {:else}
-          <p class="waiting-msg">Waiting for host to start...</p>
-        {/if}
-      </div>
-    {/if}
-
-    {#if gameState.phase === 'GAME_END'}
-      <div class="winner-banner">
-        <div class="winner-icon">👑</div>
-        <div class="winner-text">
-          {#if gameState.winnerIds.length === 1}
-            {gameState.players.find(p => p.id === gameState.winnerIds[0])?.name} wins!
+      <div class="turn-indicator" class:my-turn={isMyTurn || isMyRevengeGuess}>
+        {#if gameState.phase === 'GAME_END'}
+          🎉 Game Over!
+        {:else if gameState.phase === 'ROUND_END'}
+          Round Complete
+        {:else if gameState.phase === 'CHANCELLOR_RESOLVING'}
+          {#if isMyTurn}
+            📜 Select 2 cards to return
           {:else}
-            {formatPlayerNames(gameState.winnerIds.map(id => gameState.players.find(p => p.id === id)?.name).filter((n): n is string => !!n))} win!
+            {activePlayer?.name} is using Chancellor
           {/if}
-        </div>
-        {#if isHost && onPlayAgain}
-          <button class="play-again-btn" onclick={onPlayAgain}>
-            🔄 Play Again
-          </button>
-        {:else if !isHost}
-          <p class="waiting-restart">Waiting for host to restart...</p>
+        {:else if gameState.phase === 'WAITING_FOR_REVENGE_GUESS'}
+          {#if isMyRevengeGuess}
+            🍪 Revenge! Guess {revengeTargetPlayer?.name}'s card!
+          {:else}
+            🍪 {gameState.players.find(
+              (p) => p.id === gameState.revengeGuess?.revengerId,
+            )?.name} gets a revenge guess!
+          {/if}
+        {:else if isMyTurn}
+          Your Turn
+        {:else}
+          {activePlayer?.name}'s Turn
         {/if}
       </div>
-    {/if}
+    </div>
 
-    {#if selectingTarget}
-      <TargetSelector 
-        validTargets={getLocalValidTargets()} 
-        onSelect={selectTarget}
-        onCancel={cancelSelection}
-        cardName={getCardDefinition(pendingCardId!)?.name || ''}
-      />
-    {/if}
-
-    {#if selectingGuess}
-      <GuessSelector 
-        onSelect={selectGuess}
-        onCancel={cancelSelection}
-        players={gameState.players}
-        localPlayerId={localPlayerId}
-      />
-    {/if}
-
-    {#if isMyRevengeGuess}
-      <GuessSelector 
-        onSelect={selectRevengeGuess}
-        onCancel={() => {}}
-        title="🍪 Revenge Guess!"
-        subtitle="The Guard (🍪) missed - now guess {revengeTargetPlayer?.name}'s card!"
-        showCancel={false}
-        headerStyle="revenge"
-        players={gameState.players}
-        localPlayerId={localPlayerId}
-        originalGuess={gameState.revengeGuess?.originalGuess}
-      />
-    {/if}
-  </div>
-
-  <!-- Local player hand -->
-  <div class="player-hand-area">
-    <div class="hand">
-      {#each localPlayer?.hand || [] as cardId, index}
-        <Card 
-          {cardId}
-          isSelected={selectedCard === cardId}
-          isPlayable={canPlay}
-          onClick={() => selectCard(cardId)}
-          delay={index * 100}
+    <!-- Players area (includes local player and opponents) -->
+    <div class="opponents-area">
+      {#each allPlayersClockwise as player (player.id)}
+        <PlayerArea
+          {player}
+          isActive={gameState.players[gameState.activePlayerIndex]?.id ===
+            player.id}
+          isTargetable={selectingTarget &&
+            player.id !== localPlayerId &&
+            validTargetIds.has(player.id)}
+          onSelect={() => selectTarget(player.id)}
+          isCardEffectActor={cardEffectAnimation.actorId === player.id}
+          isCardEffectTarget={cardEffectAnimation.targetId === player.id}
+          cardEffectId={cardEffectAnimation.cardId}
         />
       {/each}
-      {#if localPlayer?.hand.length === 0 && gameState.phase !== 'LOBBY'}
-        <div class="empty-hand">
+    </div>
+
+    <!-- Center area - deck and messages -->
+    <div class="center-area">
+      <div class="deck-area">
+        <div
+          class="deck"
+          class:can-draw={gameState.phase === 'TURN_START' && isMyTurn}
+        >
+          <button
+            class="deck-card"
+            onclick={handleDraw}
+            aria-label="Draw a card"
+          >
+            <span class="deck-icon">📚</span>
+            <span class="deck-count">{displayedDeckCount}</span>
+          </button>
           {#if gameState.phase === 'TURN_START' && isMyTurn}
-            Draw a card to begin
+            <div class="draw-prompt">Click to draw!</div>
+          {/if}
+        </div>
+      </div>
+
+      {#if gameState.phase === 'LOBBY' || (gameState.phase === 'ROUND_END' && gameState.winnerIds.length === 0)}
+        <div class="start-area">
+          {#if isHost}
+            <button class="start-round-btn" onclick={handleStartRound}>
+              {gameState.roundCount === 0 ? 'Start Game' : 'Next Round'}
+            </button>
           {:else}
-            Waiting...
+            <p class="waiting-msg">Waiting for host to start...</p>
           {/if}
         </div>
       {/if}
+
+      {#if gameState.phase === 'GAME_END'}
+        <div class="winner-banner">
+          <div class="winner-icon">👑</div>
+          <div class="winner-text">
+            {#if gameState.winnerIds.length === 1}
+              {gameState.players.find((p) => p.id === gameState.winnerIds[0])
+                ?.name} wins!
+            {:else}
+              {formatPlayerNames(
+                gameState.winnerIds
+                  .map((id) => gameState.players.find((p) => p.id === id)?.name)
+                  .filter((n): n is string => !!n),
+              )} win!
+            {/if}
+          </div>
+          {#if isHost && onPlayAgain}
+            <button class="play-again-btn" onclick={onPlayAgain}>
+              🔄 Play Again
+            </button>
+          {:else if !isHost}
+            <p class="waiting-restart">Waiting for host to restart...</p>
+          {/if}
+        </div>
+      {/if}
+
+      {#if selectingTarget}
+        <TargetSelector
+          validTargets={getLocalValidTargets()}
+          onSelect={selectTarget}
+          onCancel={cancelSelection}
+          cardName={getCardDefinition(pendingCardId!)?.name || ''}
+        />
+      {/if}
+
+      {#if selectingGuess}
+        <GuessSelector
+          onSelect={selectGuess}
+          onCancel={cancelSelection}
+          players={gameState.players}
+          {localPlayerId}
+        />
+      {/if}
+
+      {#if isMyRevengeGuess}
+        <GuessSelector
+          onSelect={selectRevengeGuess}
+          onCancel={() => {}}
+          title="🍪 Revenge Guess!"
+          subtitle="The Guard (🍪) missed - now guess {revengeTargetPlayer?.name}'s card!"
+          showCancel={false}
+          headerStyle="revenge"
+          players={gameState.players}
+          {localPlayerId}
+          originalGuess={gameState.revengeGuess?.originalGuess}
+        />
+      {/if}
     </div>
+
+    <!-- Local player hand -->
+    <div class="player-hand-area">
+      <div class="hand">
+        {#each localPlayer?.hand || [] as cardId, index (index)}
+          <Card
+            {cardId}
+            isSelected={selectedCard === cardId}
+            isPlayable={canPlay}
+            onClick={() => selectCard(cardId)}
+            delay={index * 100}
+          />
+        {/each}
+        {#if localPlayer?.hand.length === 0 && gameState.phase !== 'LOBBY'}
+          <div class="empty-hand">
+            {#if gameState.phase === 'TURN_START' && isMyTurn}
+              Draw a card to begin
+            {:else}
+              Waiting...
+            {/if}
+          </div>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Game Feed overlay for log messages -->
+    <GameFeed
+      logs={gameState.logs}
+      players={gameState.players}
+      {localPlayerId}
+    />
+
+    <!-- Game menu (log + chat) -->
+    <GameMenu
+      logs={gameState.logs}
+      players={gameState.players}
+      {localPlayerId}
+      {onSendChat}
+    />
+
+    <!-- Card reveal modal (for Priest) - only show to the player who played Priest -->
+    {#if revealed && revealed.viewerPlayerId === localPlayerId}
+      <CardReveal
+        cardId={revealed.cardId}
+        playerName={revealed.playerName}
+        onDismiss={clearRevealedCard}
+      />
+    {/if}
+
+    <!-- Elimination modal - show when local player is eliminated -->
+    <EliminationModal player={localPlayer} />
+
+    <!-- Chancellor modal - show when in chancellor phase -->
+    {#if isChancellorPhase && localPlayer}
+      <ChancellorModal
+        playerHand={localPlayer.hand}
+        cardsToReturnCount={localPlayer.hand.length - 1}
+        onConfirmReturn={handleChancellorReturn}
+      />
+    {/if}
+
+    <!-- Deck info modal - show when clicking on deck -->
+    {#if showDeckInfoModal}
+      <DeckInfoModal {gameState} onClose={() => (showDeckInfoModal = false)} />
+    {/if}
+
+    <!-- Countess rule modal - show when player tries to play King/Prince while holding Countess -->
+    {#if showCountessRuleModal}
+      <CountessRuleModal
+        conflictingCard={countessConflictCard}
+        onDismiss={() => (showCountessRuleModal = false)}
+      />
+    {/if}
   </div>
-
-  <!-- Game Feed overlay for log messages -->
-  <GameFeed logs={gameState.logs} players={gameState.players} {localPlayerId} />
-
-  <!-- Game menu (log + chat) -->
-  <GameMenu logs={gameState.logs} players={gameState.players} {localPlayerId} {onSendChat} />
-  
-  <!-- Card reveal modal (for Priest) - only show to the player who played Priest -->
-  {#if revealed && revealed.viewerPlayerId === localPlayerId}
-    <CardReveal 
-      cardId={revealed.cardId}
-      playerName={revealed.playerName}
-      onDismiss={clearRevealedCard}
-    />
-  {/if}
-  
-  <!-- Elimination modal - show when local player is eliminated -->
-  <EliminationModal player={localPlayer} />
-  
-  <!-- Chancellor modal - show when in chancellor phase -->
-  {#if isChancellorPhase && localPlayer}
-    <ChancellorModal
-      playerHand={localPlayer.hand}
-      cardsToReturnCount={localPlayer.hand.length - 1}
-      onConfirmReturn={handleChancellorReturn}
-    />
-  {/if}
-
-  <!-- Deck info modal - show when clicking on deck -->
-  {#if showDeckInfoModal}
-    <DeckInfoModal
-      {gameState}
-      onClose={() => showDeckInfoModal = false}
-    />
-  {/if}
-  
-  <!-- Countess rule modal - show when player tries to play King/Prince while holding Countess -->
-  {#if showCountessRuleModal}
-    <CountessRuleModal
-      conflictingCard={countessConflictCard}
-      onDismiss={() => showCountessRuleModal = false}
-    />
-  {/if}
-</div>
 {:else}
   <div class="loading-screen">
     <p>Loading game...</p>
@@ -491,8 +578,13 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 5px rgba(102, 126, 234, 0.5); }
-    50% { box-shadow: 0 0 20px rgba(102, 126, 234, 0.8); }
+    0%,
+    100% {
+      box-shadow: 0 0 5px rgba(102, 126, 234, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(102, 126, 234, 0.8);
+    }
   }
 
   /* Opponents area */
@@ -544,7 +636,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    box-shadow: 
+    box-shadow:
       0 4px 15px rgba(0, 0, 0, 0.3),
       inset 0 2px 4px rgba(255, 255, 255, 0.1);
     cursor: pointer;
@@ -557,11 +649,16 @@
   }
 
   @keyframes deck-pulse {
-    0%, 100% { 
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 10px rgba(116, 185, 255, 0.3);
+    0%,
+    100% {
+      box-shadow:
+        0 4px 15px rgba(0, 0, 0, 0.3),
+        0 0 10px rgba(116, 185, 255, 0.3);
     }
-    50% { 
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 25px rgba(116, 185, 255, 0.6);
+    50% {
+      box-shadow:
+        0 4px 15px rgba(0, 0, 0, 0.3),
+        0 0 25px rgba(116, 185, 255, 0.6);
     }
   }
 
@@ -584,8 +681,13 @@
   }
 
   @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
   }
 
   .start-area {
@@ -625,9 +727,17 @@
   }
 
   @keyframes winner-pop {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   .winner-icon {
@@ -667,7 +777,12 @@
 
   /* Player hand area */
   .player-hand-area {
-    background: linear-gradient(180deg, rgba(26, 26, 46, 0) 0%, rgba(26, 26, 46, 0.95) 20%, #1a1a2e 100%);
+    background: linear-gradient(
+      180deg,
+      rgba(26, 26, 46, 0) 0%,
+      rgba(26, 26, 46, 0.95) 20%,
+      #1a1a2e 100%
+    );
     padding: 1rem;
     margin: 0 -1rem -1rem -1rem;
   }

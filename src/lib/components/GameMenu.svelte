@@ -1,20 +1,28 @@
 <script lang="ts">
   import type { LogEntry, PlayerState } from '../types';
-  import type { ChatMessage } from '../stores/chat';
-  import { chatMessages, unreadChatCount, clearUnreadChatCount } from '../stores/chat';
+  import {
+    chatMessages,
+    unreadChatCount,
+    clearUnreadChatCount,
+  } from '../stores/chat';
 
   const SCROLL_DELAY_MS = 100;
-  
+
   // Color for the local player's actions (red to stand out)
   const LOCAL_PLAYER_COLOR = '#FF4444';
 
-  let { logs = [], players = [], localPlayerId = '', onSendChat = undefined }: {
+  let {
+    logs = [],
+    players = [],
+    localPlayerId = '',
+    onSendChat = undefined,
+  }: {
     logs?: LogEntry[];
     players?: PlayerState[];
     localPlayerId?: string;
     onSendChat?: ((text: string) => void) | undefined;
   } = $props();
-  
+
   let isMenuOpen = $state(false);
   let activeModal = $state<'log' | 'chat' | null>(null);
   let logsContainer = $state<HTMLDivElement>(undefined!);
@@ -31,7 +39,12 @@
 
   // Only scroll to bottom when the log modal is first opened
   $effect(() => {
-    if (logsContainer && logs.length && activeModal === 'log' && !hasScrolledLogOnOpen) {
+    if (
+      logsContainer &&
+      logs.length &&
+      activeModal === 'log' &&
+      !hasScrolledLogOnOpen
+    ) {
       setTimeout(() => {
         logsContainer.scrollTop = logsContainer.scrollHeight;
         hasScrolledLogOnOpen = true;
@@ -41,7 +54,12 @@
 
   // Only scroll to bottom when the chat modal is first opened
   $effect(() => {
-    if (chatContainer && messages.length && activeModal === 'chat' && !hasScrolledChatOnOpen) {
+    if (
+      chatContainer &&
+      messages.length &&
+      activeModal === 'chat' &&
+      !hasScrolledChatOnOpen
+    ) {
       setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
         hasScrolledChatOnOpen = true;
@@ -72,24 +90,28 @@
 
   function formatTime(timestamp: number): string {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   }
 
   // Get player by ID
   function getPlayer(playerId: string | undefined): PlayerState | undefined {
     if (!playerId) return undefined;
-    return players.find(p => p.id === playerId);
+    return players.find((p) => p.id === playerId);
   }
 
   // Get the display color for a log entry's actor
   function getActorColor(log: LogEntry): string | null {
     if (!log.actorId) return null;
-    
+
     // If this is the local player's action, use red
     if (log.actorId === localPlayerId) {
       return LOCAL_PLAYER_COLOR;
     }
-    
+
     // Otherwise use the player's assigned color
     const player = getPlayer(log.actorId);
     return player?.color || null;
@@ -126,18 +148,30 @@
   <!-- Expanded Menu Items (The "Two Bubbles") -->
   {#if isMenuOpen}
     <div class="menu-items">
-      <button class="mini-fab exit-fab" onclick={handleExitGame} aria-label="Exit game">
+      <button
+        class="mini-fab exit-fab"
+        onclick={handleExitGame}
+        aria-label="Exit game"
+      >
         <span class="mini-fab-icon">🚪</span>
         <span class="tooltip">Exit</span>
       </button>
-      <button class="mini-fab chat-fab" onclick={() => openModal('chat')} aria-label="Open chat">
+      <button
+        class="mini-fab chat-fab"
+        onclick={() => openModal('chat')}
+        aria-label="Open chat"
+      >
         <span class="mini-fab-icon">💬</span>
         <span class="tooltip">Chat</span>
         {#if unreadChats > 0}
           <span class="mini-badge">{unreadChats}</span>
         {/if}
       </button>
-      <button class="mini-fab log-fab-mini" onclick={() => openModal('log')} aria-label="Open game log">
+      <button
+        class="mini-fab log-fab-mini"
+        onclick={() => openModal('log')}
+        aria-label="Open game log"
+      >
         <span class="mini-fab-icon">📜</span>
         <span class="tooltip">Log</span>
         {#if unreadLogs > 0}
@@ -148,7 +182,12 @@
   {/if}
 
   <!-- Main Toggle Button -->
-  <button class="main-fab" class:open={isMenuOpen} onclick={toggleMenu} aria-label="Toggle menu">
+  <button
+    class="main-fab"
+    class:open={isMenuOpen}
+    onclick={toggleMenu}
+    aria-label="Toggle menu"
+  >
     <span class="fab-icon">{isMenuOpen ? '✕' : '☰'}</span>
   </button>
 </div>
@@ -156,30 +195,51 @@
 <!-- Log Modal -->
 {#if activeModal === 'log'}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div class="modal-overlay" onclick={closeModal} onkeydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
+  <div
+    class="modal-overlay"
+    onclick={closeModal}
+    onkeydown={(e) => e.key === 'Escape' && closeModal()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="0"
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <div class="modal-content" onclick={(e) => e.stopPropagation()} role="document">
+    <div
+      class="modal-content"
+      onclick={(e) => e.stopPropagation()}
+      role="document"
+    >
       <div class="modal-header">
         <span class="modal-title">📜 Game Log</span>
-        <button class="close-btn" onclick={closeModal} aria-label="Close log">✕</button>
+        <button class="close-btn" onclick={closeModal} aria-label="Close log"
+          >✕</button
+        >
       </div>
-      
+
       <div class="modal-body" bind:this={logsContainer}>
-        {#each logs as log}
+        {#each logs as log, i (i)}
           <div class="log-entry">
             <span class="entry-time">{formatTime(log.timestamp)}</span>
             {#if log.actorId === localPlayerId}
-              <span class="entry-message self-action">You {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "your ")}</span>
+              <span class="entry-message self-action"
+                >You {log.message
+                  .replace(getActorName(log) + ' ', '')
+                  .replace(getActorName(log) + "'s ", 'your ')}</span
+              >
             {:else if getActorName(log)}
               <span class="entry-message">
-                <span class="actor-name" style="color: {getActorColor(log)}">{getActorName(log)}</span>: {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "'s ")}
+                <span class="actor-name" style="color: {getActorColor(log)}"
+                  >{getActorName(log)}</span
+                >: {log.message
+                  .replace(getActorName(log) + ' ', '')
+                  .replace(getActorName(log) + "'s ", "'s ")}
               </span>
             {:else}
               <span class="entry-message">{log.message}</span>
             {/if}
           </div>
         {/each}
-        
+
         {#if logs.length === 0}
           <div class="empty-state">No game events yet...</div>
         {/if}
@@ -191,37 +251,57 @@
 <!-- Chat Modal -->
 {#if activeModal === 'chat'}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-  <div class="modal-overlay" onclick={closeModal} onkeydown={(e) => e.key === 'Escape' && closeModal()} role="dialog" aria-modal="true" tabindex="0">
+  <div
+    class="modal-overlay"
+    onclick={closeModal}
+    onkeydown={(e) => e.key === 'Escape' && closeModal()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="0"
+  >
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-    <div class="modal-content chat-modal" onclick={(e) => e.stopPropagation()} role="document">
+    <div
+      class="modal-content chat-modal"
+      onclick={(e) => e.stopPropagation()}
+      role="document"
+    >
       <div class="modal-header">
         <span class="modal-title">💬 Chat</span>
-        <button class="close-btn" onclick={closeModal} aria-label="Close chat">✕</button>
+        <button class="close-btn" onclick={closeModal} aria-label="Close chat"
+          >✕</button
+        >
       </div>
-      
+
       <div class="modal-body chat-body" bind:this={chatContainer}>
-        {#each messages as msg}
+        {#each messages as msg (msg.timestamp)}
           <div class="chat-entry">
             <span class="chat-sender">{msg.senderName}</span>
             <span class="chat-text">{msg.text}</span>
             <span class="chat-time">{formatTime(msg.timestamp)}</span>
           </div>
         {/each}
-        
+
         {#if messages.length === 0}
-          <div class="empty-state">No messages yet. Start the conversation!</div>
+          <div class="empty-state">
+            No messages yet. Start the conversation!
+          </div>
         {/if}
       </div>
-      
+
       <div class="chat-input-area">
-        <input 
-          type="text" 
-          class="chat-input" 
-          placeholder="Type a message..." 
+        <input
+          type="text"
+          class="chat-input"
+          placeholder="Type a message..."
           bind:value={chatInput}
           onkeydown={handleKeydown}
         />
-        <button class="send-btn" onclick={handleSendChat} aria-label="Send message" disabled={isChatInputEmpty}>
+        <button
+          class="send-btn"
+          onclick={handleSendChat}
+          aria-label="Send message"
+          disabled={isChatInputEmpty}
+        >
           ➤
         </button>
       </div>
@@ -387,8 +467,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   /* Modal Content */
@@ -409,8 +493,12 @@
   }
 
   @keyframes modal-slide-up {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
   }
 
   .modal-header {
@@ -488,7 +576,7 @@
   }
 
   .self-action {
-    color: #FF4444;
+    color: #ff4444;
     font-weight: 600;
   }
 

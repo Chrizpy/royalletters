@@ -20,7 +20,6 @@ import {
 } from './player';
 import {
   type EffectContext,
-  addLog as addLogUtil,
   effectHandlers,
   applyRevengeGuess,
   applyTradeWithBurnedCard,
@@ -50,7 +49,7 @@ export class GameEngine {
       rngSeed: '',
       roundCount: 0,
       ruleset: 'classic',
-      tokensToWin: 4,  // Default, will be set properly in init()
+      tokensToWin: 4, // Default, will be set properly in init()
     };
   }
 
@@ -63,7 +62,7 @@ export class GameEngine {
     // Calculate default tokens to win based on player count
     const playerCount = players.length;
     const defaultTokensToWin = getTokensToWin(playerCount);
-    
+
     this.state = {
       ...this.createEmptyState(),
       players,
@@ -93,7 +92,7 @@ export class GameEngine {
 
     // Burn one card face-down
     this.state.burnedCard = this.state.deck.shift() || null;
-    
+
     // For 2-player games, burn 3 additional cards face-up
     this.state.burnedCardsFaceUp = [];
     if (this.state.players.length === 2) {
@@ -104,7 +103,9 @@ export class GameEngine {
         }
       }
       if (this.state.burnedCardsFaceUp.length > 0) {
-        this.addLog(`Burned face-up: ${this.state.burnedCardsFaceUp.map(c => getCardDefinition(c)?.name).join(', ')}`);
+        this.addLog(
+          `Burned face-up: ${this.state.burnedCardsFaceUp.map((c) => getCardDefinition(c)?.name).join(', ')}`,
+        );
       }
     }
 
@@ -122,13 +123,15 @@ export class GameEngine {
     // Default to player 0, but if there was a winner in the last round, they start
     this.state.activePlayerIndex = 0;
     if (this.state.lastRoundWinnerId) {
-      const winnerIndex = this.state.players.findIndex(p => p.id === this.state.lastRoundWinnerId);
+      const winnerIndex = this.state.players.findIndex(
+        (p) => p.id === this.state.lastRoundWinnerId,
+      );
       if (winnerIndex !== -1) {
         this.state.activePlayerIndex = winnerIndex;
       }
     }
     this.state.phase = 'TURN_START';
-    
+
     // Clear any chancellor state from previous round
     this.state.chancellorCards = undefined;
 
@@ -162,14 +165,27 @@ export class GameEngine {
   /**
    * Validate if a move is legal
    */
-  validateMove(playerId: string, action: GameAction): { valid: boolean; error?: string } {
+  validateMove(
+    playerId: string,
+    action: GameAction,
+  ): { valid: boolean; error?: string } {
     // Handle Chancellor return action
     if (action.type === 'CHANCELLOR_RETURN') {
-      return validateChancellorReturn(playerId, action, this.state, this.getActivePlayer());
+      return validateChancellorReturn(
+        playerId,
+        action,
+        this.state,
+        this.getActivePlayer(),
+      );
     }
-    
+
     // Delegate to validation module
-    return validateCardPlay(this.state, playerId, action, this.getActivePlayer());
+    return validateCardPlay(
+      this.state,
+      playerId,
+      action,
+      this.getActivePlayer(),
+    );
   }
 
   /**
@@ -180,12 +196,12 @@ export class GameEngine {
     if (action.type === 'CHANCELLOR_RETURN') {
       return this.applyChancellorReturnAction(action);
     }
-    
+
     // Handle Revenge guess action (tillbakakaka)
     if (action.type === 'REVENGE_GUESS') {
       return this.applyRevengeGuessAction(action);
     }
-    
+
     const validation = this.validateMove(action.playerId, action);
     if (!validation.valid) {
       return {
@@ -213,25 +229,46 @@ export class GameEngine {
 
     // Log the play with target if applicable
     if (action.targetPlayerId) {
-      const targetPlayer = this.state.players.find(p => p.id === action.targetPlayerId);
+      const targetPlayer = this.state.players.find(
+        (p) => p.id === action.targetPlayerId,
+      );
       if (targetPlayer) {
-        this.addLog(`${activePlayer.name} played ${cardDef.name} on ${targetPlayer.name}`, activePlayer.id, action.cardId);
+        this.addLog(
+          `${activePlayer.name} played ${cardDef.name} on ${targetPlayer.name}`,
+          activePlayer.id,
+          action.cardId,
+        );
       } else {
-        this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
+        this.addLog(
+          `${activePlayer.name} played ${cardDef.name}`,
+          activePlayer.id,
+          action.cardId,
+        );
       }
     } else {
-      this.addLog(`${activePlayer.name} played ${cardDef.name}`, activePlayer.id, action.cardId);
+      this.addLog(
+        `${activePlayer.name} played ${cardDef.name}`,
+        activePlayer.id,
+        action.cardId,
+      );
     }
 
     // Check if card requires target but no target was provided (all players protected/eliminated)
     if (cardDef.effect.requiresTargetPlayer && !action.targetPlayerId) {
       // House rules: King swaps with burned card when no valid targets
-      if (cardDef.effect.type === 'TRADE_HANDS' && this.state.ruleset === 'house' && this.state.burnedCard) {
+      if (
+        cardDef.effect.type === 'TRADE_HANDS' &&
+        this.state.ruleset === 'house' &&
+        this.state.burnedCard
+      ) {
         const effectResult = applyTradeWithBurnedCard(activePlayer, this.state);
         result = this.toActionResult(effectResult);
       } else {
         // Card fizzles - no valid targets available
-        this.addLog(`${cardDef.name} had no effect (no valid targets)`, activePlayer.id);
+        this.addLog(
+          `${cardDef.name} had no effect (no valid targets)`,
+          activePlayer.id,
+        );
         result = {
           success: true,
           message: `${cardDef.name} had no effect - all other players are protected or eliminated`,
@@ -252,7 +289,10 @@ export class GameEngine {
         const effectResult = handler(context);
 
         // If revenge phase started, don't advance turn yet
-        if (cardDef.effect.type === 'GUESS_CARD_REVENGE' && effectResult.skipTurnAdvance) {
+        if (
+          cardDef.effect.type === 'GUESS_CARD_REVENGE' &&
+          effectResult.skipTurnAdvance
+        ) {
           return this.toActionResult(effectResult);
         }
 
@@ -274,7 +314,11 @@ export class GameEngine {
   /**
    * Convert an EffectResult to an ActionResult
    */
-  private toActionResult(effectResult: { message: string; revealedCard?: string; eliminatedPlayerId?: string }): ActionResult {
+  private toActionResult(effectResult: {
+    message: string;
+    revealedCard?: string;
+    eliminatedPlayerId?: string;
+  }): ActionResult {
     return {
       success: true,
       message: effectResult.message,
@@ -289,7 +333,7 @@ export class GameEngine {
    */
   private applyRevengeGuessAction(action: GameAction): ActionResult {
     const result = applyRevengeGuess(action, this.state);
-    
+
     if (!result.success) {
       return {
         success: false,
@@ -297,10 +341,10 @@ export class GameEngine {
         newState: this.state,
       };
     }
-    
+
     // Advance turn after revenge guess
     this.advanceTurn();
-    
+
     return {
       success: true,
       message: result.message,
@@ -313,7 +357,12 @@ export class GameEngine {
    * Apply Chancellor return action using extracted handler
    */
   private applyChancellorReturnAction(action: GameAction): ActionResult {
-    const validation = validateChancellorReturn(action.playerId, action, this.state, this.getActivePlayer());
+    const validation = validateChancellorReturn(
+      action.playerId,
+      action,
+      this.state,
+      this.getActivePlayer(),
+    );
     if (!validation.valid) {
       return {
         success: false,
@@ -321,13 +370,17 @@ export class GameEngine {
         newState: this.state,
       };
     }
-    
+
     const activePlayer = this.getActivePlayer()!;
-    const effectResult = applyChancellorReturn(action, this.state, activePlayer);
-    
+    const effectResult = applyChancellorReturn(
+      action,
+      this.state,
+      activePlayer,
+    );
+
     // Advance turn after Chancellor return
     this.advanceTurn();
-    
+
     return this.toActionResult(effectResult);
   }
 
@@ -349,7 +402,7 @@ export class GameEngine {
       if (player.status !== 'ELIMINATED') {
         this.state.activePlayerIndex = nextIndex;
         this.state.phase = 'TURN_START';
-        
+
         // Reset protection status for the NEW active player (protection lasts until their next turn)
         if (player.status === 'PROTECTED') {
           player.status = 'PLAYING';
@@ -423,31 +476,33 @@ export class GameEngine {
         winner.tokens++;
         winner.status = 'WON_ROUND';
       }
-      
+
       // Set lastRoundWinnerId to first winner (for turn order in next round)
       // When there's a tie, the first winner in player order starts the next round
       this.state.lastRoundWinnerId = winners[0].id;
-      
+
       // Log appropriate message with card info
       const winningCard = winners[0].hand[0];
       const cardDef = getCardDefinition(winningCard);
-      const cardInfo = cardDef ? `${cardDef.name} (${cardDef.value})` : winningCard;
-      
+      const cardInfo = cardDef
+        ? `${cardDef.name} (${cardDef.value})`
+        : winningCard;
+
       if (winners.length === 1) {
         this.addLog(`${winners[0].name} won with ${cardInfo}!`, winners[0].id);
       } else {
-        const winnerNames = formatPlayerNames(winners.map(w => w.name));
+        const winnerNames = formatPlayerNames(winners.map((w) => w.name));
         this.addLog(`${winnerNames} tied with ${cardInfo}!`);
       }
     }
-    
+
     // Check for Spy bonus (only in 2019 ruleset)
     this.checkSpyBonus();
-    
+
     // Check if game is over
     this.checkGameEnd();
   }
-  
+
   /**
    * Check for Spy bonus at end of round
    * If exactly one non-eliminated player has a Spy in their discard pile, they gain a token
@@ -457,15 +512,22 @@ export class GameEngine {
     if (this.state.ruleset !== '2019' && this.state.ruleset !== 'house') {
       return;
     }
-    
+
     // Find all non-eliminated players who have Spy in their discard pile
-    const playersWithSpy = getPlayersWithCardInDiscard(this.state.players, SPY, true);
-    
+    const playersWithSpy = getPlayersWithCardInDiscard(
+      this.state.players,
+      SPY,
+      true,
+    );
+
     // If exactly one non-eliminated player has a Spy, they get a bonus token
     if (playersWithSpy.length === 1) {
       const spyPlayer = playersWithSpy[0];
       spyPlayer.tokens++;
-      this.addLog(`${spyPlayer.name} gained a token from Spy bonus!`, spyPlayer.id);
+      this.addLog(
+        `${spyPlayer.name} gained a token from Spy bonus!`,
+        spyPlayer.id,
+      );
     }
   }
 
@@ -476,38 +538,47 @@ export class GameEngine {
     const tokensNeeded = this.state.tokensToWin;
 
     // Find all players who have reached the token threshold
-    const qualifyingPlayers = this.state.players.filter(p => p.tokens >= tokensNeeded);
-    
+    const qualifyingPlayers = this.state.players.filter(
+      (p) => p.tokens >= tokensNeeded,
+    );
+
     if (qualifyingPlayers.length === 0) {
       return; // No one has won yet
     }
-    
+
     // If only one player reached the threshold, they win
     if (qualifyingPlayers.length === 1) {
       this.state.phase = 'GAME_END';
       this.state.winnerIds = [qualifyingPlayers[0].id];
-      this.addLog(`${qualifyingPlayers[0].name} won the game!`, qualifyingPlayers[0].id);
+      this.addLog(
+        `${qualifyingPlayers[0].name} won the game!`,
+        qualifyingPlayers[0].id,
+      );
       return;
     }
-    
+
     // Multiple players reached threshold - apply Spy bonus priority rule
     // Only players who won the round (status WON_ROUND) are considered winners
-    const roundWinners = qualifyingPlayers.filter(p => p.status === 'WON_ROUND');
-    
+    const roundWinners = qualifyingPlayers.filter(
+      (p) => p.status === 'WON_ROUND',
+    );
+
     if (roundWinners.length > 0) {
       // If any qualifying players won the round, only they are winners
       this.state.phase = 'GAME_END';
-      this.state.winnerIds = roundWinners.map(p => p.id);
-      
-      const winnerNames = formatPlayerNames(roundWinners.map(w => w.name));
+      this.state.winnerIds = roundWinners.map((p) => p.id);
+
+      const winnerNames = formatPlayerNames(roundWinners.map((w) => w.name));
       this.addLog(`${winnerNames} win the game!`);
     } else {
       // All qualifying players reached threshold via Spy bonus only
       // This is an edge case - all win
       this.state.phase = 'GAME_END';
-      this.state.winnerIds = qualifyingPlayers.map(p => p.id);
-      
-      const winnerNames = formatPlayerNames(qualifyingPlayers.map(w => w.name));
+      this.state.winnerIds = qualifyingPlayers.map((p) => p.id);
+
+      const winnerNames = formatPlayerNames(
+        qualifyingPlayers.map((w) => w.name),
+      );
       this.addLog(`${winnerNames} win the game!`);
     }
   }

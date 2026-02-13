@@ -40,11 +40,11 @@ describe('rng', () => {
     it('produces different values on consecutive calls', () => {
       const rng = createRng('test-seed');
       const values = new Set<number>();
-      
+
       for (let i = 0; i < 10; i++) {
         values.add(rng());
       }
-      
+
       // Should have 10 unique values (extremely unlikely to have duplicates)
       expect(values.size).toBe(10);
     });

@@ -7,7 +7,7 @@ import {
   clearSession,
   hasValidSession,
   getSessionAge,
-  type GameSession
+  type GameSession,
 } from './session';
 
 // Mock localStorage
@@ -15,9 +15,15 @@ const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: vi.fn((key: string) => store[key] || null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
-    removeItem: vi.fn((key: string) => { delete store[key]; }),
-    clear: () => { store = {}; }
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: () => {
+      store = {};
+    },
   };
 })();
 
@@ -35,7 +41,7 @@ describe('Session Store', () => {
       const session = {
         guestPeerId: 'guest-abc',
         hostPeerId: 'host-xyz',
-        nickname: 'Player1'
+        nickname: 'Player1',
       };
 
       saveSession(session);
@@ -52,7 +58,7 @@ describe('Session Store', () => {
       const session = {
         guestPeerId: 'guest-abc',
         hostPeerId: 'host-xyz',
-        nickname: 'Player1'
+        nickname: 'Player1',
       };
 
       saveSession(session);
@@ -74,7 +80,7 @@ describe('Session Store', () => {
         guestPeerId: 'guest-abc',
         hostPeerId: 'host-xyz',
         nickname: 'Player1',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       localStorageMock.setItem('royalletters_session', JSON.stringify(session));
 
@@ -89,25 +95,37 @@ describe('Session Store', () => {
         guestPeerId: 'guest-abc',
         hostPeerId: 'host-xyz',
         nickname: 'Player1',
-        timestamp: Date.now() - (31 * 60 * 1000) // 31 minutes ago
+        timestamp: Date.now() - 31 * 60 * 1000, // 31 minutes ago
       };
-      localStorageMock.setItem('royalletters_session', JSON.stringify(expiredSession));
+      localStorageMock.setItem(
+        'royalletters_session',
+        JSON.stringify(expiredSession),
+      );
 
       const result = loadSession();
 
       expect(result).toBeNull();
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('royalletters_session');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+        'royalletters_session',
+      );
     });
   });
 
   describe('clearSession', () => {
     it('should remove session from localStorage', () => {
       clearSession();
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('royalletters_session');
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith(
+        'royalletters_session',
+      );
     });
 
     it('should set savedSession store to null', () => {
-      savedSession.set({ guestPeerId: 'test', hostPeerId: 'host', nickname: 'Test', timestamp: Date.now() });
+      savedSession.set({
+        guestPeerId: 'test',
+        hostPeerId: 'host',
+        nickname: 'Test',
+        timestamp: Date.now(),
+      });
       clearSession();
       expect(get(savedSession)).toBeNull();
     });
@@ -123,7 +141,7 @@ describe('Session Store', () => {
         guestPeerId: 'guest-abc',
         hostPeerId: 'host-xyz',
         nickname: 'Player1',
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       localStorageMock.setItem('royalletters_session', JSON.stringify(session));
 
@@ -137,7 +155,7 @@ describe('Session Store', () => {
         guestPeerId: 'test',
         hostPeerId: 'host',
         nickname: 'Test',
-        timestamp: Date.now() - 30000 // 30 seconds ago
+        timestamp: Date.now() - 30000, // 30 seconds ago
       };
       expect(getSessionAge(session)).toBe('just now');
     });
@@ -147,7 +165,7 @@ describe('Session Store', () => {
         guestPeerId: 'test',
         hostPeerId: 'host',
         nickname: 'Test',
-        timestamp: Date.now() - 60000 // 1 minute ago
+        timestamp: Date.now() - 60000, // 1 minute ago
       };
       expect(getSessionAge(session)).toBe('1 minute ago');
     });
@@ -157,7 +175,7 @@ describe('Session Store', () => {
         guestPeerId: 'test',
         hostPeerId: 'host',
         nickname: 'Test',
-        timestamp: Date.now() - (15 * 60000) // 15 minutes ago
+        timestamp: Date.now() - 15 * 60000, // 15 minutes ago
       };
       expect(getSessionAge(session)).toBe('15 minutes ago');
     });
@@ -167,10 +185,9 @@ describe('Session Store', () => {
         guestPeerId: 'test',
         hostPeerId: 'host',
         nickname: 'Test',
-        timestamp: Date.now() - (60 * 60000) // 1 hour ago
+        timestamp: Date.now() - 60 * 60000, // 1 hour ago
       };
       expect(getSessionAge(session)).toBe('1 hour ago');
     });
   });
 });
-

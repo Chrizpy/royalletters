@@ -43,8 +43,16 @@ describe('deck', () => {
 
     it('returns all expected cards', () => {
       const expectedCards = [
-        'spy', 'guard', 'priest', 'baron', 'handmaid',
-        'prince', 'chancellor', 'king', 'countess', 'princess'
+        'spy',
+        'guard',
+        'priest',
+        'baron',
+        'handmaid',
+        'prince',
+        'chancellor',
+        'king',
+        'countess',
+        'princess',
       ];
       for (const cardId of expectedCards) {
         expect(getCardDefinition(cardId)).toBeDefined();
@@ -95,10 +103,13 @@ describe('deck', () => {
 
     it('classic deck has correct card distribution', () => {
       const deck = createDeck('classic');
-      const counts = deck.reduce((acc, card) => {
-        acc[card] = (acc[card] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const counts = deck.reduce(
+        (acc, card) => {
+          acc[card] = (acc[card] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
       expect(counts['guard']).toBe(5);
       expect(counts['priest']).toBe(2);
@@ -119,7 +130,10 @@ describe('deck', () => {
     });
 
     it('throws error for unknown ruleset', () => {
-      expect(() => createDeck('invalid' as any)).toThrow('Unknown ruleset: invalid');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(() => createDeck('invalid' as any)).toThrow(
+        'Unknown ruleset: invalid',
+      );
     });
 
     it('defaults to classic ruleset', () => {

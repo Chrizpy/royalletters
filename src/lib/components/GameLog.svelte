@@ -1,18 +1,22 @@
 <script lang="ts">
   import type { LogEntry, PlayerState } from '../types';
 
-  let { logs = [], players = [], localPlayerId = '' }: {
+  let {
+    logs = [],
+    players = [],
+    localPlayerId = '',
+  }: {
     logs?: LogEntry[];
     players?: PlayerState[];
     localPlayerId?: string;
   } = $props();
-  
+
   // Color for the local player's actions (red to stand out)
   const LOCAL_PLAYER_COLOR = '#FF4444';
-  
+
   // Threshold in pixels for determining if user is "near bottom" of scroll container
   const SCROLL_NEAR_BOTTOM_THRESHOLD = 50;
-  
+
   let isOpen = $state(false);
   let logsContainer = $state<HTMLDivElement>(undefined!);
   let previousLogCount = $state(0);
@@ -20,7 +24,12 @@
 
   // Only auto-scroll when new logs are added and user hasn't scrolled up
   $effect(() => {
-    if (logsContainer && logs.length > previousLogCount && isOpen && !userHasScrolledUp) {
+    if (
+      logsContainer &&
+      logs.length > previousLogCount &&
+      isOpen &&
+      !userHasScrolledUp
+    ) {
       setTimeout(() => {
         if (logsContainer) {
           logsContainer.scrollTop = logsContainer.scrollHeight;
@@ -39,18 +48,18 @@
   // Get player by ID
   function getPlayer(playerId: string | undefined): PlayerState | undefined {
     if (!playerId) return undefined;
-    return players.find(p => p.id === playerId);
+    return players.find((p) => p.id === playerId);
   }
 
   // Get the display color for a log entry's actor
   function getActorColor(log: LogEntry): string | null {
     if (!log.actorId) return null;
-    
+
     // If this is the local player's action, use red
     if (log.actorId === localPlayerId) {
       return LOCAL_PLAYER_COLOR;
     }
-    
+
     // Otherwise use the player's assigned color
     const player = getPlayer(log.actorId);
     return player?.color || null;
@@ -65,9 +74,13 @@
 
   function handleScroll() {
     if (!logsContainer) return;
-    
+
     // Check if user is at or near the bottom
-    const isNearBottom = logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight < SCROLL_NEAR_BOTTOM_THRESHOLD;
+    const isNearBottom =
+      logsContainer.scrollHeight -
+        logsContainer.scrollTop -
+        logsContainer.clientHeight <
+      SCROLL_NEAR_BOTTOM_THRESHOLD;
     userHasScrolledUp = !isNearBottom;
   }
 
@@ -91,7 +104,11 @@
 
   function formatTime(timestamp: number): string {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   }
 </script>
 
@@ -105,29 +122,50 @@
 
 <!-- Log modal overlay -->
 {#if isOpen}
-  <div class="log-overlay" onclick={close} onkeydown={(e) => e.key === 'Escape' && close()} role="dialog" aria-modal="true" tabindex="0">
+  <div
+    class="log-overlay"
+    onclick={close}
+    onkeydown={(e) => e.key === 'Escape' && close()}
+    role="dialog"
+    aria-modal="true"
+    tabindex="0"
+  >
     <div class="log-modal" onclick={(e) => e.stopPropagation()}>
       <div class="log-header">
         <span class="log-title">📜 Game Log</span>
-        <button class="close-btn" onclick={close} aria-label="Close log">✕</button>
+        <button class="close-btn" onclick={close} aria-label="Close log"
+          >✕</button
+        >
       </div>
-      
-      <div class="log-content" bind:this={logsContainer} onscroll={handleScroll}>
-        {#each logs as log}
+
+      <div
+        class="log-content"
+        bind:this={logsContainer}
+        onscroll={handleScroll}
+      >
+        {#each logs as log, i (i)}
           <div class="log-entry">
             <span class="log-time">{formatTime(log.timestamp)}</span>
             {#if log.actorId === localPlayerId}
-              <span class="log-message self-action">You {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "your ")}</span>
+              <span class="log-message self-action"
+                >You {log.message
+                  .replace(getActorName(log) + ' ', '')
+                  .replace(getActorName(log) + "'s ", 'your ')}</span
+              >
             {:else if getActorName(log)}
               <span class="log-message">
-                <span class="actor-name" style="color: {getActorColor(log)}">{getActorName(log)}</span>: {log.message.replace(getActorName(log) + ' ', '').replace(getActorName(log) + "'s ", "'s ")}
+                <span class="actor-name" style="color: {getActorColor(log)}"
+                  >{getActorName(log)}</span
+                >: {log.message
+                  .replace(getActorName(log) + ' ', '')
+                  .replace(getActorName(log) + "'s ", "'s ")}
               </span>
             {:else}
               <span class="log-message">{log.message}</span>
             {/if}
           </div>
         {/each}
-        
+
         {#if logs.length === 0}
           <div class="log-empty">No game events yet...</div>
         {/if}
@@ -197,8 +235,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   /* Modal content */
@@ -215,8 +257,12 @@
   }
 
   @keyframes modal-slide-up {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
   }
 
   .log-header {
@@ -289,7 +335,7 @@
   }
 
   .self-action {
-    color: #FF4444;
+    color: #ff4444;
     font-weight: 600;
   }
 

@@ -10,11 +10,11 @@
 
 ### Summary of Findings
 
-| Severity | Count |
-|----------|-------|
-| 🔴 High | 7 |
-| 🟡 Medium | 12 |
-| 🟢 Low | 9 |
+| Severity  | Count  |
+| --------- | ------ |
+| 🔴 High   | 7      |
+| 🟡 Medium | 12     |
+| 🟢 Low    | 9      |
 | **Total** | **28** |
 
 ---
@@ -45,6 +45,7 @@ The project uses `svelte@^5.43.8` but **all components** use Svelte 4 patterns e
 ### H2. Duplicated `getValidTargets` Function — **Duplicated Code**
 
 **Files:**
+
 - `src/lib/engine/validation.ts` (lines 20–30)
 - `src/lib/engine/ai.ts` (lines 24–34)
 - `src/lib/components/GameScreen.svelte` (lines 296–305)
@@ -70,6 +71,7 @@ All three check the same conditions: `status === 'ELIMINATED'`, `status === 'PRO
 ### H3. Duplicated `tokensToWin` / `getTokensToWin` Logic — **Duplicated Code**
 
 **Files:**
+
 - `src/lib/types.ts` (lines 106–111) — `TOKENS_TO_WIN` constant
 - `src/lib/engine/constants.ts` (lines 21–33) — `TOKENS_TO_WIN_MAP` + `getTokensToWin()`
 - `src/lib/components/GameScreen.svelte` (lines 189–192) — local `getTokensToWin()` function
@@ -107,6 +109,7 @@ At 1,172 lines, `HostLobby.svelte` is the largest file and handles far too many 
 **Impact:** Extremely difficult to test, understand, or modify any single feature without risk of breaking others.
 
 **Recommendation:** Extract into multiple composable pieces:
+
 - A `hostGameManager.ts` (or store) for networking + game lifecycle + AI orchestration
 - A `LobbySettings.svelte` sub-component for ruleset/AI/tokens UI
 - A `PlayerList.svelte` sub-component for player display
@@ -138,6 +141,7 @@ At 854 lines, `GameScreen.svelte` mixes:
 ### H6. Duplicated Name Formatting — **Duplicated Code**
 
 **Files:**
+
 - `src/lib/engine/player.ts` (lines 82–90) — `formatPlayerNames()`
 - `src/lib/components/GameScreen.svelte` (lines 45–52) — `formatWinnerNames()`
 
@@ -145,6 +149,7 @@ At 854 lines, `GameScreen.svelte` mixes:
 **Principles Violated:** DRY
 
 Both functions implement identical Oxford comma formatting logic:
+
 - 0 names → `''`
 - 1 name → `'Alice'`
 - 2 names → `'Alice and Bob'`
@@ -163,7 +168,8 @@ The only difference is `formatWinnerNames` accepts `(string | undefined)[]` and 
 **Principles Violated:** Immutability (per project's own `copilot-instructions.md`), Pure Function principle
 
 The project's `copilot-instructions.md` explicitly states:
-> *"Game state modifications should be handled through functions that return a new state object, promoting immutability."*
+
+> _"Game state modifications should be handled through functions that return a new state object, promoting immutability."_
 
 However, `GameEngine` and all effect handlers **mutate state directly**:
 
@@ -190,6 +196,7 @@ The `getState()` and `setState()` methods use `JSON.parse(JSON.stringify(...))` 
 **Principles Violated:** DRY
 
 The pair `broadcastGameState(); scheduleAIMove();` is called **9 times** throughout `HostLobby.svelte`:
+
 - `handleStartGame()`, `handlePlayCard()`, `handleChancellorReturn()`, `handleRevengeGuess()`, `handleStartRound()`, `handlePlayAgain()`, `handleMessage(PLAYER_ACTION)`, `handleMessage(RECONNECT)`, `processAITurn()`
 
 **Recommendation:** Extract a `commitGameAction()` helper that wraps both calls.
@@ -207,6 +214,7 @@ The `applyMove()` method contains an 11-case switch statement on `cardDef.effect
 **Impact:** Violates Open/Closed Principle. The unused `EffectHandler` interface in `effects/types.ts` suggests an intent to use polymorphism that was never implemented.
 
 **Recommendation:** Implement the Strategy pattern using the existing `EffectHandler` interface and an effect registry map, e.g.:
+
 ```typescript
 const effectHandlers: Record<EffectType, (ctx: EffectContext) => EffectResult> = { ... };
 ```
@@ -216,6 +224,7 @@ const effectHandlers: Record<EffectType, (ctx: EffectContext) => EffectResult> =
 ### M3. UI Components Directly Import Engine Modules — **Architectural Violation / Feature Envy**
 
 **Files:**
+
 - `src/lib/components/GameScreen.svelte` — imports `getCardDefinition` from `engine/deck`
 - `src/lib/components/GuessSelector.svelte` — imports from `engine/deck`
 - `src/lib/components/ChancellorModal.svelte` — imports from `engine/deck`
@@ -227,7 +236,8 @@ const effectHandlers: Record<EffectType, (ctx: EffectContext) => EffectResult> =
 **Principles Violated:** Layered Architecture, GRASP Indirection
 
 The project's `copilot-instructions.md` states:
-> *"UI components should interact with the stores, not the engine directly."*
+
+> _"UI components should interact with the stores, not the engine directly."_
 
 Six components bypass the store layer and directly import `getCardDefinition` from the engine. While this is a read-only lookup and unlikely to cause bugs, it violates the stated architecture.
 
@@ -238,7 +248,7 @@ Six components bypass the store layer and directly import `getCardDefinition` fr
 ### M4. Non-null Assertions (`!`) Overuse — **Afraid to Fail**
 
 **Files:** Throughout engine and effects  
-**Category:** Other — Afraid to Fail  
+**Category:** Other — Afraid to Fail
 
 Frequent use of non-null assertion (`!`) without safety checks:
 
@@ -273,6 +283,7 @@ export interface NetworkMessage {
 The `payload` is typed as `unknown`, requiring unsafe type assertions (`as PlayerJoinedPayload`, `as GameStateSyncPayload`, etc.) at every message handler site. This appears ~15 times across `HostLobby.svelte`, `JoinGame.svelte`, and `sync.ts`.
 
 **Recommendation:** Use a discriminated union:
+
 ```typescript
 type NetworkMessage =
   | { type: 'PLAYER_JOINED'; payload: PlayerJoinedPayload; ... }
@@ -301,7 +312,7 @@ type NetworkMessage =
 ### M7. `JSON.parse(JSON.stringify(...))` for Deep Cloning — **Clever Code**
 
 **File:** `src/lib/engine/game.ts` (lines 557, 564)  
-**Category:** Obfuscator — Clever Code  
+**Category:** Obfuscator — Clever Code
 
 ```typescript
 getState(): GameState {
@@ -342,7 +353,7 @@ if (message.includes(`${playerName} was eliminated`) ||
 ### M9. `_state` Unused Parameter — **Dead Code**
 
 **File:** `src/lib/engine/effects/utils.ts` (line 15)  
-**Category:** Dispensable — Dead Code  
+**Category:** Dispensable — Dead Code
 
 ```typescript
 export function eliminatePlayer(
@@ -406,10 +417,11 @@ Every time an AI needs to make a Guard guess, `getDeckComposition()` creates an 
 ### L1. `addLog` Function Exists in Two Forms — **Inconsistent Interface**
 
 **Files:**
+
 - `src/lib/engine/effects/utils.ts` — `addLog(message, state, actorId?, cardId?)`
 - `src/lib/engine/game.ts` — `this.addLog(message, actorId?, cardId?)`
 
-**Category:** Lexical Abuser — Inconsistent Names  
+**Category:** Lexical Abuser — Inconsistent Names
 
 The effect utils version takes `state` as the second parameter; the `GameEngine` method doesn't (it uses `this.state`). Both are named `addLog` but have different signatures.
 
@@ -423,6 +435,7 @@ The effect utils version takes `state` as the second parameter; the `GameEngine`
 Card IDs like `'princess'`, `'countess'`, `'king'`, `'prince'`, `'guard'`, `'tillbakakaka'`, `'spy'`, `'chancellor'`, `'handmaid'`, `'priest'`, `'baron'` are hardcoded as string literals throughout the codebase (~40+ occurrences).
 
 **Recommendation:** Define card ID constants in a shared location:
+
 ```typescript
 export const CARD_IDS = { PRINCESS: 'princess', COUNTESS: 'countess', ... } as const;
 ```
@@ -513,47 +526,47 @@ While commented, this timeout value is hardcoded and not configurable. Minor, bu
 
 ### Breakdown by Severity
 
-| Severity | Count | Examples |
-|----------|-------|---------|
-| 🔴 High | 7 | Svelte 4 syntax, duplicated functions, god components, mutable state |
-| 🟡 Medium | 12 | Switch statement, dead code, weak typing, shotgun surgery |
-| 🟢 Low | 9 | Magic strings, inconsistent APIs, misplaced constants |
+| Severity  | Count | Examples                                                             |
+| --------- | ----- | -------------------------------------------------------------------- |
+| 🔴 High   | 7     | Svelte 4 syntax, duplicated functions, god components, mutable state |
+| 🟡 Medium | 12    | Switch statement, dead code, weak typing, shotgun surgery            |
+| 🟢 Low    | 9     | Magic strings, inconsistent APIs, misplaced constants                |
 
 ### Breakdown by Category
 
-| Category | Count |
-|----------|-------|
-| Duplicated Code | 4 |
-| Large Class / Bloater | 3 |
-| Mutable Data / Side Effects | 2 |
-| Inconsistent Style | 2 |
-| Dead Code / Speculative Generality | 3 |
-| Conditional Complexity | 1 |
-| Feature Envy / Coupling | 2 |
-| Weak Typing | 2 |
-| Obscured Intent | 2 |
-| Magic Number/String | 2 |
-| Other | 5 |
+| Category                           | Count |
+| ---------------------------------- | ----- |
+| Duplicated Code                    | 4     |
+| Large Class / Bloater              | 3     |
+| Mutable Data / Side Effects        | 2     |
+| Inconsistent Style                 | 2     |
+| Dead Code / Speculative Generality | 3     |
+| Conditional Complexity             | 1     |
+| Feature Envy / Coupling            | 2     |
+| Weak Typing                        | 2     |
+| Obscured Intent                    | 2     |
+| Magic Number/String                | 2     |
+| Other                              | 5     |
 
 ### SOLID Principle Violations
 
-| Principle | Violations | Details |
-|-----------|-----------|---------|
-| **S** — Single Responsibility | 2 | HostLobby.svelte, GameScreen.svelte handle too many concerns |
-| **O** — Open/Closed | 1 | `applyMove()` switch requires modification for new effects |
-| **L** — Liskov Substitution | 0 | No inheritance hierarchy issues detected |
-| **I** — Interface Segregation | 0 | No fat interface issues detected |
-| **D** — Dependency Inversion | 1 | Components depend directly on engine (concrete) rather than store abstraction |
+| Principle                     | Violations | Details                                                                       |
+| ----------------------------- | ---------- | ----------------------------------------------------------------------------- |
+| **S** — Single Responsibility | 2          | HostLobby.svelte, GameScreen.svelte handle too many concerns                  |
+| **O** — Open/Closed           | 1          | `applyMove()` switch requires modification for new effects                    |
+| **L** — Liskov Substitution   | 0          | No inheritance hierarchy issues detected                                      |
+| **I** — Interface Segregation | 0          | No fat interface issues detected                                              |
+| **D** — Dependency Inversion  | 1          | Components depend directly on engine (concrete) rather than store abstraction |
 
 ### GRASP Principle Violations
 
-| Principle | Violations | Details |
-|-----------|-----------|---------|
-| **Information Expert** | 1 | Log-parsing for animations instead of structured action data |
-| **High Cohesion** | 2 | HostLobby, GameScreen mix unrelated concerns |
-| **Low Coupling** | 1 | Components coupled directly to engine |
-| **Indirection** | 1 | Missing store abstraction for card lookups |
-| **Protected Variations** | 1 | Animation system coupled to log message text |
+| Principle                | Violations | Details                                                      |
+| ------------------------ | ---------- | ------------------------------------------------------------ |
+| **Information Expert**   | 1          | Log-parsing for animations instead of structured action data |
+| **High Cohesion**        | 2          | HostLobby, GameScreen mix unrelated concerns                 |
+| **Low Coupling**         | 1          | Components coupled directly to engine                        |
+| **Indirection**          | 1          | Missing store abstraction for card lookups                   |
+| **Protected Variations** | 1          | Animation system coupled to log message text                 |
 
 ---
 
@@ -561,36 +574,36 @@ While commented, this timeout value is hardcoded and not configurable. Minor, bu
 
 ### Phase 1 — Quick Wins (Low Risk, High Impact)
 
-| # | Task | Files | Effort |
-|---|------|-------|--------|
-| 1 | Consolidate `getValidTargets` to single source | `ai.ts`, `GameScreen.svelte` | Small |
-| 2 | Consolidate `tokensToWin` maps to single source | 4 files | Small |
-| 3 | Consolidate `formatPlayerNames` / `formatWinnerNames` | `GameScreen.svelte` | Small |
-| 4 | Replace `JSON.parse(JSON.stringify)` with `structuredClone` | `game.ts` | Trivial |
-| 5 | Remove unused `EffectHandler`/`EffectUtils` interfaces or add TODO | `effects/types.ts` | Trivial |
-| 6 | Remove `_state` parameter from `eliminatePlayer` | `effects/utils.ts` + callers | Small |
-| 7 | Extract `broadcastAndScheduleAI()` helper | `HostLobby.svelte` | Small |
+| #   | Task                                                               | Files                        | Effort  |
+| --- | ------------------------------------------------------------------ | ---------------------------- | ------- |
+| 1   | Consolidate `getValidTargets` to single source                     | `ai.ts`, `GameScreen.svelte` | Small   |
+| 2   | Consolidate `tokensToWin` maps to single source                    | 4 files                      | Small   |
+| 3   | Consolidate `formatPlayerNames` / `formatWinnerNames`              | `GameScreen.svelte`          | Small   |
+| 4   | Replace `JSON.parse(JSON.stringify)` with `structuredClone`        | `game.ts`                    | Trivial |
+| 5   | Remove unused `EffectHandler`/`EffectUtils` interfaces or add TODO | `effects/types.ts`           | Trivial |
+| 6   | Remove `_state` parameter from `eliminatePlayer`                   | `effects/utils.ts` + callers | Small   |
+| 7   | Extract `broadcastAndScheduleAI()` helper                          | `HostLobby.svelte`           | Small   |
 
 ### Phase 2 — Architectural Improvements (Medium Risk)
 
-| # | Task | Files | Effort |
-|---|------|-------|--------|
-| 8 | Make `NetworkMessage` a discriminated union | `messages.ts` + handlers | Medium |
-| 9 | Replace `applyMove()` switch with effect registry map | `game.ts`, effects | Medium |
-| 10 | Extract `handleMessage()` cases into separate handler functions | `HostLobby.svelte` | Medium |
-| 11 | Add structured `lastAction` to state for animations | `types.ts`, `game.ts`, `GameScreen.svelte` | Medium |
-| 12 | Cache `getDeckComposition()` per ruleset | `ai.ts` | Small |
-| 13 | Define card ID constants | New file + callers | Medium |
-| 14 | Evaluate/remove `GameSync` class if dead code | `sync.ts` | Small |
+| #   | Task                                                            | Files                                      | Effort |
+| --- | --------------------------------------------------------------- | ------------------------------------------ | ------ |
+| 8   | Make `NetworkMessage` a discriminated union                     | `messages.ts` + handlers                   | Medium |
+| 9   | Replace `applyMove()` switch with effect registry map           | `game.ts`, effects                         | Medium |
+| 10  | Extract `handleMessage()` cases into separate handler functions | `HostLobby.svelte`                         | Medium |
+| 11  | Add structured `lastAction` to state for animations             | `types.ts`, `game.ts`, `GameScreen.svelte` | Medium |
+| 12  | Cache `getDeckComposition()` per ruleset                        | `ai.ts`                                    | Small  |
+| 13  | Define card ID constants                                        | New file + callers                         | Medium |
+| 14  | Evaluate/remove `GameSync` class if dead code                   | `sync.ts`                                  | Small  |
 
 ### Phase 3 — Major Refactoring (Higher Risk)
 
-| # | Task | Files | Effort |
-|---|------|-------|--------|
-| 15 | Decompose `HostLobby.svelte` into sub-components + host store | `HostLobby.svelte` | Large |
-| 16 | Decompose `GameScreen.svelte` into sub-components | `GameScreen.svelte` | Large |
-| 17 | Migrate components from Svelte 4 to Svelte 5 runes | All `.svelte` files | Large |
-| 18 | Refactor engine to immutable state updates | `game.ts`, all effects | Very Large |
+| #   | Task                                                          | Files                  | Effort     |
+| --- | ------------------------------------------------------------- | ---------------------- | ---------- |
+| 15  | Decompose `HostLobby.svelte` into sub-components + host store | `HostLobby.svelte`     | Large      |
+| 16  | Decompose `GameScreen.svelte` into sub-components             | `GameScreen.svelte`    | Large      |
+| 17  | Migrate components from Svelte 4 to Svelte 5 runes            | All `.svelte` files    | Large      |
+| 18  | Refactor engine to immutable state updates                    | `game.ts`, all effects | Very Large |
 
 ---
 
@@ -598,38 +611,38 @@ While commented, this timeout value is hardcoded and not configurable. Minor, bu
 
 ### Files Analyzed
 
-| File | Lines | Issues |
-|------|-------|--------|
-| `src/lib/components/HostLobby.svelte` | 1,172 | H4, M1, M3, M6, L3 |
-| `src/lib/components/GameScreen.svelte` | 854 | H2, H3, H5, H6, M8, L2, L6 |
-| `src/lib/components/JoinGame.svelte` | 587 | H1, L8 |
-| `src/lib/engine/game.ts` | 586 | H7, M2, M4, M7 |
-| `src/lib/components/GameFeed.svelte` | 482 | H1 |
-| `src/lib/components/GuessSelector.svelte` | 384 | H1, M3 |
-| `src/lib/network/sync.ts` | 364 | M6 |
-| `src/lib/engine/ai.ts` | 320 | H2, M11, L2 |
-| `src/lib/components/PlayerArea.svelte` | 336 | H1, M3 |
-| `src/lib/engine/validation.ts` | 189 | L2 |
-| `src/lib/stores/game.ts` | 155 | — |
-| `src/lib/network/peer.ts` | 276 | M12 |
-| `src/lib/network/messages.ts` | 95 | M5 |
-| `src/lib/engine/effects/types.ts` | 64 | M10 |
-| `src/lib/engine/effects/utils.ts` | 42 | M9 |
-| `src/lib/engine/effects/chancellor.ts` | 126 | M4 |
-| `src/lib/engine/effects/guard.ts` | 38 | M4 |
-| `src/lib/engine/effects/baron.ts` | 60 | M4 |
-| `src/lib/engine/effects/prince.ts` | 42 | M4 |
-| `src/lib/engine/effects/king.ts` | 53 | — |
-| `src/lib/engine/effects/tillbakakaka.ts` | 123 | — |
-| `src/lib/types.ts` | 112 | H3, L5 |
-| `src/lib/engine/constants.ts` | 35 | L7 |
-| `src/lib/stores/session.ts` | 82 | L9 |
-| `src/lib/stores/chat.ts` | 27 | — |
-| `src/lib/stores/network.ts` | 16 | — |
-| `src/lib/engine/deck.ts` | 82 | — |
-| `src/lib/engine/player.ts` | 91 | — |
-| `src/lib/engine/rng.ts` | 11 | — |
-| `src/App.svelte` | 79 | H1 |
+| File                                      | Lines | Issues                     |
+| ----------------------------------------- | ----- | -------------------------- |
+| `src/lib/components/HostLobby.svelte`     | 1,172 | H4, M1, M3, M6, L3         |
+| `src/lib/components/GameScreen.svelte`    | 854   | H2, H3, H5, H6, M8, L2, L6 |
+| `src/lib/components/JoinGame.svelte`      | 587   | H1, L8                     |
+| `src/lib/engine/game.ts`                  | 586   | H7, M2, M4, M7             |
+| `src/lib/components/GameFeed.svelte`      | 482   | H1                         |
+| `src/lib/components/GuessSelector.svelte` | 384   | H1, M3                     |
+| `src/lib/network/sync.ts`                 | 364   | M6                         |
+| `src/lib/engine/ai.ts`                    | 320   | H2, M11, L2                |
+| `src/lib/components/PlayerArea.svelte`    | 336   | H1, M3                     |
+| `src/lib/engine/validation.ts`            | 189   | L2                         |
+| `src/lib/stores/game.ts`                  | 155   | —                          |
+| `src/lib/network/peer.ts`                 | 276   | M12                        |
+| `src/lib/network/messages.ts`             | 95    | M5                         |
+| `src/lib/engine/effects/types.ts`         | 64    | M10                        |
+| `src/lib/engine/effects/utils.ts`         | 42    | M9                         |
+| `src/lib/engine/effects/chancellor.ts`    | 126   | M4                         |
+| `src/lib/engine/effects/guard.ts`         | 38    | M4                         |
+| `src/lib/engine/effects/baron.ts`         | 60    | M4                         |
+| `src/lib/engine/effects/prince.ts`        | 42    | M4                         |
+| `src/lib/engine/effects/king.ts`          | 53    | —                          |
+| `src/lib/engine/effects/tillbakakaka.ts`  | 123   | —                          |
+| `src/lib/types.ts`                        | 112   | H3, L5                     |
+| `src/lib/engine/constants.ts`             | 35    | L7                         |
+| `src/lib/stores/session.ts`               | 82    | L9                         |
+| `src/lib/stores/chat.ts`                  | 27    | —                          |
+| `src/lib/stores/network.ts`               | 16    | —                          |
+| `src/lib/engine/deck.ts`                  | 82    | —                          |
+| `src/lib/engine/player.ts`                | 91    | —                          |
+| `src/lib/engine/rng.ts`                   | 11    | —                          |
+| `src/App.svelte`                          | 79    | H1                         |
 
 ### Detection Methodology
 

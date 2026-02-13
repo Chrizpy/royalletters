@@ -1,10 +1,11 @@
 # Royal Letters
 
-A mobile-web, P2P version of the card game *Love Letter*.
+A mobile-web, P2P version of the card game _Love Letter_.
 
 ## Overview
 
 Royal Letters is a full-stack mobile web game featuring:
+
 - **Core Game Engine**: A pure TypeScript engine with deterministic RNG for P2P synchronization
 - **P2P Networking**: WebRTC-based peer-to-peer communication using PeerJS
 - **Mobile-First UI**: A Svelte-based responsive interface optimized for mobile devices with full-screen native app experience
@@ -29,6 +30,7 @@ npm test
 ```
 
 The test suite covers:
+
 - RNG determinism and deck shuffling
 - Game initialization and round management
 - All card effects (classic + 2019 ruleset cards)
@@ -44,6 +46,7 @@ npm run dev
 ```
 
 This starts the Vite development server. The app features a mobile-first UI with:
+
 - Host/Join game lobby
 - QR code sharing for easy game joining
 - Real-time P2P game state synchronization
@@ -75,12 +78,12 @@ const game = new GameEngine();
 game.init({
   players: [
     { id: 'p1', name: 'Alice' },
-    { id: 'p2', name: 'Bob' }
-  ]
+    { id: 'p2', name: 'Bob' },
+  ],
 });
 
 // Start a round
-game.startRound();  // Generates seed, shuffles deck, deals cards
+game.startRound(); // Generates seed, shuffles deck, deals cards
 
 // Player draws
 game.drawPhase();
@@ -91,7 +94,7 @@ const result = game.applyMove({
   playerId: 'p1',
   cardId: 'guard',
   targetPlayerId: 'p2',
-  targetCardGuess: 'baron'
+  targetCardGuess: 'baron',
 });
 
 // Get current state (for P2P sync)

@@ -21,7 +21,11 @@ export { applyTradeHands, applyTradeWithBurnedCard } from './king';
 export { applyConditionalDiscard } from './countess';
 export { applyLoseIfDiscarded } from './princess';
 export { applySpyBonus } from './spy';
-export { applyChancellorDraw, applyChancellorReturn, validateChancellorReturn } from './chancellor';
+export {
+  applyChancellorDraw,
+  applyChancellorReturn,
+  validateChancellorReturn,
+} from './chancellor';
 
 import { applyGuessCard } from './guard';
 import { applyGuessCardRevenge } from './tillbakakaka';
@@ -38,16 +42,19 @@ import { applyChancellorDraw } from './chancellor';
 /**
  * Effect handler registry — maps each EffectType to its handler function.
  */
-export const effectHandlers: Record<EffectType, (context: EffectContext) => EffectResult> = {
-  'GUESS_CARD': applyGuessCard,
-  'GUESS_CARD_REVENGE': applyGuessCardRevenge,
-  'SEE_HAND': applySeeHand,
-  'COMPARE_HANDS': applyCompareHands,
-  'PROTECTION': applyProtection,
-  'FORCE_DISCARD': applyForceDiscard,
-  'TRADE_HANDS': applyTradeHands,
-  'CONDITIONAL_DISCARD': applyConditionalDiscard,
-  'LOSE_IF_DISCARDED': applyLoseIfDiscarded,
-  'SPY_BONUS': applySpyBonus,
-  'CHANCELLOR_DRAW': applyChancellorDraw,
+export const effectHandlers: Record<
+  EffectType,
+  (context: EffectContext) => EffectResult
+> = {
+  GUESS_CARD: applyGuessCard,
+  GUESS_CARD_REVENGE: applyGuessCardRevenge,
+  SEE_HAND: applySeeHand,
+  COMPARE_HANDS: applyCompareHands,
+  PROTECTION: applyProtection,
+  FORCE_DISCARD: applyForceDiscard,
+  TRADE_HANDS: applyTradeHands,
+  CONDITIONAL_DISCARD: applyConditionalDiscard,
+  LOSE_IF_DISCARDED: applyLoseIfDiscarded,
+  SPY_BONUS: applySpyBonus,
+  CHANCELLOR_DRAW: applyChancellorDraw,
 };

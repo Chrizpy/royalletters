@@ -1,19 +1,31 @@
 <script lang="ts">
   import { connectionState, peerId, remotePeerId } from '../stores/network';
-  
+
   let showDetails = $state(false);
-  
+
   function toggleDetails() {
     showDetails = !showDetails;
   }
-  
-  let statusColor = $derived($connectionState === 'connected' ? '#4caf50' : 
-                   $connectionState === 'connecting' ? '#ff9800' : 
-                   $connectionState === 'error' ? '#f44336' : '#9e9e9e');
-  
-  let statusText = $derived($connectionState === 'connected' ? 'Connected' : 
-                  $connectionState === 'connecting' ? 'Connecting...' : 
-                  $connectionState === 'error' ? 'Connection Error' : 'Disconnected');
+
+  let statusColor = $derived(
+    $connectionState === 'connected'
+      ? '#4caf50'
+      : $connectionState === 'connecting'
+        ? '#ff9800'
+        : $connectionState === 'error'
+          ? '#f44336'
+          : '#9e9e9e',
+  );
+
+  let statusText = $derived(
+    $connectionState === 'connected'
+      ? 'Connected'
+      : $connectionState === 'connecting'
+        ? 'Connecting...'
+        : $connectionState === 'error'
+          ? 'Connection Error'
+          : 'Disconnected',
+  );
 </script>
 
 <div class="connection-status">
@@ -21,7 +33,7 @@
     <div class="status-dot" style="background-color: {statusColor}"></div>
     <span class="status-text">{statusText}</span>
   </button>
-  
+
   {#if showDetails}
     <div class="details-popup">
       <div class="details-header">
@@ -31,7 +43,9 @@
       <div class="details-content">
         <div class="detail-row">
           <span class="detail-label">Status:</span>
-          <span class="detail-value" style="color: {statusColor}">{statusText}</span>
+          <span class="detail-value" style="color: {statusColor}"
+            >{statusText}</span
+          >
         </div>
         <div class="detail-row">
           <span class="detail-label">Your Peer ID:</span>
@@ -80,7 +94,8 @@
   }
 
   @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {

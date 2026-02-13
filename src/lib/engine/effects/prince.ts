@@ -9,21 +9,32 @@ import { PRINCESS } from '../cardIds';
 
 export function applyForceDiscard(context: EffectContext): EffectResult {
   const { state, action, activePlayer } = context;
-  const targetPlayer = state.players.find(p => p.id === action.targetPlayerId)!;
-  
+  const targetPlayer = state.players.find(
+    (p) => p.id === action.targetPlayerId,
+  )!;
+
   const discardedCard = targetPlayer.hand.shift();
   if (discardedCard) {
     targetPlayer.discardPile.push(discardedCard);
-    addLog(`${targetPlayer.name} discarded ${discardedCard}`, state, targetPlayer.id, discardedCard);
+    addLog(
+      `${targetPlayer.name} discarded ${discardedCard}`,
+      state,
+      targetPlayer.id,
+      discardedCard,
+    );
 
     // If Princess was discarded, target is eliminated
     if (discardedCard === PRINCESS) {
       eliminatePlayer(
         targetPlayer,
-        `${activePlayer.name} forced you to discard Princess`
+        `${activePlayer.name} forced you to discard Princess`,
       );
-      addLog(`${targetPlayer.name} was eliminated (discarded Princess)`, state, targetPlayer.id);
-      
+      addLog(
+        `${targetPlayer.name} was eliminated (discarded Princess)`,
+        state,
+        targetPlayer.id,
+      );
+
       return {
         message: `${targetPlayer.name} discarded Princess and is eliminated`,
         eliminatedPlayerId: targetPlayer.id,

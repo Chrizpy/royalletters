@@ -1,4 +1,15 @@
-export type EffectType = 'GUESS_CARD' | 'GUESS_CARD_REVENGE' | 'SEE_HAND' | 'COMPARE_HANDS' | 'PROTECTION' | 'FORCE_DISCARD' | 'TRADE_HANDS' | 'CONDITIONAL_DISCARD' | 'LOSE_IF_DISCARDED' | 'SPY_BONUS' | 'CHANCELLOR_DRAW';
+export type EffectType =
+  | 'GUESS_CARD'
+  | 'GUESS_CARD_REVENGE'
+  | 'SEE_HAND'
+  | 'COMPARE_HANDS'
+  | 'PROTECTION'
+  | 'FORCE_DISCARD'
+  | 'TRADE_HANDS'
+  | 'CONDITIONAL_DISCARD'
+  | 'LOSE_IF_DISCARDED'
+  | 'SPY_BONUS'
+  | 'CHANCELLOR_DRAW';
 
 export type Ruleset = 'classic' | '2019' | 'house';
 
@@ -26,17 +37,27 @@ export interface PlayerState {
   id: string;
   name: string;
   avatarId: string;
-  color: string;  // Player's display color (hex)
+  color: string; // Player's display color (hex)
   hand: string[]; // Card IDs
   discardPile: string[];
   tokens: number;
   status: PlayerStatus;
   isHost: boolean;
-  isAI?: boolean;  // Whether this player is controlled by AI
-  eliminationReason?: string;  // Reason why the player was eliminated
+  isAI?: boolean; // Whether this player is controlled by AI
+  eliminationReason?: string; // Reason why the player was eliminated
 }
 
-export type GamePhase = 'LOBBY' | 'ROUND_START' | 'TURN_START' | 'WAITING_FOR_ACTION' | 'WAITING_FOR_TARGET' | 'RESOLVING_ACTION' | 'CHANCELLOR_RESOLVING' | 'WAITING_FOR_REVENGE_GUESS' | 'ROUND_END' | 'GAME_END';
+export type GamePhase =
+  | 'LOBBY'
+  | 'ROUND_START'
+  | 'TURN_START'
+  | 'WAITING_FOR_ACTION'
+  | 'WAITING_FOR_TARGET'
+  | 'RESOLVING_ACTION'
+  | 'CHANCELLOR_RESOLVING'
+  | 'WAITING_FOR_REVENGE_GUESS'
+  | 'ROUND_END'
+  | 'GAME_END';
 
 export interface LogEntry {
   timestamp: number;
@@ -55,22 +76,23 @@ export interface GameState {
   players: PlayerState[];
   deck: string[];
   burnedCard: string | null;
-  burnedCardsFaceUp: string[];  // For 2-player game, 3 additional face-up burned cards
+  burnedCardsFaceUp: string[]; // For 2-player game, 3 additional face-up burned cards
   activePlayerIndex: number;
   phase: GamePhase;
   pendingAction: PendingAction | null;
   winnerIds: string[];
-  lastRoundWinnerId: string | null;  // ID of the player who won the last round
+  lastRoundWinnerId: string | null; // ID of the player who won the last round
   logs: LogEntry[];
   rngSeed: string;
   roundCount: number;
   ruleset: Ruleset;
-  tokensToWin: number;  // Number of favour tokens needed to win the game
-  chancellorCards?: string[];  // Cards drawn for Chancellor effect, waiting for player to select which to return
-  revengeGuess?: {  // For tillbakakaka (cookie guard) revenge mechanic
-    revengerId: string;  // Player who gets to make the revenge guess
-    targetId: string;    // Player who played tillbakakaka (target of revenge)
-    originalGuess: string;  // The card ID that was incorrectly guessed
+  tokensToWin: number; // Number of favour tokens needed to win the game
+  chancellorCards?: string[]; // Cards drawn for Chancellor effect, waiting for player to select which to return
+  revengeGuess?: {
+    // For tillbakakaka (cookie guard) revenge mechanic
+    revengerId: string; // Player who gets to make the revenge guess
+    targetId: string; // Player who played tillbakakaka (target of revenge)
+    originalGuess: string; // The card ID that was incorrectly guessed
   };
 }
 
@@ -80,7 +102,7 @@ export interface GameAction {
   cardId?: string;
   targetPlayerId?: string;
   targetCardGuess?: string;
-  cardsToReturn?: string[];  // For Chancellor effect: the 2 cards to return to deck bottom
+  cardsToReturn?: string[]; // For Chancellor effect: the 2 cards to return to deck bottom
 }
 
 export interface ActionResult {
@@ -97,7 +119,7 @@ export interface GameConfig {
     name: string;
     avatarId?: string;
     isHost?: boolean;
-    isAI?: boolean;  // Whether this player is controlled by AI
+    isAI?: boolean; // Whether this player is controlled by AI
   }>;
   tokensToWin?: number;
   ruleset?: Ruleset;

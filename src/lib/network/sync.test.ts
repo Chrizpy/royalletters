@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameEngine } from '../engine/game';
 import { GameSync } from './sync';
 import { PeerManager } from './peer';
-import { createMessage, type ReconnectPayload, type RequestStateSyncPayload } from './messages';
+import {
+  createMessage,
+  type ReconnectPayload,
+  type RequestStateSyncPayload,
+} from './messages';
 import type { GameConfig } from '../types';
 
 describe('GameSync Tests', () => {
@@ -13,15 +17,15 @@ describe('GameSync Tests', () => {
   beforeEach(() => {
     engine = new GameEngine();
     peerManager = new PeerManager();
-    
+
     const config: GameConfig = {
       players: [
         { id: 'host-id', name: 'Host', isHost: true },
-        { id: 'guest-id', name: 'Guest', isHost: false }
-      ]
+        { id: 'guest-id', name: 'Guest', isHost: false },
+      ],
     };
     engine.init(config);
-    
+
     hostSync = new GameSync(engine, peerManager, true, 'host-id', 'Host');
   });
 
@@ -38,7 +42,7 @@ describe('GameSync Tests', () => {
   it('should start round as host', () => {
     hostSync.startRound();
     const state = hostSync.getGameState();
-    
+
     // Round should be started
     expect(state.roundCount).toBe(1);
     expect(state.phase).toBe('TURN_START');
@@ -50,17 +54,23 @@ describe('GameSync Tests', () => {
     const config: GameConfig = {
       players: [
         { id: 'host-id', name: 'Host', isHost: true },
-        { id: 'guest-id', name: 'Guest', isHost: false }
-      ]
+        { id: 'guest-id', name: 'Guest', isHost: false },
+      ],
     };
     guestEngine.init(config);
-    
-    const guestSync = new GameSync(guestEngine, guestPeerManager, false, 'guest-id', 'Guest');
-    
+
+    const guestSync = new GameSync(
+      guestEngine,
+      guestPeerManager,
+      false,
+      'guest-id',
+      'Guest',
+    );
+
     // Guest should not be able to start round
     guestSync.startRound();
     const state = guestSync.getGameState();
-    
+
     // Round should not be started
     expect(state.roundCount).toBe(0);
     expect(state.phase).toBe('LOBBY');
@@ -78,20 +88,32 @@ describe('GameSync Reconnection Tests', () => {
   beforeEach(() => {
     hostEngine = new GameEngine();
     hostPeerManager = new PeerManager();
-    
+
     const config: GameConfig = {
       players: [
         { id: 'host-id', name: 'Host', isHost: true },
-        { id: 'guest-id', name: 'Guest', isHost: false }
-      ]
+        { id: 'guest-id', name: 'Guest', isHost: false },
+      ],
     };
     hostEngine.init(config);
-    hostSync = new GameSync(hostEngine, hostPeerManager, true, 'host-id', 'Host');
+    hostSync = new GameSync(
+      hostEngine,
+      hostPeerManager,
+      true,
+      'host-id',
+      'Host',
+    );
 
     guestEngine = new GameEngine();
     guestPeerManager = new PeerManager();
     guestEngine.init(config);
-    guestSync = new GameSync(guestEngine, guestPeerManager, false, 'guest-id', 'Guest');
+    guestSync = new GameSync(
+      guestEngine,
+      guestPeerManager,
+      false,
+      'guest-id',
+      'Guest',
+    );
   });
 
   it('should create RECONNECT message with correct structure', () => {
@@ -114,7 +136,9 @@ describe('GameSync Reconnection Tests', () => {
 
     expect(message.type).toBe('REQUEST_STATE_SYNC');
     expect(message.senderId).toBe('guest-id');
-    expect((message.payload as RequestStateSyncPayload).playerId).toBe('guest-id');
+    expect((message.payload as RequestStateSyncPayload).playerId).toBe(
+      'guest-id',
+    );
     expect(message.timestamp).toBeDefined();
   });
 
@@ -129,9 +153,9 @@ describe('GameSync Reconnection Tests', () => {
   it('host should not call announceReconnect', () => {
     // Mock broadcast to verify it's not called
     const broadcastSpy = vi.spyOn(hostPeerManager, 'broadcast');
-    
+
     hostSync.announceReconnect();
-    
+
     // Host should not broadcast reconnect messages
     expect(broadcastSpy).not.toHaveBeenCalled();
   });
@@ -139,9 +163,9 @@ describe('GameSync Reconnection Tests', () => {
   it('guest should be able to call announceReconnect', () => {
     // Mock broadcast - it won't actually send since no peers connected
     const broadcastSpy = vi.spyOn(guestPeerManager, 'broadcast');
-    
+
     guestSync.announceReconnect();
-    
+
     // Guest should attempt to broadcast reconnect message
     expect(broadcastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -151,15 +175,15 @@ describe('GameSync Reconnection Tests', () => {
           playerId: 'guest-id',
           playerName: 'Guest',
         }),
-      })
+      }),
     );
   });
 
   it('guest should be able to call requestStateSync', () => {
     const broadcastSpy = vi.spyOn(guestPeerManager, 'broadcast');
-    
+
     guestSync.requestStateSync();
-    
+
     expect(broadcastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'REQUEST_STATE_SYNC',
@@ -167,7 +191,7 @@ describe('GameSync Reconnection Tests', () => {
         payload: expect.objectContaining({
           playerId: 'guest-id',
         }),
-      })
+      }),
     );
   });
 });

@@ -2,7 +2,15 @@
   import type { PlayerState } from '../types';
   import { getCardDefinition } from '../engine/deck';
 
-  let { player, isActive = false, isTargetable = false, onSelect = () => {}, isCardEffectActor = false, isCardEffectTarget = false, cardEffectId = null }: {
+  let {
+    player,
+    isActive = false,
+    isTargetable = false,
+    onSelect = () => {},
+    isCardEffectActor = false,
+    isCardEffectTarget = false,
+    cardEffectId = null,
+  }: {
     player: PlayerState;
     isActive?: boolean;
     isTargetable?: boolean;
@@ -17,30 +25,32 @@
 
   function getCardColor(cardId: string): string {
     const colors: Record<string, string> = {
-      'spy': '#2c3e50',
-      'guard': '#e74c3c',
-      'tillbakakaka': '#e74c3c',
-      'priest': '#9b59b6',
-      'baron': '#3498db',
-      'handmaid': '#1abc9c',
-      'prince': '#f39c12',
-      'chancellor': '#8e44ad',
-      'king': '#e67e22',
-      'countess': '#e91e63',
-      'princess': '#ff69b4'
+      spy: '#2c3e50',
+      guard: '#e74c3c',
+      tillbakakaka: '#e74c3c',
+      priest: '#9b59b6',
+      baron: '#3498db',
+      handmaid: '#1abc9c',
+      prince: '#f39c12',
+      chancellor: '#8e44ad',
+      king: '#e67e22',
+      countess: '#e91e63',
+      princess: '#ff69b4',
     };
     return colors[cardId] || '#95a5a6';
   }
-  
-  let effectBorderColor = $derived(cardEffectId ? getCardColor(cardEffectId) : null);
-  
+
+  let effectBorderColor = $derived(
+    cardEffectId ? getCardColor(cardEffectId) : null,
+  );
+
   // Track when a new card is added to discard pile
   $effect(() => {
     if (player.discardPile.length > previousDiscardPileLength) {
       // A new card was added - it's the last one in the array
       newlyAddedCardIndex = player.discardPile.length - 1;
       previousDiscardPileLength = player.discardPile.length;
-      
+
       // Clear the animation flag after the animation completes
       setTimeout(() => {
         newlyAddedCardIndex = -1;
@@ -53,7 +63,7 @@
   });
 </script>
 
-<button 
+<button
   class="player-area"
   class:active={isActive}
   class:targetable={isTargetable}
@@ -74,11 +84,11 @@
       👤
     {/if}
   </div>
-  
+
   <div class="player-details">
     <div class="player-name">{player.name}</div>
     <div class="player-tokens">
-      {#each Array(player.tokens) as _, i}
+      {#each Array(player.tokens) as _, i (i)}
         <span class="token">💎</span>
       {/each}
       {#if player.tokens === 0}
@@ -89,14 +99,15 @@
 
   {#if player.discardPile.length > 0}
     <div class="discard-preview">
-      {#each player.discardPile as cardId, index}
-        <span 
-          class="discarded-mini" 
+      {#each player.discardPile as cardId, index (index)}
+        <span
+          class="discarded-mini"
           class:newly-played={index === newlyAddedCardIndex}
           title={getCardDefinition(cardId)?.name}
           style="--card-color: {getCardColor(cardId)}; --stack-index: {index};"
         >
-          {getCardDefinition(cardId)?.value}{#if cardId === 'tillbakakaka'}🍪{/if}
+          {getCardDefinition(cardId)
+            ?.value}{#if cardId === 'tillbakakaka'}🍪{/if}
         </span>
       {/each}
     </div>
@@ -151,12 +162,13 @@
   }
 
   @keyframes effect-pulse {
-    0%, 100% { 
+    0%,
+    100% {
       box-shadow: 0 0 20px var(--effect-border-color, rgba(102, 126, 234, 0.5));
       transform: scale(1);
       border-width: 3px;
     }
-    50% { 
+    50% {
       box-shadow: 0 0 40px var(--effect-border-color, rgba(102, 126, 234, 1));
       transform: scale(1.03);
       border-width: 4px;
@@ -170,8 +182,13 @@
   }
 
   @keyframes target-pulse {
-    0%, 100% { box-shadow: 0 0 10px rgba(0, 184, 148, 0.4); }
-    50% { box-shadow: 0 0 25px rgba(0, 184, 148, 0.7); }
+    0%,
+    100% {
+      box-shadow: 0 0 10px rgba(0, 184, 148, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 25px rgba(0, 184, 148, 0.7);
+    }
   }
 
   .player-area.targetable:hover {
@@ -236,7 +253,11 @@
   .discarded-mini {
     width: 28px;
     height: 40px;
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--card-color) 0%,
+      color-mix(in srgb, var(--card-color) 70%, black) 100%
+    );
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 4px;
     display: flex;
@@ -285,8 +306,12 @@
   }
 
   @keyframes target-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .target-text {

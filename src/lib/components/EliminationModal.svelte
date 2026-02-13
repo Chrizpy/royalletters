@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { PlayerState } from '../types';
 
-  let { player }: {
+  let {
+    player,
+  }: {
     player: PlayerState | undefined;
   } = $props();
 
@@ -17,7 +19,9 @@
   });
 
   let isEliminated = $derived(player?.status === 'ELIMINATED');
-  let showModal = $derived(isEliminated && player?.eliminationReason && !dismissed);
+  let showModal = $derived(
+    isEliminated && player?.eliminationReason && !dismissed,
+  );
 
   function dismiss() {
     dismissed = true;
@@ -30,9 +34,7 @@
       <div class="elimination-icon">💀</div>
       <h2 class="elimination-title">You've Been Eliminated!</h2>
       <p class="elimination-reason">{player?.eliminationReason}</p>
-      <button class="dismiss-btn" onclick={dismiss}>
-        Continue Watching
-      </button>
+      <button class="dismiss-btn" onclick={dismiss}> Continue Watching </button>
     </div>
   </div>
 {/if}
@@ -51,8 +53,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .elimination-modal {
@@ -68,14 +74,14 @@
   }
 
   @keyframes modal-pop {
-    0% { 
+    0% {
       transform: scale(0.8);
       opacity: 0;
     }
     50% {
       transform: scale(1.05);
     }
-    100% { 
+    100% {
       transform: scale(1);
       opacity: 1;
     }
@@ -88,9 +94,16 @@
   }
 
   @keyframes icon-shake {
-    0%, 100% { transform: rotate(0); }
-    25% { transform: rotate(-10deg); }
-    75% { transform: rotate(10deg); }
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+    25% {
+      transform: rotate(-10deg);
+    }
+    75% {
+      transform: rotate(10deg);
+    }
   }
 
   .elimination-title {

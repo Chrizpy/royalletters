@@ -1,9 +1,16 @@
 import Peer, { type DataConnection } from 'peerjs';
 import type { NetworkMessage } from './messages';
 
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+export type ConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'error';
 
-export type MessageHandler = (message: NetworkMessage, conn: DataConnection) => void;
+export type MessageHandler = (
+  message: NetworkMessage,
+  conn: DataConnection,
+) => void;
 
 export class PeerManager {
   private peer: Peer | null = null;
@@ -27,7 +34,7 @@ export class PeerManager {
     return new Promise((resolve, reject) => {
       try {
         this.peer = new Peer(peerId);
-        
+
         this.peer.on('open', (id) => {
           console.log('Peer created with ID:', id);
           this.setState('connected');
@@ -65,18 +72,18 @@ export class PeerManager {
     return new Promise((resolve, reject) => {
       try {
         this.setState('connecting');
-        
+
         // Create peer for guest
         this.peer = new Peer(guestPeerId);
-        
+
         this.peer.on('open', (id) => {
           console.log('Guest peer created with ID:', id);
           this.setupVisibilityHandler();
-          
+
           // Connect to host
           const conn = this.peer!.connect(hostPeerId);
           this.setupConnection(conn);
-          
+
           conn.on('open', () => {
             console.log('Connected to host:', hostPeerId);
             this.setState('connected');
@@ -163,12 +170,14 @@ export class PeerManager {
     }
 
     this.reconnectAttempts++;
-    console.log(`Reconnecting to ${peerId} (attempt ${this.reconnectAttempts})`);
+    console.log(
+      `Reconnecting to ${peerId} (attempt ${this.reconnectAttempts})`,
+    );
 
     // Exponential backoff with cap at 30 seconds
     const delay = Math.min(
       this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
-      30000
+      30000,
     );
 
     setTimeout(() => {
@@ -199,7 +208,7 @@ export class PeerManager {
 
     this.signalingReconnectAttempts++;
     console.log(
-      `Reconnecting to signaling server (attempt ${this.signalingReconnectAttempts})`
+      `Reconnecting to signaling server (attempt ${this.signalingReconnectAttempts})`,
     );
 
     try {
@@ -212,7 +221,7 @@ export class PeerManager {
 
       const delay = Math.min(
         this.reconnectDelay * Math.pow(2, this.signalingReconnectAttempts - 1),
-        30000
+        30000,
       );
       setTimeout(() => this.reconnectSignalingServer(), delay);
     }
@@ -237,7 +246,9 @@ export class PeerManager {
         }
 
         if (this.peer.disconnected) {
-          console.warn('Peer disconnected from signaling server while in background, reconnecting…');
+          console.warn(
+            'Peer disconnected from signaling server while in background, reconnecting…',
+          );
           this.signalingReconnectAttempts = 0;
           this.reconnectSignalingServer();
         }
@@ -347,12 +358,12 @@ export class PeerManager {
     this.cleanupVisibilityHandler();
     this.connections.forEach((conn) => conn.close());
     this.connections.clear();
-    
+
     if (this.peer) {
       this.peer.destroy();
       this.peer = null;
     }
-    
+
     this.setState('disconnected');
   }
 

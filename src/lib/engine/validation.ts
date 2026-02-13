@@ -21,9 +21,9 @@ export interface ValidationResult {
 export function getValidTargets(
   state: GameState,
   playerId: string,
-  canTargetSelf: boolean
+  canTargetSelf: boolean,
 ): PlayerState[] {
-  return state.players.filter(p => {
+  return state.players.filter((p) => {
     if (p.id === playerId && !canTargetSelf) return false;
     if (p.status === 'ELIMINATED') return false;
     if (p.status === 'PROTECTED' && p.id !== playerId) return false;
@@ -37,16 +37,19 @@ export function getValidTargets(
  */
 export function validateCountessRule(
   hand: string[],
-  cardToPlay: string
+  cardToPlay: string,
 ): ValidationResult {
   const hasCountess = hand.includes(COUNTESS);
   const hasKing = hand.includes(KING);
   const hasPrince = hand.includes(PRINCE);
-  
+
   if (hasCountess && (hasKing || hasPrince) && cardToPlay !== COUNTESS) {
-    return { valid: false, error: 'Must play Countess when holding King or Prince' };
+    return {
+      valid: false,
+      error: 'Must play Countess when holding King or Prince',
+    };
   }
-  
+
   return { valid: true };
 }
 
@@ -57,7 +60,7 @@ export function validateTarget(
   state: GameState,
   playerId: string,
   action: GameAction,
-  canTargetSelf: boolean
+  canTargetSelf: boolean,
 ): ValidationResult {
   const validTargets = getValidTargets(state, playerId, canTargetSelf);
 
@@ -70,7 +73,9 @@ export function validateTarget(
     return { valid: false, error: 'Target player required' };
   }
 
-  const targetPlayer = state.players.find(p => p.id === action.targetPlayerId);
+  const targetPlayer = state.players.find(
+    (p) => p.id === action.targetPlayerId,
+  );
   if (!targetPlayer) {
     return { valid: false, error: 'Invalid target player' };
   }
@@ -101,10 +106,12 @@ export function validateTarget(
  */
 export function validateGuardGuess(
   cardId: string,
-  targetCardGuess: string | undefined
+  targetCardGuess: string | undefined,
 ): ValidationResult {
-  if ((cardId === GUARD || cardId === TILLBAKAKAKA) && 
-      (targetCardGuess === GUARD || targetCardGuess === TILLBAKAKAKA)) {
+  if (
+    (cardId === GUARD || cardId === TILLBAKAKAKA) &&
+    (targetCardGuess === GUARD || targetCardGuess === TILLBAKAKAKA)
+  ) {
     return { valid: false, error: 'Cannot guess Guard' };
   }
   return { valid: true };
@@ -117,7 +124,7 @@ export function validateCardPlay(
   state: GameState,
   playerId: string,
   action: GameAction,
-  activePlayer: PlayerState | null
+  activePlayer: PlayerState | null,
 ): ValidationResult {
   // Check if it's the player's turn
   if (!activePlayer || activePlayer.id !== playerId) {
@@ -128,7 +135,7 @@ export function validateCardPlay(
   if (state.phase !== 'WAITING_FOR_ACTION') {
     return { valid: false, error: 'Not in action phase' };
   }
-  
+
   // Check if cardId is provided
   if (!action.cardId) {
     return { valid: false, error: 'Card ID required' };
@@ -154,8 +161,12 @@ export function validateCardPlay(
   // Target validation - check if there are valid targets
   let hasValidTargets = true;
   if (cardDef.effect.requiresTargetPlayer) {
-    const validTargets = getValidTargets(state, playerId, cardDef.effect.canTargetSelf ?? false);
-    
+    const validTargets = getValidTargets(
+      state,
+      playerId,
+      cardDef.effect.canTargetSelf ?? false,
+    );
+
     // If no valid targets exist, card can be played with no effect (no target/guess required)
     if (validTargets.length === 0) {
       hasValidTargets = false;
@@ -164,7 +175,7 @@ export function validateCardPlay(
         state,
         playerId,
         action,
-        cardDef.effect.canTargetSelf ?? false
+        cardDef.effect.canTargetSelf ?? false,
       );
       if (!targetResult.valid) {
         return targetResult;
@@ -175,7 +186,10 @@ export function validateCardPlay(
   // Only validate guard guess and target card guess if there are valid targets
   if (hasValidTargets) {
     // Guard guess validation
-    const guardResult = validateGuardGuess(action.cardId, action.targetCardGuess ?? undefined);
+    const guardResult = validateGuardGuess(
+      action.cardId,
+      action.targetCardGuess ?? undefined,
+    );
     if (!guardResult.valid) {
       return guardResult;
     }

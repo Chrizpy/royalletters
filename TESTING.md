@@ -3,9 +3,11 @@
 ## Quick Start
 
 ### Option 1: Two Browser Tabs (Same Machine)
+
 This is the easiest way to test the P2P connection flow:
 
 1. **Start the dev server:**
+
    ```bash
    npm run dev
    ```
@@ -19,7 +21,6 @@ This is the easiest way to test the P2P connection flow:
      - Click "Host Game"
      - Note the peer ID displayed (e.g., `royal-a1b2`)
      - Keep this tab open
-   
    - **In Tab 2 (Guest):**
      - Click "Join Game"
      - Since camera won't work in browser, click "Enter code manually"
@@ -32,12 +33,15 @@ This is the easiest way to test the P2P connection flow:
    - Both tabs should show green connection indicator in top-right
 
 ### Option 2: Two Devices on Same Network
+
 For testing with QR code scanning:
 
 1. **Start dev server with network access:**
+
    ```bash
    npm run dev -- --host
    ```
+
    Note the Network URL (e.g., `http://192.168.1.100:5173`)
 
 2. **On Host Device (e.g., laptop):**
@@ -55,11 +59,13 @@ For testing with QR code scanning:
 ### Option 3: Build and Test Production Bundle
 
 1. **Build the project:**
+
    ```bash
    npm run build
    ```
 
 2. **Preview the production build:**
+
    ```bash
    npm run preview -- --host
    ```
@@ -69,6 +75,7 @@ For testing with QR code scanning:
 ## What to Test
 
 ### Connection Flow
+
 - [ ] Host creates game with unique peer ID
 - [ ] Guest can scan QR code (on mobile)
 - [ ] Guest can manually enter peer ID
@@ -76,12 +83,14 @@ For testing with QR code scanning:
 - [ ] "Back" buttons properly disconnect and return to lobby
 
 ### Error Handling
+
 - [ ] Invalid peer ID shows appropriate error
 - [ ] Camera permission denied shows manual input
 - [ ] Connection timeout handled gracefully
 - [ ] Disconnection shows reconnection UI
 
 ### UI/UX
+
 - [ ] QR code displays clearly
 - [ ] Peer ID is readable and copyable
 - [ ] Connection status indicator shows correct state
@@ -90,6 +99,7 @@ For testing with QR code scanning:
 ## Troubleshooting
 
 ### Blank/white screen when loading
+
 If you see a blank screen when navigating to http://localhost:5173:
 
 1. **Clear browser cache and hard reload:**
@@ -97,6 +107,7 @@ If you see a blank screen when navigating to http://localhost:5173:
    - Firefox: `Ctrl+F5` (Windows/Linux) or `Cmd+Shift+R` (Mac)
 
 2. **Ensure dependencies are installed:**
+
    ```bash
    rm -rf node_modules package-lock.json
    npm install
@@ -113,16 +124,19 @@ If you see a blank screen when navigating to http://localhost:5173:
    - Recommended: Chrome, Firefox, Edge (latest versions)
 
 ### Connection fails between devices
+
 - Ensure both devices are on the same network
 - Check firewall isn't blocking WebRTC connections
 - Try using the manual peer ID input instead of QR
 
 ### QR scanner not working
+
 - Ensure HTTPS or localhost (required for camera access)
 - Grant camera permissions when prompted
 - Use manual peer ID input as fallback
 
 ### "PeerJS cloud server" errors
+
 - The free PeerJS cloud server may have rate limits
 - Consider setting up your own PeerJS server for production use
 

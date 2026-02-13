@@ -1,15 +1,19 @@
 <script lang="ts">
   import Card from './Card.svelte';
   import { getCardDefinition } from '../engine/deck';
-  
-  let { playerHand, cardsToReturnCount, onConfirmReturn }: {
+
+  let {
+    playerHand,
+    cardsToReturnCount,
+    onConfirmReturn,
+  }: {
     playerHand: string[];
     cardsToReturnCount: number;
     onConfirmReturn: (cardsToReturn: string[]) => void;
   } = $props();
-  
+
   let selectedIndices = $state<number[]>([]);
-  
+
   function toggleCard(cardIndex: number) {
     const indexInSelection = selectedIndices.indexOf(cardIndex);
     if (indexInSelection === -1) {
@@ -18,38 +22,47 @@
         selectedIndices = [...selectedIndices, cardIndex];
       }
     } else {
-      selectedIndices = selectedIndices.filter(i => i !== cardIndex);
+      selectedIndices = selectedIndices.filter((i) => i !== cardIndex);
     }
   }
-  
+
   function confirmReturn() {
     if (selectedIndices.length !== cardsToReturnCount) return;
     // Validate indices are still valid for current hand
-    if (selectedIndices.some(i => i < 0 || i >= playerHand.length)) {
+    if (selectedIndices.some((i) => i < 0 || i >= playerHand.length)) {
       selectedIndices = [];
       return;
     }
     // Convert indices back to card IDs for the callback
-    const cardsToReturn = selectedIndices.map(i => playerHand[i]);
+    const cardsToReturn = selectedIndices.map((i) => playerHand[i]);
     onConfirmReturn(cardsToReturn);
   }
 </script>
 
-<div class="chancellor-overlay" role="dialog" aria-modal="true" aria-labelledby="chancellor-title" aria-describedby="chancellor-desc">
+<div
+  class="chancellor-overlay"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="chancellor-title"
+  aria-describedby="chancellor-desc"
+>
   <div class="chancellor-modal">
     <h3 id="chancellor-title">📜 Chancellor Effect</h3>
-    <p id="chancellor-desc" class="subtitle">Select {cardsToReturnCount} card{cardsToReturnCount !== 1 ? 's' : ''} to return to the deck bottom.</p>
-    
+    <p id="chancellor-desc" class="subtitle">
+      Select {cardsToReturnCount} card{cardsToReturnCount !== 1 ? 's' : ''} to return
+      to the deck bottom.
+    </p>
+
     {#if cardsToReturnCount > 1}
       <p class="order-hint">
         First selected → very bottom | Second selected → above it
       </p>
     {/if}
-    
+
     <!-- Card selection area -->
     <div class="card-selection">
-      {#each playerHand as cardId, index}
-        <Card 
+      {#each playerHand as cardId, index (index)}
+        <Card
           {cardId}
           isSelected={selectedIndices.includes(index)}
           isPlayable={true}
@@ -58,25 +71,31 @@
         />
       {/each}
     </div>
-    
+
     <!-- Selected cards display -->
     <div class="selected-list">
       {#if selectedIndices.length > 1}
         <div class="selected-item">
           <span class="position-badge">⬆️ 2nd</span>
-          <span class="selected-name">{getCardDefinition(playerHand[selectedIndices[1]])?.name}</span>
+          <span class="selected-name"
+            >{getCardDefinition(playerHand[selectedIndices[1]])?.name}</span
+          >
         </div>
       {/if}
       {#if selectedIndices.length > 0}
         <div class="selected-item bottom-card">
           <span class="position-badge">⬇️ Bottom</span>
-          <span class="selected-name">{getCardDefinition(playerHand[selectedIndices[0]])?.name}</span>
+          <span class="selected-name"
+            >{getCardDefinition(playerHand[selectedIndices[0]])?.name}</span
+          >
         </div>
       {/if}
     </div>
-    
-    <p class="selected-count">Selected: {selectedIndices.length}/{cardsToReturnCount}</p>
-    
+
+    <p class="selected-count">
+      Selected: {selectedIndices.length}/{cardsToReturnCount}
+    </p>
+
     {#if selectedIndices.length === cardsToReturnCount}
       <button class="confirm-btn" onclick={confirmReturn}>
         Confirm Return
@@ -100,8 +119,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .chancellor-modal {
@@ -117,8 +140,14 @@
   }
 
   @keyframes modal-pop {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   h3 {

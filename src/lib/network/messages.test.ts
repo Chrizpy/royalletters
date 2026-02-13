@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { createMessage, type NetworkMessage, type PlayerJoinedPayload } from './messages';
+import { createMessage, type PlayerJoinedPayload } from './messages';
 
 describe('Network Messages Tests', () => {
   it('should create a valid network message', () => {
     const payload: PlayerJoinedPayload = {
       playerId: 'p1',
       playerName: 'Alice',
-      avatarId: 'avatar1'
+      avatarId: 'avatar1',
     };
 
     const message = createMessage('PLAYER_JOINED', 'sender-id', payload);
@@ -34,10 +34,10 @@ describe('Network Messages Tests', () => {
       'PLAYER_ACTION',
       'ROUND_START',
       'CONNECTION_ACK',
-      'CHAT_MESSAGE'
+      'CHAT_MESSAGE',
     ] as const;
 
-    messageTypes.forEach(type => {
+    messageTypes.forEach((type) => {
       const message = createMessage(type, 'sender', {});
       expect(message.type).toBe(type);
     });

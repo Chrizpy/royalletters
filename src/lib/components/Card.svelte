@@ -1,8 +1,14 @@
 <script lang="ts">
   import { getCardDefinition, getCardValue } from '../engine/deck';
   import { gameState } from '../stores/game';
-  
-  let { cardId, isSelected = false, isPlayable = false, onClick = () => {}, delay = 0 }: {
+
+  let {
+    cardId,
+    isSelected = false,
+    isPlayable = false,
+    onClick = () => {},
+    delay = 0,
+  }: {
     cardId: string;
     isSelected?: boolean;
     isPlayable?: boolean;
@@ -17,40 +23,40 @@
 
   function getCardColor(id: string): string {
     const colors: Record<string, string> = {
-      'spy': '#2c3e50',
-      'guard': '#e74c3c',
-      'tillbakakaka': '#e74c3c',
-      'priest': '#9b59b6',
-      'baron': '#3498db',
-      'handmaid': '#1abc9c',
-      'prince': '#f39c12',
-      'chancellor': '#8e44ad',
-      'king': '#e67e22',
-      'countess': '#e91e63',
-      'princess': '#ff69b4'
+      spy: '#2c3e50',
+      guard: '#e74c3c',
+      tillbakakaka: '#e74c3c',
+      priest: '#9b59b6',
+      baron: '#3498db',
+      handmaid: '#1abc9c',
+      prince: '#f39c12',
+      chancellor: '#8e44ad',
+      king: '#e67e22',
+      countess: '#e91e63',
+      princess: '#ff69b4',
     };
     return colors[id] || '#95a5a6';
   }
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
-      'spy': '🕵️',
-      'guard': '⚔️',      
-      'tillbakakaka': '⚔️',      
-      'priest': '🙏',
-      'baron': '⚖️',
-      'handmaid': '🛡️',
-      'prince': '👑',
-      'chancellor': '📜',
-      'king': '👔',
-      'countess': '💃',
-      'princess': '👸'
+      spy: '🕵️',
+      guard: '⚔️',
+      tillbakakaka: '⚔️',
+      priest: '🙏',
+      baron: '⚖️',
+      handmaid: '🛡️',
+      prince: '👑',
+      chancellor: '📜',
+      king: '👔',
+      countess: '💃',
+      princess: '👸',
     };
     return emojis[id] || '🎴';
   }
 </script>
 
-<button 
+<button
   class="card"
   class:selected={isSelected}
   class:playable={isPlayable}
@@ -119,13 +125,17 @@
   .card-inner {
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 70%, black) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--card-color) 0%,
+      color-mix(in srgb, var(--card-color) 70%, black) 100%
+    );
     border-radius: 12px;
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
     align-items: center;
-    box-shadow: 
+    box-shadow:
       0 4px 15px rgba(0, 0, 0, 0.3),
       inset 0 2px 4px rgba(255, 255, 255, 0.2),
       inset 0 -2px 4px rgba(0, 0, 0, 0.2);
@@ -134,7 +144,7 @@
   }
 
   .card.selected .card-inner {
-    box-shadow: 
+    box-shadow:
       0 8px 30px rgba(255, 255, 255, 0.3),
       inset 0 2px 4px rgba(255, 255, 255, 0.2);
     border-color: white;
@@ -144,15 +154,24 @@
     position: absolute;
     inset: -3px;
     border-radius: 14px;
-    background: linear-gradient(135deg, var(--card-color), transparent, var(--card-color));
+    background: linear-gradient(
+      135deg,
+      var(--card-color),
+      transparent,
+      var(--card-color)
+    );
     z-index: -1;
     opacity: 0.5;
     animation: glow-rotate 3s linear infinite;
   }
 
   @keyframes glow-rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .card-value {

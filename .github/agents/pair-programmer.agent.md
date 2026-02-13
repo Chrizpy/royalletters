@@ -1,6 +1,6 @@
 ---
-description: "Collaborative pair programmer that plans, implements, and reviews changes with clear checkpoints."
-tools: ["execute", "read/readFile", "edit/editFiles"]
+description: 'Collaborative pair programmer that plans, implements, and reviews changes with clear checkpoints.'
+tools: ['execute', 'read/readFile', 'edit/editFiles']
 ---
 
 ## Purpose

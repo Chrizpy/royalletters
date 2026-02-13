@@ -150,6 +150,7 @@ The **bridge layer** connecting UI ↔ Engine ↔ Network.
 ```
 
 **Stores:**
+
 - `gameState` - The reactive game state (wraps `GameEngine`)
 - `networkState` - Connection status, peer info
 - `chatState` - In-game chat messages
@@ -175,6 +176,7 @@ Handles **peer-to-peer communication** via WebRTC (PeerJS).
 ```
 
 **Message Flow:**
+
 1. Guest joins → sends `PLAYER_JOINED`
 2. Host acknowledges → sends `PLAYER_INFO`
 3. Host starts round → broadcasts `ROUND_START` with RNG seed
@@ -252,13 +254,13 @@ Handles **peer-to-peer communication** via WebRTC (PeerJS).
 
 ## Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| **Seeded RNG** | All peers use the same seed → deterministic deck order → no desync |
-| **Host authority** | Host validates all actions and broadcasts authoritative state |
-| **Immutable state** | Engine returns new state objects → clean Svelte reactivity |
-| **UI-agnostic engine** | Engine is testable, portable, and ruleset-swappable |
-| **WebRTC P2P** | No dedicated server needed; low latency for real-time play |
+| Decision               | Rationale                                                          |
+| ---------------------- | ------------------------------------------------------------------ |
+| **Seeded RNG**         | All peers use the same seed → deterministic deck order → no desync |
+| **Host authority**     | Host validates all actions and broadcasts authoritative state      |
+| **Immutable state**    | Engine returns new state objects → clean Svelte reactivity         |
+| **UI-agnostic engine** | Engine is testable, portable, and ruleset-swappable                |
+| **WebRTC P2P**         | No dedicated server needed; low latency for real-time play         |
 
 ---
 
@@ -276,14 +278,14 @@ Card behavior and win conditions adapt based on the active ruleset.
 
 ## Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| UI Framework | Svelte 5 |
-| Language | TypeScript |
-| Build Tool | Vite |
-| Networking | PeerJS (WebRTC) |
-| Testing | Vitest |
-| Deployment | Cloudflare Pages |
+| Layer        | Technology       |
+| ------------ | ---------------- |
+| UI Framework | Svelte 5         |
+| Language     | TypeScript       |
+| Build Tool   | Vite             |
+| Networking   | PeerJS (WebRTC)  |
+| Testing      | Vitest           |
+| Deployment   | Cloudflare Pages |
 
 ---
 

@@ -65,7 +65,10 @@ describe('PeerManager - Visibility Handler', () => {
   it('should register a visibilitychange listener via setupVisibilityHandler', () => {
     pm.setupVisibilityHandler();
 
-    expect(addSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    expect(addSpy).toHaveBeenCalledWith(
+      'visibilitychange',
+      expect.any(Function),
+    );
   });
 
   it('should only register the listener once even if called twice', () => {
@@ -76,7 +79,7 @@ describe('PeerManager - Visibility Handler', () => {
     pm.setupVisibilityHandler();
 
     const visibilityCalls = addSpy.mock.calls.filter(
-      (call) => call[0] === 'visibilitychange'
+      (call) => call[0] === 'visibilitychange',
     );
     expect(visibilityCalls).toHaveLength(0);
   });
@@ -85,7 +88,10 @@ describe('PeerManager - Visibility Handler', () => {
     pm.setupVisibilityHandler();
     pm.disconnect();
 
-    expect(removeSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith(
+      'visibilitychange',
+      expect.any(Function),
+    );
   });
 
   it('should not leave a dangling handler after disconnect', () => {
@@ -98,7 +104,7 @@ describe('PeerManager - Visibility Handler', () => {
     pm.setupVisibilityHandler();
 
     const visibilityCalls = addSpy.mock.calls.filter(
-      (call) => call[0] === 'visibilitychange'
+      (call) => call[0] === 'visibilitychange',
     );
     expect(visibilityCalls).toHaveLength(1);
   });
@@ -130,21 +136,35 @@ describe('PeerManager - Signaling Reconnect', () => {
     pm.onStateChange(stateListener);
 
     // Simulate a destroyed peer
-    const fakePeer = { destroyed: true, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: true,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
 
     // Trigger the private reconnect method
-    (pm as unknown as { reconnectSignalingServer: () => void }).reconnectSignalingServer();
+    (
+      pm as unknown as { reconnectSignalingServer: () => void }
+    ).reconnectSignalingServer();
 
     expect(stateListener).toHaveBeenCalledWith('disconnected');
     expect(fakePeer.reconnect).not.toHaveBeenCalled();
   });
 
   it('should call peer.reconnect() when peer is disconnected but not destroyed', () => {
-    const fakePeer = { destroyed: false, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: false,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
 
-    (pm as unknown as { reconnectSignalingServer: () => void }).reconnectSignalingServer();
+    (
+      pm as unknown as { reconnectSignalingServer: () => void }
+    ).reconnectSignalingServer();
 
     expect(fakePeer.reconnect).toHaveBeenCalledOnce();
   });
@@ -153,22 +173,36 @@ describe('PeerManager - Signaling Reconnect', () => {
     const stateListener = vi.fn();
     pm.onStateChange(stateListener);
 
-    const fakePeer = { destroyed: false, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: false,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
     setPrivateField(pm, 'signalingReconnectAttempts', 5); // already at max
 
-    (pm as unknown as { reconnectSignalingServer: () => void }).reconnectSignalingServer();
+    (
+      pm as unknown as { reconnectSignalingServer: () => void }
+    ).reconnectSignalingServer();
 
     expect(stateListener).toHaveBeenCalledWith('error');
     expect(fakePeer.reconnect).not.toHaveBeenCalled();
   });
 
   it('should reset signaling reconnect attempts on successful reconnect', () => {
-    const fakePeer = { destroyed: false, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: false,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
     setPrivateField(pm, 'signalingReconnectAttempts', 2);
 
-    (pm as unknown as { reconnectSignalingServer: () => void }).reconnectSignalingServer();
+    (
+      pm as unknown as { reconnectSignalingServer: () => void }
+    ).reconnectSignalingServer();
 
     const attempts = getPrivateField<number>(pm, 'signalingReconnectAttempts');
     expect(attempts).toBe(0);
@@ -181,15 +215,20 @@ describe('PeerManager - Signaling Reconnect', () => {
       destroyed: false,
       disconnected: true,
       destroy: vi.fn(),
-      reconnect: vi.fn().mockImplementationOnce(() => {
-        throw new Error('signaling server unreachable');
-      }).mockImplementation(() => {
-        // second call succeeds
-      }),
+      reconnect: vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error('signaling server unreachable');
+        })
+        .mockImplementation(() => {
+          // second call succeeds
+        }),
     };
     setPrivateField(pm, 'peer', fakePeer);
 
-    (pm as unknown as { reconnectSignalingServer: () => void }).reconnectSignalingServer();
+    (
+      pm as unknown as { reconnectSignalingServer: () => void }
+    ).reconnectSignalingServer();
 
     // First call threw, so reconnect was called once
     expect(fakePeer.reconnect).toHaveBeenCalledOnce();
@@ -223,8 +262,9 @@ describe('PeerManager - Visibility Handler triggers reconnect', () => {
     } else {
       vi.spyOn(document, 'addEventListener').mockImplementation(
         (event: string, handler: unknown) => {
-          if (event === 'visibilitychange') capturedHandler = handler as () => void;
-        }
+          if (event === 'visibilitychange')
+            capturedHandler = handler as () => void;
+        },
       );
       vi.spyOn(document, 'removeEventListener');
     }
@@ -237,27 +277,43 @@ describe('PeerManager - Visibility Handler triggers reconnect', () => {
   });
 
   it('should call reconnectSignalingServer when page becomes visible and peer is disconnected', () => {
-    const fakePeer = { destroyed: false, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: false,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
 
     pm.setupVisibilityHandler();
     expect(capturedHandler).not.toBeNull();
 
     // Simulate page becoming visible
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
     capturedHandler!();
 
     expect(fakePeer.reconnect).toHaveBeenCalled();
   });
 
   it('should NOT reconnect when page becomes visible but peer is still connected', () => {
-    const fakePeer = { destroyed: false, disconnected: false, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: false,
+      disconnected: false,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
 
     pm.setupVisibilityHandler();
     expect(capturedHandler).not.toBeNull();
 
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
     capturedHandler!();
 
     expect(fakePeer.reconnect).not.toHaveBeenCalled();
@@ -267,11 +323,19 @@ describe('PeerManager - Visibility Handler triggers reconnect', () => {
     const stateListener = vi.fn();
     pm.onStateChange(stateListener);
 
-    const fakePeer = { destroyed: true, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: true,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
 
     pm.setupVisibilityHandler();
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+    });
     capturedHandler!();
 
     expect(stateListener).toHaveBeenCalledWith('disconnected');
@@ -279,12 +343,20 @@ describe('PeerManager - Visibility Handler triggers reconnect', () => {
   });
 
   it('should NOT do anything when page becomes hidden', () => {
-    const fakePeer = { destroyed: false, disconnected: true, reconnect: vi.fn(), destroy: vi.fn() };
+    const fakePeer = {
+      destroyed: false,
+      disconnected: true,
+      reconnect: vi.fn(),
+      destroy: vi.fn(),
+    };
     setPrivateField(pm, 'peer', fakePeer);
 
     pm.setupVisibilityHandler();
 
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+    });
     capturedHandler!();
 
     expect(fakePeer.reconnect).not.toHaveBeenCalled();

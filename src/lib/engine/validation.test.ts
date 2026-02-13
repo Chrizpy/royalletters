@@ -143,16 +143,16 @@ describe('Validation Module', () => {
       const targets = getValidTargets(mockState, 'p1', true);
       // p1 (self), p2, p3 - all 3 players are valid targets
       expect(targets).toHaveLength(3);
-      expect(targets.map(t => t.id)).toContain('p1');
+      expect(targets.map((t) => t.id)).toContain('p1');
     });
 
     it('should exclude self when canTargetSelf is false', () => {
       const targets = getValidTargets(mockState, 'p1', false);
       // p2 and p3 are valid targets (self excluded)
       expect(targets).toHaveLength(2);
-      expect(targets.map(t => t.id)).toContain('p2');
-      expect(targets.map(t => t.id)).toContain('p3');
-      expect(targets.map(t => t.id)).not.toContain('p1');
+      expect(targets.map((t) => t.id)).toContain('p2');
+      expect(targets.map((t) => t.id)).toContain('p3');
+      expect(targets.map((t) => t.id)).not.toContain('p1');
     });
   });
 
@@ -215,7 +215,7 @@ describe('Validation Module', () => {
     it('should reject when not players turn', () => {
       const action: GameAction = {
         type: 'PLAY_CARD',
-        playerId: 'p2',  // Not active player
+        playerId: 'p2', // Not active player
         cardId: 'baron',
       };
       // mockPlayer1 is the active player (activePlayerIndex: 0), not mockPlayer2
@@ -240,7 +240,7 @@ describe('Validation Module', () => {
       const action: GameAction = {
         type: 'PLAY_CARD',
         playerId: 'p1',
-        cardId: 'princess',  // Not in hand
+        cardId: 'princess', // Not in hand
       };
       const result = validateCardPlay(mockState, 'p1', action, mockPlayer1);
       expect(result.valid).toBe(false);

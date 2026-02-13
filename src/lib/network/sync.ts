@@ -21,7 +21,7 @@ export class GameSync {
     peerManager: PeerManager,
     isHost: boolean,
     localPlayerId: string,
-    localPlayerName: string
+    localPlayerName: string,
   ) {
     this.engine = engine;
     this.peerManager = peerManager;
@@ -84,7 +84,10 @@ export class GameSync {
   /**
    * HOST: Handle guest announcing themselves
    */
-  private handlePlayerJoined(message: Extract<NetworkMessage, { type: 'PLAYER_JOINED' }>, fromPeerId: string): void {
+  private handlePlayerJoined(
+    message: Extract<NetworkMessage, { type: 'PLAYER_JOINED' }>,
+    fromPeerId: string,
+  ): void {
     if (!this.isHost) return;
 
     const payload = message.payload;
@@ -104,19 +107,27 @@ export class GameSync {
   /**
    * HOST: Handle player reconnecting to existing game
    */
-  private handleReconnect(message: Extract<NetworkMessage, { type: 'RECONNECT' }>, fromPeerId: string): void {
+  private handleReconnect(
+    message: Extract<NetworkMessage, { type: 'RECONNECT' }>,
+    fromPeerId: string,
+  ): void {
     if (!this.isHost) return;
 
     const payload = message.payload;
-    console.log('Player reconnecting:', payload.playerName, 'with ID:', payload.playerId);
+    console.log(
+      'Player reconnecting:',
+      payload.playerName,
+      'with ID:',
+      payload.playerId,
+    );
 
     // Check if this player exists in the game
     const state = this.engine.getState();
-    const existingPlayer = state.players.find(p => p.id === payload.playerId);
+    const existingPlayer = state.players.find((p) => p.id === payload.playerId);
 
     if (existingPlayer) {
       console.log('Reconnecting existing player:', existingPlayer.name);
-      
+
       // Send acknowledgment
       const ackMessage = createMessage('CONNECTION_ACK', this.localPlayerId, {
         playerId: this.localPlayerId,
@@ -135,7 +146,10 @@ export class GameSync {
   /**
    * HOST: Handle request for state sync (e.g., after reconnect)
    */
-  private handleRequestStateSync(message: Extract<NetworkMessage, { type: 'REQUEST_STATE_SYNC' }>, fromPeerId: string): void {
+  private handleRequestStateSync(
+    message: Extract<NetworkMessage, { type: 'REQUEST_STATE_SYNC' }>,
+    fromPeerId: string,
+  ): void {
     if (!this.isHost) return;
 
     const payload = message.payload;
@@ -153,20 +167,26 @@ export class GameSync {
 
     const state = this.engine.getState();
     const payload: GameStateSyncPayload = { state };
-    const message = createMessage('GAME_STATE_SYNC', this.localPlayerId, payload);
-    
+    const message = createMessage(
+      'GAME_STATE_SYNC',
+      this.localPlayerId,
+      payload,
+    );
+
     this.peerManager.sendTo(peerId, message);
   }
 
   /**
    * GUEST: Handle receiving player info from host
    */
-  private handlePlayerInfo(message: Extract<NetworkMessage, { type: 'PLAYER_INFO' }>): void {
+  private handlePlayerInfo(
+    message: Extract<NetworkMessage, { type: 'PLAYER_INFO' }>,
+  ): void {
     if (this.isHost) return;
 
     const payload = message.payload;
     console.log('Received player info:', payload.players);
-    
+
     // Update local state (can be used to update UI)
     // This would typically update a Svelte store
   }
@@ -174,10 +194,12 @@ export class GameSync {
   /**
    * Handle full game state synchronization
    */
-  private handleGameStateSync(message: Extract<NetworkMessage, { type: 'GAME_STATE_SYNC' }>): void {
+  private handleGameStateSync(
+    message: Extract<NetworkMessage, { type: 'GAME_STATE_SYNC' }>,
+  ): void {
     const payload = message.payload;
     console.log('Received game state sync');
-    
+
     // Update local game state
     this.engine.setState(payload.state);
   }
@@ -185,11 +207,13 @@ export class GameSync {
   /**
    * HOST: Handle player action from guest
    */
-  private handlePlayerAction(message: Extract<NetworkMessage, { type: 'PLAYER_ACTION' }>): void {
+  private handlePlayerAction(
+    message: Extract<NetworkMessage, { type: 'PLAYER_ACTION' }>,
+  ): void {
     if (!this.isHost) return;
 
     const payload = message.payload;
-    
+
     const action: GameAction = {
       type: 'PLAY_CARD',
       playerId: message.senderId,
@@ -200,7 +224,7 @@ export class GameSync {
 
     // Validate and apply action
     const result = this.engine.applyMove(action);
-    
+
     if (result.success) {
       // Broadcast updated state to all clients
       this.broadcastGameState();
@@ -212,7 +236,7 @@ export class GameSync {
   /**
    * Handle round start message
    */
-  private handleRoundStart(message: NetworkMessage): void {
+  private handleRoundStart(_message: NetworkMessage): void {
     if (this.isHost) return;
 
     console.log('Round started by host');
@@ -222,7 +246,9 @@ export class GameSync {
   /**
    * GUEST: Handle connection acknowledgment from host
    */
-  private handleConnectionAck(message: Extract<NetworkMessage, { type: 'CONNECTION_ACK' }>): void {
+  private handleConnectionAck(
+    message: Extract<NetworkMessage, { type: 'CONNECTION_ACK' }>,
+  ): void {
     if (this.isHost) return;
 
     const payload = message.payload;
@@ -298,8 +324,12 @@ export class GameSync {
 
     const state = this.engine.getState();
     const payload: GameStateSyncPayload = { state };
-    const message = createMessage('GAME_STATE_SYNC', this.localPlayerId, payload);
-    
+    const message = createMessage(
+      'GAME_STATE_SYNC',
+      this.localPlayerId,
+      payload,
+    );
+
     this.peerManager.broadcast(message);
   }
 
@@ -309,7 +339,7 @@ export class GameSync {
   sendPlayerAction(
     cardId: string,
     targetPlayerId?: string,
-    targetCardGuess?: string
+    targetCardGuess?: string,
   ): void {
     if (this.isHost) {
       // Host applies actions directly
@@ -320,9 +350,9 @@ export class GameSync {
         targetPlayerId,
         targetCardGuess,
       };
-      
+
       const result = this.engine.applyMove(action);
-      
+
       if (result.success) {
         this.broadcastGameState();
       }
@@ -333,8 +363,12 @@ export class GameSync {
         targetPlayerId,
         targetCardGuess,
       };
-      
-      const message = createMessage('PLAYER_ACTION', this.localPlayerId, payload);
+
+      const message = createMessage(
+        'PLAYER_ACTION',
+        this.localPlayerId,
+        payload,
+      );
       this.peerManager.broadcast(message);
     }
   }
@@ -346,7 +380,7 @@ export class GameSync {
     if (!this.isHost) return;
 
     this.engine.startRound();
-    
+
     // Broadcast the new state
     this.broadcastGameState();
   }

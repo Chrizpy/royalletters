@@ -8,10 +8,7 @@ import type { GameState, PlayerState, LogEntry } from '../../types';
  * Eliminate a player with a given reason
  * Moves all cards from hand to discard pile and sets status
  */
-export function eliminatePlayer(
-  player: PlayerState,
-  reason: string
-): void {
+export function eliminatePlayer(player: PlayerState, reason: string): void {
   // Move all cards from hand to discard pile
   while (player.hand.length > 0) {
     const card = player.hand.shift()!;
@@ -28,7 +25,7 @@ export function addLog(
   message: string,
   state: GameState,
   actorId?: string,
-  cardId?: string
+  cardId?: string,
 ): void {
   const entry: LogEntry = {
     timestamp: Date.now(),

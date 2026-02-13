@@ -1,6 +1,10 @@
 import { writable, get } from 'svelte/store';
 import { GameEngine } from '../engine/game';
-import { decideAIMove, isActivePlayerAI, getActiveAIPlayerId } from '../engine/ai';
+import {
+  decideAIMove,
+  isActivePlayerAI,
+  getActiveAIPlayerId,
+} from '../engine/ai';
 import type { GameState, GameAction, ActionResult, Ruleset } from '../types';
 
 // Game engine instance (singleton for the session)
@@ -13,12 +17,25 @@ export const gameState = writable<GameState | null>(null);
 export const gameStarted = writable<boolean>(false);
 
 // Revealed card (for Priest effect) - includes viewer to ensure only the right player sees it
-export const revealedCard = writable<{ cardId: string; playerName: string; viewerPlayerId: string } | null>(null);
+export const revealedCard = writable<{
+  cardId: string;
+  playerName: string;
+  viewerPlayerId: string;
+} | null>(null);
 
 /**
  * Initialize the game engine with players
  */
-export function initGame(players: Array<{ id: string; name: string; isHost?: boolean; isAI?: boolean }>, ruleset: Ruleset = 'classic', tokensToWin?: number) {
+export function initGame(
+  players: Array<{
+    id: string;
+    name: string;
+    isHost?: boolean;
+    isAI?: boolean;
+  }>,
+  ruleset: Ruleset = 'classic',
+  tokensToWin?: number,
+) {
   engine = new GameEngine();
   engine.init({ players, ruleset, tokensToWin });
   gameState.set(engine.getState());
@@ -59,25 +76,27 @@ export function drawCard() {
  */
 export function applyAction(action: GameAction): ActionResult | undefined {
   if (!engine) return;
-  
+
   const result = engine.applyMove(action);
   const newState = engine.getState();
-  
+
   // Handle Priest reveal - store the revealed card info with who should see it
   if (result.revealedCard) {
-    const targetPlayer = newState.players.find(p => p.id === action.targetPlayerId);
+    const targetPlayer = newState.players.find(
+      (p) => p.id === action.targetPlayerId,
+    );
     revealedCard.set({
       cardId: result.revealedCard,
       playerName: targetPlayer?.name || 'Unknown',
-      viewerPlayerId: action.playerId  // Only the player who played Priest should see this
+      viewerPlayerId: action.playerId, // Only the player who played Priest should see this
     });
   }
-  
+
   // Auto-draw for next player if needed
   if (newState.phase === 'TURN_START') {
     engine.drawPhase();
   }
-  
+
   gameState.set(engine.getState());
   return result;
 }
@@ -98,7 +117,7 @@ export function setGameState(state: GameState) {
   }
   engine.setState(state);
   gameState.set(state);
-  
+
   if (state.phase !== 'LOBBY') {
     gameStarted.set(true);
   }
@@ -136,10 +155,10 @@ export function checkIfAITurn(): boolean {
 export function getAIMove(): GameAction | null {
   const state = get(gameState);
   if (!state) return null;
-  
+
   const aiPlayerId = getActiveAIPlayerId(state);
   if (!aiPlayerId) return null;
-  
+
   return decideAIMove(state, aiPlayerId);
 }
 
@@ -150,6 +169,6 @@ export function getAIMove(): GameAction | null {
 export function executeAIMove(): ActionResult | undefined {
   const move = getAIMove();
   if (!move) return undefined;
-  
+
   return applyAction(move);
 }

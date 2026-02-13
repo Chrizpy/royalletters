@@ -1,8 +1,11 @@
 <script lang="ts">
   import cardsData from '../data/cards.json';
-  import type { CardDefinition, Ruleset, GameState } from '../types';
+  import type { CardDefinition, GameState } from '../types';
 
-  let { gameState, onClose }: {
+  let {
+    gameState,
+    onClose,
+  }: {
     gameState: GameState;
     onClose: () => void;
   } = $props();
@@ -18,22 +21,25 @@
 
   function getCardEmoji(id: string): string {
     const emojis: Record<string, string> = {
-      'spy': '🕵️',
-      'guard': '⚔️',
-      'priest': '🙏',
-      'baron': '⚖️',
-      'handmaid': '🛡️',
-      'prince': '👑',
-      'chancellor': '📜',
-      'king': '👔',
-      'countess': '💃',
-      'princess': '👸'
+      spy: '🕵️',
+      guard: '⚔️',
+      priest: '🙏',
+      baron: '⚖️',
+      handmaid: '🛡️',
+      prince: '👑',
+      chancellor: '📜',
+      king: '👔',
+      countess: '💃',
+      princess: '👸',
     };
     return emojis[id] || '🎴';
   }
 
   // Calculate remaining count for a card type
-  function getRemainingCount(cardId: string): { remaining: number; total: number } {
+  function getRemainingCount(cardId: string): {
+    remaining: number;
+    total: number;
+  } {
     const ruleset = gameState.ruleset;
     const deckDef = registry.decks[ruleset];
     const total = deckDef?.[cardId] || 0;
@@ -41,11 +47,13 @@
     // Count cards in discard piles
     let discarded = 0;
     for (const player of gameState.players) {
-      discarded += player.discardPile.filter(c => c === cardId).length;
+      discarded += player.discardPile.filter((c) => c === cardId).length;
     }
 
     // Count cards in face-up burned cards
-    const faceUpBurned = gameState.burnedCardsFaceUp.filter(c => c === cardId).length;
+    const faceUpBurned = gameState.burnedCardsFaceUp.filter(
+      (c) => c === cardId,
+    ).length;
 
     const remaining = total - discarded - faceUpBurned;
     return { remaining, total };
@@ -56,7 +64,10 @@
     const card = registry.cards[cardId];
     if (!card) return 0;
 
-    if (gameState.ruleset === 'classic' && registry.classicCardValues[cardId] !== undefined) {
+    if (
+      gameState.ruleset === 'classic' &&
+      registry.classicCardValues[cardId] !== undefined
+    ) {
       return registry.classicCardValues[cardId];
     }
     return card.value;
@@ -69,9 +80,9 @@
       console.error(`Unknown ruleset: ${gameState.ruleset}`);
       return [];
     }
-    
+
     return Object.keys(deckDef)
-      .map(cardId => {
+      .map((cardId) => {
         const card = registry.cards[cardId];
         const { remaining, total } = getRemainingCount(cardId);
         return {
@@ -80,7 +91,7 @@
           value: getCardValue(cardId),
           description: card.description,
           remaining,
-          total
+          total,
         };
       })
       .sort((a, b) => a.value - b.value);
@@ -94,10 +105,10 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div 
-  class="deck-info-overlay" 
-  role="dialog" 
-  aria-modal="true" 
+<div
+  class="deck-info-overlay"
+  role="dialog"
+  aria-modal="true"
   aria-labelledby="deck-info-title"
   onclick={handleOverlayClick}
   onkeydown={(e) => e.key === 'Escape' && onClose()}
@@ -107,13 +118,17 @@
   <div class="deck-info-modal" onclick={(e) => e.stopPropagation()}>
     <div class="modal-header">
       <h3 id="deck-info-title">📚 Deck Information</h3>
-      <button class="close-btn" onclick={onClose} aria-label="Close modal">✕</button>
+      <button class="close-btn" onclick={onClose} aria-label="Close modal"
+        >✕</button
+      >
     </div>
 
-    <p class="subtitle">Cards in the {gameState.ruleset === 'classic' ? 'Classic' : '2019'} deck</p>
+    <p class="subtitle">
+      Cards in the {gameState.ruleset === 'classic' ? 'Classic' : '2019'} deck
+    </p>
 
     <div class="cards-list">
-      {#each cardsInDeck as card}
+      {#each cardsInDeck as card (card.id)}
         <div class="card-info-item">
           <div class="card-header">
             <span class="card-emoji">{getCardEmoji(card.id)}</span>
@@ -150,8 +165,12 @@
   }
 
   @keyframes overlay-fade {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   .deck-info-modal {
@@ -168,8 +187,14 @@
   }
 
   @keyframes modal-pop {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 
   .modal-header {

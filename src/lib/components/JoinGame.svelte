@@ -2,12 +2,28 @@
   import { onMount, onDestroy } from 'svelte';
   import { Html5Qrcode } from 'html5-qrcode';
   import { PeerManager } from '../network/peer';
-  import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
-  import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type PlayerActionPayload, type ChatMessagePayload, type PlayerJoinedPayload } from '../network/messages';
+  import {
+    peerId,
+    remotePeerId,
+    connectionState,
+    isHost,
+  } from '../stores/network';
+  import {
+    gameState,
+    gameStarted,
+    setGameState,
+    revealedCard,
+  } from '../stores/game';
+  import {
+    createMessage,
+    type NetworkMessage,
+    type PlayerActionPayload,
+    type ChatMessagePayload,
+    type PlayerJoinedPayload,
+  } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage } from '../stores/chat';
-  import { saveSession, clearSession } from '../stores/session';
+  import { saveSession } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
   interface Props {
@@ -68,17 +84,17 @@
 
   async function startScanner() {
     try {
-      scanner = new Html5Qrcode("qr-reader");
+      scanner = new Html5Qrcode('qr-reader');
       isScanning = true;
-      
+
       await scanner.start(
-        { facingMode: "environment" },
+        { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 }
+          qrbox: { width: 250, height: 250 },
         },
         onScanSuccess,
-        onScanError
+        onScanError,
       );
     } catch (err) {
       console.error('Camera error:', err);
@@ -122,13 +138,13 @@
     }
   }
 
-  function onScanError(errorMessage: string) {
+  function onScanError(_errorMessage: string) {
     // Ignore scan errors (they happen continuously while scanning)
   }
 
   function handleMessage(message: NetworkMessage) {
     console.log('Guest received message:', message.type);
-    
+
     if (message.type === 'GAME_STATE_SYNC') {
       const payload = message.payload;
       setGameState(payload.state);
@@ -138,7 +154,7 @@
       revealedCard.set({
         cardId: payload.cardId,
         playerName: payload.targetPlayerName,
-        viewerPlayerId: guestPeerId  // This guest is the viewer
+        viewerPlayerId: guestPeerId, // This guest is the viewer
       });
     } else if (message.type === 'CHAT_MESSAGE') {
       // Received chat message - add to local store
@@ -148,7 +164,7 @@
         senderId: message.senderId,
         senderName: payload.senderName,
         text: payload.text,
-        timestamp: payload.timestamp
+        timestamp: payload.timestamp,
       };
       addChatMessage(chatMsg);
     }
@@ -158,77 +174,84 @@
     try {
       error = '';
       hostPeerId = targetHostPeerId;
-      
+
       // Generate guest peer ID
       const randomSuffix = Math.random().toString(36).substring(2, 6);
       guestPeerId = `guest-${randomSuffix}`;
-      
+
       // Create peer manager
       peerManager = new PeerManager();
-      
+
       // Set up state listener
       peerManager.onStateChange((state) => {
         localConnectionState = state;
         connectionState.set(state);
-        
+
         if (state === 'connected') {
           remotePeerId.set(hostPeerId);
           peerId.set(guestPeerId);
-          
+
           // Save session for reconnection
           saveSession({
             guestPeerId,
             hostPeerId,
-            nickname: nickname.trim()
+            nickname: nickname.trim(),
           });
-          
+
           // Send player joined message with nickname
           const playerJoinedPayload: PlayerJoinedPayload = {
             playerId: guestPeerId,
-            playerName: nickname.trim()
+            playerName: nickname.trim(),
           };
-          const joinMessage = createMessage('PLAYER_JOINED', guestPeerId, playerJoinedPayload);
+          const joinMessage = createMessage(
+            'PLAYER_JOINED',
+            guestPeerId,
+            playerJoinedPayload,
+          );
           peerManager.broadcast(joinMessage);
         }
       });
 
       // Set up message handler
-      peerManager.onMessage((message, conn) => {
+      peerManager.onMessage((message, _conn) => {
         handleMessage(message);
       });
-      
+
       // Connect to host
       await peerManager.connectToHost(hostPeerId, guestPeerId);
-      
     } catch (err) {
       error = `Failed to connect: ${err}`;
       console.error(err);
     }
   }
 
-  function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
+  function handlePlayCard(
+    cardId: string,
+    targetPlayerId?: string,
+    targetCardGuess?: string,
+  ) {
     // Guest sends action to host
     if (!peerManager) return;
-    
+
     const payload: PlayerActionPayload = {
       cardId,
       targetPlayerId,
-      targetCardGuess
+      targetCardGuess,
     };
-    
+
     const message = createMessage('PLAYER_ACTION', guestPeerId, payload);
     peerManager.broadcast(message);
   }
-  
+
   function handleChancellorReturn(cardsToReturn: string[]) {
     // Guest sends Chancellor return action to host
     if (!peerManager) return;
-    
+
     const payload: PlayerActionPayload = {
       cardId: undefined,
-      cardsToReturn
+      cardsToReturn,
     };
-    
+
     const message = createMessage('PLAYER_ACTION', guestPeerId, payload);
     peerManager.broadcast(message);
   }
@@ -236,13 +259,13 @@
   function handleRevengeGuess(targetCardGuess: string) {
     // Guest sends revenge guess action to host
     if (!peerManager) return;
-    
+
     const payload: PlayerActionPayload = {
       cardId: undefined,
       targetCardGuess,
-      isRevengeGuess: true
+      isRevengeGuess: true,
     };
-    
+
     const message = createMessage('PLAYER_ACTION', guestPeerId, payload);
     peerManager.broadcast(message);
   }
@@ -259,17 +282,17 @@
       senderId: guestPeerId,
       senderName: nickname || 'Guest',
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
+
     // Add to local store
     addChatMessage(chatMsg);
-    
+
     // Send to host (who will broadcast to others)
     const payload: ChatMessagePayload = {
       text,
       senderName: nickname || 'Guest',
-      timestamp: chatMsg.timestamp
+      timestamp: chatMsg.timestamp,
     };
     const message = createMessage('CHAT_MESSAGE', guestPeerId, payload);
     peerManager.broadcast(message);
@@ -283,7 +306,7 @@
 
   function toggleManualInput() {
     showManualInput = !showManualInput;
-    
+
     if (showManualInput && scanner && isScanning) {
       scanner.stop().catch(console.error);
       isScanning = false;
@@ -307,7 +330,7 @@
 </script>
 
 {#if inGame && $gameState}
-  <GameScreen 
+  <GameScreen
     localPlayerId={guestPeerId}
     onPlayCard={handlePlayCard}
     onChancellorReturn={handleChancellorReturn}
@@ -320,11 +343,11 @@
   <div class="join-game">
     <div class="join-container">
       <h2>Join Game</h2>
-      
+
       {#if error}
         <div class="error">{error}</div>
       {/if}
-      
+
       {#if localConnectionState === 'connected'}
         <div class="success">
           <div class="success-icon">✓</div>
@@ -357,43 +380,45 @@
             </button>
           </div>
         {:else}
-        <div class="manual-section">
-          {#if cameraPermissionDenied}
-            <div class="info">
-              <p>📷 Camera access not available</p>
-              <p class="info-detail">Please enter the host's peer ID manually</p>
-            </div>
-          {/if}
-          
-          <label for="peer-id">Host Peer ID:</label>
-          <input
-            id="peer-id"
-            type="text"
-            bind:value={manualPeerId}
-            placeholder="royal-xxxx"
-            class="peer-input"
-          />
-          
-          <button 
-            class="connect-btn"
-            onclick={handleManualConnect}
-            disabled={!manualPeerId.trim()}
-          >
-            Connect
-          </button>
-          
-          {#if !cameraPermissionDenied}
-            <button class="toggle-btn" onclick={toggleManualInput}>
-              Use camera instead
+          <div class="manual-section">
+            {#if cameraPermissionDenied}
+              <div class="info">
+                <p>📷 Camera access not available</p>
+                <p class="info-detail">
+                  Please enter the host's peer ID manually
+                </p>
+              </div>
+            {/if}
+
+            <label for="peer-id">Host Peer ID:</label>
+            <input
+              id="peer-id"
+              type="text"
+              bind:value={manualPeerId}
+              placeholder="royal-xxxx"
+              class="peer-input"
+            />
+
+            <button
+              class="connect-btn"
+              onclick={handleManualConnect}
+              disabled={!manualPeerId.trim()}
+            >
+              Connect
             </button>
-          {/if}
-        </div>
+
+            {#if !cameraPermissionDenied}
+              <button class="toggle-btn" onclick={toggleManualInput}>
+                Use camera instead
+              </button>
+            {/if}
+          </div>
+        {/if}
       {/if}
-    {/if}
-    
-    <button class="back-btn" onclick={handleBack}>Back</button>
+
+      <button class="back-btn" onclick={handleBack}>Back</button>
+    </div>
   </div>
-</div>
 {/if}
 
 <style>
@@ -402,7 +427,7 @@
     justify-content: center;
     align-items: flex-start;
     height: 100dvh;
-    background: 
+    background:
       radial-gradient(ellipse at top, rgba(139, 0, 0, 0.3) 0%, transparent 50%),
       linear-gradient(135deg, #2c0a0a 0%, #1a0505 50%, #0d0202 100%);
     padding: 1rem;
@@ -416,7 +441,9 @@
     padding: 1.5rem;
     max-width: 500px;
     width: 100%;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(212, 166, 74, 0.15);
+    box-shadow:
+      0 10px 40px rgba(0, 0, 0, 0.4),
+      0 0 30px rgba(212, 166, 74, 0.15);
     margin-top: 1rem;
     margin-bottom: 1rem;
     border: 2px solid #d4a64a;
@@ -472,7 +499,9 @@
     font-size: 1rem;
     font-family: inherit;
     box-sizing: border-box;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    transition:
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
     background: #fffef9;
     color: #2c1810;
   }
@@ -527,7 +556,9 @@
     box-shadow: 0 0 8px rgba(212, 166, 74, 0.4);
   }
 
-  .connect-btn, .toggle-btn, .back-btn {
+  .connect-btn,
+  .toggle-btn,
+  .back-btn {
     padding: 1rem;
     border: none;
     border-radius: 8px;
@@ -620,7 +651,11 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 </style>

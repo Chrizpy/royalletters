@@ -19,9 +19,9 @@ export const savedSession = writable<GameSession | null>(null);
 export function saveSession(session: Omit<GameSession, 'timestamp'>): void {
   const fullSession: GameSession = {
     ...session,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
-  
+
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify(fullSession));
     savedSession.set(fullSession);
@@ -37,16 +37,16 @@ export function loadSession(): GameSession | null {
   try {
     const stored = localStorage.getItem(SESSION_KEY);
     if (!stored) return null;
-    
+
     const session: GameSession = JSON.parse(stored);
     const age = Date.now() - session.timestamp;
-    
+
     if (age > SESSION_EXPIRY_MS) {
       // Session expired
       clearSession();
       return null;
     }
-    
+
     savedSession.set(session);
     return session;
   } catch (err) {
@@ -80,11 +80,11 @@ export function hasValidSession(): boolean {
 export function getSessionAge(session: GameSession): string {
   const ageMs = Date.now() - session.timestamp;
   const minutes = Math.floor(ageMs / 60000);
-  
+
   if (minutes < 1) return 'just now';
   if (minutes === 1) return '1 minute ago';
   if (minutes < 60) return `${minutes} minutes ago`;
-  
+
   const hours = Math.floor(minutes / 60);
   if (hours === 1) return '1 hour ago';
   return `${hours} hours ago`;

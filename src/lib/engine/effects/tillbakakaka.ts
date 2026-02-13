@@ -3,7 +3,7 @@
  * Like Guard, but if wrong, target gets a revenge guess
  */
 
-import type { GameState, PlayerState, GameAction } from '../../types';
+import type { GameState, GameAction } from '../../types';
 import type { EffectContext, EffectResult } from './types';
 import { getCardDefinition } from '../deck';
 import { eliminatePlayer, addLog } from './utils';
@@ -11,7 +11,9 @@ import { GUARD, TILLBAKAKAKA } from '../cardIds';
 
 export function applyGuessCardRevenge(context: EffectContext): EffectResult {
   const { state, action, activePlayer } = context;
-  const targetPlayer = state.players.find(p => p.id === action.targetPlayerId)!;
+  const targetPlayer = state.players.find(
+    (p) => p.id === action.targetPlayerId,
+  )!;
   const guess = action.targetCardGuess!;
   const guessCardDef = getCardDefinition(guess);
   const guessName = guessCardDef?.name || guess;
@@ -20,10 +22,14 @@ export function applyGuessCardRevenge(context: EffectContext): EffectResult {
     // Correct guess - eliminate target (no revenge)
     eliminatePlayer(
       targetPlayer,
-      `${activePlayer.name} correctly guessed you had ${guessName} (with Guard 🍪)`
+      `${activePlayer.name} correctly guessed you had ${guessName} (with Guard 🍪)`,
     );
-    addLog(`${targetPlayer.name} was eliminated (had ${guessName})`, state, targetPlayer.id);
-    
+    addLog(
+      `${targetPlayer.name} was eliminated (had ${guessName})`,
+      state,
+      targetPlayer.id,
+    );
+
     return {
       message: `Correct guess! ${targetPlayer.name} is eliminated`,
       eliminatedPlayerId: targetPlayer.id,
@@ -33,9 +39,9 @@ export function applyGuessCardRevenge(context: EffectContext): EffectResult {
     addLog(
       `${activePlayer.name} guessed ${targetPlayer.name} had ${guessName} (incorrectly) - 🍪 revenge time!`,
       state,
-      activePlayer.id
+      activePlayer.id,
     );
-    
+
     // Set up revenge guess state
     state.revengeGuess = {
       revengerId: targetPlayer.id,
@@ -43,7 +49,7 @@ export function applyGuessCardRevenge(context: EffectContext): EffectResult {
       originalGuess: guess,
     };
     state.phase = 'WAITING_FOR_REVENGE_GUESS';
-    
+
     return {
       message: `Incorrect guess! ${targetPlayer.name} gets a revenge guess!`,
       skipTurnAdvance: true,
@@ -56,7 +62,7 @@ export function applyGuessCardRevenge(context: EffectContext): EffectResult {
  */
 export function applyRevengeGuess(
   action: GameAction,
-  state: GameState
+  state: GameState,
 ): EffectResult & { success: boolean } {
   // Validate revenge guess
   if (state.phase !== 'WAITING_FOR_REVENGE_GUESS') {
@@ -81,15 +87,22 @@ export function applyRevengeGuess(
   }
 
   // Cannot guess guard or tillbakakaka on revenge
-  if (action.targetCardGuess === GUARD || action.targetCardGuess === TILLBAKAKAKA) {
+  if (
+    action.targetCardGuess === GUARD ||
+    action.targetCardGuess === TILLBAKAKAKA
+  ) {
     return {
       success: false,
       message: 'Cannot guess Guard',
     };
   }
 
-  const revenger = state.players.find(p => p.id === state.revengeGuess!.revengerId)!;
-  const target = state.players.find(p => p.id === state.revengeGuess!.targetId)!;
+  const revenger = state.players.find(
+    (p) => p.id === state.revengeGuess!.revengerId,
+  )!;
+  const target = state.players.find(
+    (p) => p.id === state.revengeGuess!.targetId,
+  )!;
   const guess = action.targetCardGuess!;
   const guessCardDef = getCardDefinition(guess);
   const guessName = guessCardDef?.name || guess;
@@ -101,18 +114,26 @@ export function applyRevengeGuess(
     // Correct revenge guess - eliminate the original guesser!
     eliminatePlayer(
       target,
-      `${revenger.name}'s revenge guess correctly identified you had ${guessName}`
+      `${revenger.name}'s revenge guess correctly identified you had ${guessName}`,
     );
-    addLog(`🍪 Revenge! ${revenger.name} correctly guessed ${target.name} had ${guessName}`, state, revenger.id);
-    
+    addLog(
+      `🍪 Revenge! ${revenger.name} correctly guessed ${target.name} had ${guessName}`,
+      state,
+      revenger.id,
+    );
+
     return {
       success: true,
       message: `Revenge successful! ${target.name} is eliminated`,
       eliminatedPlayerId: target.id,
     };
   } else {
-    addLog(`🍪 ${revenger.name}'s revenge guess of ${guessName} was incorrect`, state, revenger.id);
-    
+    addLog(
+      `🍪 ${revenger.name}'s revenge guess of ${guessName} was incorrect`,
+      state,
+      revenger.id,
+    );
+
     return {
       success: true,
       message: 'Revenge guess incorrect',

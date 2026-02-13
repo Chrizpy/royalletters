@@ -1,21 +1,45 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { PeerManager } from '../network/peer';
-  import { peerId, remotePeerId, connectionState, isHost } from '../stores/network';
-  import { gameState, gameStarted, setGameState, revealedCard } from '../stores/game';
-  import { createMessage, type NetworkMessage, type GameStateSyncPayload, type PlayerActionPayload, type PriestRevealPayload, type ChatMessagePayload, type ReconnectPayload } from '../network/messages';
+  import {
+    peerId,
+    remotePeerId,
+    connectionState,
+    isHost,
+  } from '../stores/network';
+  import {
+    gameState,
+    gameStarted,
+    setGameState,
+    revealedCard,
+  } from '../stores/game';
+  import {
+    createMessage,
+    type NetworkMessage,
+    type GameStateSyncPayload,
+    type PlayerActionPayload,
+    type PriestRevealPayload,
+    type ChatMessagePayload,
+    type ReconnectPayload,
+  } from '../network/messages';
   import GameScreen from './GameScreen.svelte';
   import { addChatMessage, clearChatMessages } from '../stores/chat';
-  import { type GameSession, clearSession, getSessionAge } from '../stores/session';
+  import {
+    type GameSession,
+    clearSession,
+    getSessionAge,
+  } from '../stores/session';
   import { v4 as uuidv4 } from 'uuid';
 
-  let { session, onDismiss }: {
+  let {
+    session,
+    onDismiss,
+  }: {
     session: GameSession;
     onDismiss: () => void;
   } = $props();
 
   let peerManager: PeerManager;
-  let localConnectionState = $state('disconnected');
   let isReconnecting = $state(false);
   let error = $state('');
 
@@ -30,7 +54,7 @@
 
   function handleMessage(message: NetworkMessage) {
     console.log('Rejoining guest received message:', message.type);
-    
+
     if (message.type === 'GAME_STATE_SYNC') {
       const payload = message.payload as GameStateSyncPayload;
       setGameState(payload.state);
@@ -40,7 +64,7 @@
       revealedCard.set({
         cardId: payload.cardId,
         playerName: payload.targetPlayerName,
-        viewerPlayerId: session.guestPeerId
+        viewerPlayerId: session.guestPeerId,
       });
     } else if (message.type === 'CHAT_MESSAGE') {
       const payload = message.payload as ChatMessagePayload;
@@ -49,7 +73,7 @@
         senderId: message.senderId,
         senderName: payload.senderName,
         text: payload.text,
-        timestamp: payload.timestamp
+        timestamp: payload.timestamp,
       };
       addChatMessage(chatMsg);
     }
@@ -58,48 +82,51 @@
   async function handleRejoin() {
     isReconnecting = true;
     error = '';
-    
+
     // Clear stale state from previous session
     revealedCard.set(null);
     clearChatMessages();
     gameState.set(null);
     gameStarted.set(false);
-    
+
     try {
       // Create peer manager with the SAME peer ID as before
       peerManager = new PeerManager();
-      
+
       // Set up state listener
       peerManager.onStateChange((state) => {
-        localConnectionState = state;
         connectionState.set(state);
-        
+
         if (state === 'connected') {
           remotePeerId.set(session.hostPeerId);
           peerId.set(session.guestPeerId);
           isHost.set(false);
-          
+
           // Send RECONNECT message instead of PLAYER_JOINED
           const reconnectPayload: ReconnectPayload = {
             playerId: session.guestPeerId,
-            playerName: session.nickname
+            playerName: session.nickname,
           };
-          const reconnectMessage = createMessage('RECONNECT', session.guestPeerId, reconnectPayload);
+          const reconnectMessage = createMessage(
+            'RECONNECT',
+            session.guestPeerId,
+            reconnectPayload,
+          );
           peerManager.broadcast(reconnectMessage);
         } else if (state === 'disconnected' || state === 'error') {
           isReconnecting = false;
-          error = 'Could not reconnect to the game. The host may have closed the session.';
+          error =
+            'Could not reconnect to the game. The host may have closed the session.';
         }
       });
 
       // Set up message handler
-      peerManager.onMessage((message, conn) => {
+      peerManager.onMessage((message, _conn) => {
         handleMessage(message);
       });
-      
+
       // Connect to host using the SAME guest peer ID
       await peerManager.connectToHost(session.hostPeerId, session.guestPeerId);
-      
     } catch (err) {
       error = `Failed to reconnect: ${err}`;
       isReconnecting = false;
@@ -112,57 +139,69 @@
     onDismiss();
   }
 
-  function handlePlayCard(cardId: string, targetPlayerId?: string, targetCardGuess?: string) {
+  function handlePlayCard(
+    cardId: string,
+    targetPlayerId?: string,
+    targetCardGuess?: string,
+  ) {
     if (!peerManager) return;
-    
+
     const payload: PlayerActionPayload = {
       cardId,
       targetPlayerId,
-      targetCardGuess
+      targetCardGuess,
     };
-    
-    const message = createMessage('PLAYER_ACTION', session.guestPeerId, payload);
+
+    const message = createMessage(
+      'PLAYER_ACTION',
+      session.guestPeerId,
+      payload,
+    );
     peerManager.broadcast(message);
   }
 
   function handleChancellorReturn(cardsToReturn: string[]) {
     if (!peerManager) return;
-    
+
     const payload: PlayerActionPayload = {
       cardId: 'chancellor-return',
-      cardsToReturn
+      cardsToReturn,
     };
-    
-    const message = createMessage('PLAYER_ACTION', session.guestPeerId, payload);
+
+    const message = createMessage(
+      'PLAYER_ACTION',
+      session.guestPeerId,
+      payload,
+    );
     peerManager.broadcast(message);
   }
 
   function handleSendChat(text: string) {
     if (!peerManager) return;
-    
+
     const payload: ChatMessagePayload = {
       senderName: session.nickname,
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
+
     const message = createMessage('CHAT_MESSAGE', session.guestPeerId, payload);
     peerManager.broadcast(message);
-    
+
     // Add to local chat
     addChatMessage({
       id: uuidv4(),
       senderId: session.guestPeerId,
       senderName: session.nickname,
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 </script>
 
 {#if inGame && $gameState}
-  <GameScreen 
-    state={$gameState} 
+  <GameScreen
+    state={$gameState}
     localPlayerId={session.guestPeerId}
     onPlayCard={handlePlayCard}
     onChancellorReturn={handleChancellorReturn}
@@ -172,7 +211,7 @@
   <div class="rejoin-overlay">
     <div class="rejoin-modal">
       <h2>🔄 Rejoin Game?</h2>
-      
+
       <div class="session-info">
         <p>You were playing as <strong>{session.nickname}</strong></p>
         <p class="timestamp">Left {getSessionAge(session)}</p>
@@ -183,8 +222,8 @@
       {/if}
 
       <div class="actions">
-        <button 
-          class="rejoin-btn" 
+        <button
+          class="rejoin-btn"
           onclick={handleRejoin}
           disabled={isReconnecting}
         >
@@ -194,9 +233,9 @@
             Rejoin Game
           {/if}
         </button>
-        
-        <button 
-          class="decline-btn" 
+
+        <button
+          class="decline-btn"
           onclick={handleDecline}
           disabled={isReconnecting}
         >
