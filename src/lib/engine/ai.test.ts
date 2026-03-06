@@ -325,4 +325,409 @@ describe('AI Engine Tests', () => {
       }
     });
   });
+
+  describe('AI card knowledge (Priest memory)', () => {
+    it('should use Guard to eliminate a target whose card was learned via Priest', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Guard + Handmaid and KNOWS the human has a Princess
+      aiPlayer.hand = ['guard', 'handmaid'];
+      aiPlayer.knownCards = { p1: 'princess' };
+      human.hand = ['princess'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Should play Guard with exact knowledge of the target's card
+      expect(move?.cardId).toBe('guard');
+      expect(move?.targetPlayerId).toBe('p1');
+      expect(move?.targetCardGuess).toBe('princess');
+    });
+
+    it('should play Prince on self when a high-value card (King) is exposed', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Prince + King (value 6); King is exposed (human Priested the AI).
+      // King is high-value (≥5) so self-Princing to escape makes sense.
+      aiPlayer.hand = ['prince', 'king'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['guard'];
+      state.deck = ['spy', 'priest', 'baron']; // ensure a card to draw
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Should play Prince targeting self to escape exposure of the high-value King
+      expect(move?.cardId).toBe('prince');
+      expect(move?.targetPlayerId).toBe('ai1');
+    });
+
+    it('should NOT self-target with Prince when the exposed card is low-value (Baron)', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Prince + Baron (value 3); Baron is exposed.
+      // Baron is low-value so self-Princing is not worth it.
+      aiPlayer.hand = ['prince', 'baron'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['guard'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Should NOT self-target — Baron is not worth escaping
+      expect(move?.targetPlayerId).not.toBe('ai1');
+    });
+
+    it('should play Handmaid (not self-Prince) when exposed and holding both cards', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Prince + Handmaid; Handmaid is exposed.
+      // Playing Handmaid is better than self-Princing to discard it.
+      aiPlayer.hand = ['prince', 'handmaid'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['guard'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Should play Handmaid for protection — never self-Prince to discard Handmaid
+      expect(move?.cardId).toBe('handmaid');
+    });
+
+    it('should NOT self-target with Prince when the card to be discarded is Princess', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Prince + Princess; Princess is exposed
+      // Playing Prince on self would discard Princess → instant loss → should NOT do it
+      aiPlayer.hand = ['prince', 'princess'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['guard'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Must NOT self-target (would discard Princess and lose)
+      expect(move?.targetPlayerId).not.toBe('ai1');
+    });
+
+    it('should play Baron against an opponent known to have a lower card', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI has Baron + King (value 6). Human is known to hold Guard (value 1).
+      // Playing Baron → AI keeps King (6) vs Guard (1) → AI wins
+      aiPlayer.hand = ['baron', 'king'];
+      aiPlayer.knownCards = { p1: 'guard' };
+      human.hand = ['guard'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      expect(move?.cardId).toBe('baron');
+      expect(move?.targetPlayerId).toBe('p1');
+    });
+
+    it('should play King to steal a known higher-value card', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI has King + Baron (value 3). Human is known to hold Countess (value 7).
+      // Priority 1 (Guard) doesn't apply — no Guard in hand.
+      // Priority 2 (Baron): AI's other card is Baron (3); Countess (7) > Baron (3) → not a Baron win.
+      // Priority 4 (King): Countess (7) > Baron (3) → steal the better card.
+      aiPlayer.hand = ['king', 'baron'];
+      aiPlayer.knownCards = { p1: 'countess' };
+      human.hand = ['countess'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      expect(move?.cardId).toBe('king');
+      expect(move?.targetPlayerId).toBe('p1');
+    });
+
+    it('should clear Priest knowledge when target draws a new card via Prince', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI knew p1 had a Princess, then plays Prince on them to force a redraw
+      aiPlayer.hand = ['prince', 'guard'];
+      aiPlayer.knownCards = { p1: 'princess' };
+      human.hand = ['priest']; // Not Princess, so Prince won't eliminate them
+      state.deck = ['spy'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+      expect(move?.cardId).toBeDefined(); // any valid move
+
+      // Apply Prince on the human
+      const forceMove = {
+        type: 'PLAY_CARD' as const,
+        playerId: 'ai1',
+        cardId: 'prince',
+        targetPlayerId: 'p1',
+      };
+      game.applyMove(forceMove);
+
+      const newState = game.getState();
+      const aiAfter = newState.players.find((p) => p.id === 'ai1')!;
+
+      // Knowledge about p1 should be cleared (p1 now has a different card)
+      expect(aiAfter.knownCards?.['p1']).toBeUndefined();
+    });
+
+    it('should clear exposure when target draws a new card via Prince', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // Human's card is exposed (someone Priested them), then AI forces a redraw
+      aiPlayer.hand = ['prince', 'guard'];
+      human.hand = ['priest'];
+      human.exposedToPlayerIds = ['ai1'];
+      state.deck = ['spy'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const forceMove = {
+        type: 'PLAY_CARD' as const,
+        playerId: 'ai1',
+        cardId: 'prince',
+        targetPlayerId: 'p1',
+      };
+      game.applyMove(forceMove);
+
+      const newState = game.getState();
+      const humanAfter = newState.players.find((p) => p.id === 'p1')!;
+
+      // Exposure should be cleared since p1 now has a fresh unknown card
+      expect(humanAfter.exposedToPlayerIds).toEqual([]);
+    });
+
+    it('should record Priest knowledge in game state when Priest is applied', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI plays Priest on the human
+      aiPlayer.hand = ['priest', 'guard'];
+      human.hand = ['princess'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const priestMove = {
+        type: 'PLAY_CARD' as const,
+        playerId: 'ai1',
+        cardId: 'priest',
+        targetPlayerId: 'p1',
+      };
+      game.applyMove(priestMove);
+
+      const newState = game.getState();
+      const aiAfter = newState.players.find((p) => p.id === 'ai1')!;
+      const humanAfter = newState.players.find((p) => p.id === 'p1')!;
+
+      // AI should now know p1's card
+      expect(aiAfter.knownCards?.['p1']).toBe('princess');
+      // p1 should be marked as exposed to ai1
+      expect(humanAfter.exposedToPlayerIds).toContain('ai1');
+    });
+
+    it('should clear knowledge about both players when King trades hands', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // Someone else knew both players' cards before the King swap
+      aiPlayer.hand = ['king', 'guard'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['princess'];
+      human.exposedToPlayerIds = ['ai1'];
+      // Simulate a bystander knowing both
+      aiPlayer.knownCards = { p1: 'princess' };
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const kingMove = {
+        type: 'PLAY_CARD' as const,
+        playerId: 'ai1',
+        cardId: 'king',
+        targetPlayerId: 'p1',
+      };
+      game.applyMove(kingMove);
+
+      const newState = game.getState();
+      const aiAfter = newState.players.find((p) => p.id === 'ai1')!;
+      const humanAfter = newState.players.find((p) => p.id === 'p1')!;
+
+      // Both players have new cards; exposure is cleared
+      expect(aiAfter.exposedToPlayerIds).toEqual([]);
+      expect(humanAfter.exposedToPlayerIds).toEqual([]);
+      // Knowledge about both is now stale and cleared
+      expect(aiAfter.knownCards?.['p1']).toBeUndefined();
+    });
+
+    it('should use known card for Chancellor return — keep Guard when opponent card is known', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI has [guard, spy, baron] and knows p1 holds Princess
+      // Should keep Guard (to eliminate p1 next turn), not the highest-value baron
+      aiPlayer.hand = ['guard', 'spy', 'baron'];
+      aiPlayer.knownCards = { p1: 'princess' };
+      human.hand = ['princess'];
+      state.phase = 'CHANCELLOR_RESOLVING';
+      state.chancellorCards = ['spy', 'baron'];
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      expect(move?.type).toBe('CHANCELLOR_RETURN');
+      expect(move?.cardsToReturn).toHaveLength(2);
+      // Should keep Guard (to use the knowledge of Princess next turn)
+      expect(move?.cardsToReturn).not.toContain('guard');
+    });
+  });
 });

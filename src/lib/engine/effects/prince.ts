@@ -47,6 +47,14 @@ export function applyForceDiscard(context: EffectContext): EffectResult {
       targetPlayer.hand.push(newCard);
       addLog(`${targetPlayer.name} drew a new card`, state, targetPlayer.id);
     }
+
+    // The target now has a new (unknown) card — clear stale knowledge about them
+    for (const player of state.players) {
+      if (player.knownCards) {
+        delete player.knownCards[targetPlayer.id];
+      }
+    }
+    targetPlayer.exposedToPlayerIds = [];
   }
 
   return {

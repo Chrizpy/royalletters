@@ -2,6 +2,7 @@ import type { GameState, GameAction, PlayerState, Ruleset } from '../types';
 import { getCardDefinition, getCardValue, createDeck } from './deck';
 import { getValidTargets } from './validation';
 import {
+  GUARD,
   PRIEST,
   BARON,
   HANDMAID,
@@ -15,7 +16,8 @@ import {
 
 /**
  * AI player decision-making engine
- * Implements a basic strategy for playing Love Letter
+ * Implements a strategy for playing Love Letter that uses card knowledge
+ * gained from Priest plays and other public information.
  */
 
 /** Module-level cache: deck composition never changes for a given ruleset */
@@ -53,15 +55,23 @@ function getPossibleGuesses(ruleset: Ruleset): string[] {
 }
 
 /**
- * Choose a card to guess for Guard based on simple probability
- * Considers what cards have been played (in discard piles) and burned cards
+ * Choose a card to guess for Guard/revenge based on probability and known information.
+ * If the actor already knows the target's card (via Priest), use that directly.
  */
 function chooseGuardGuess(
   state: GameState,
-  _targetPlayer: PlayerState,
+  targetPlayer: PlayerState,
+  actorPlayer: PlayerState,
 ): string {
   const possibleGuesses = getPossibleGuesses(state.ruleset);
 
+  // If we KNOW the target's card (from a previous Priest play), use it — guaranteed kill
+  const knownCard = actorPlayer.knownCards?.[targetPlayer.id];
+  if (knownCard && possibleGuesses.includes(knownCard)) {
+    return knownCard;
+  }
+
+  // Fall back to probability-based guessing
   // Count cards that have been discarded or burned
   const seenCards: Record<string, number> = {};
 
@@ -116,12 +126,31 @@ function chooseGuardGuess(
 }
 
 /**
- * Choose which card to play from hand
+ * Get targetable opponents (not self, not protected, not eliminated).
+ */
+function getTargetableOpponents(
+  state: GameState,
+  playerId: string,
+): PlayerState[] {
+  return getValidTargets(state, playerId, false).filter(
+    (p) => p.id !== playerId,
+  );
+}
+
+/**
+ * Choose which card to play from hand, using strategic priorities:
+ * 1. Mandatory Countess rule
+ * 2. Play Guard when we know a target's card (guaranteed kill)
+ * 3. Play Baron when we know a target has a lower card (guaranteed win)
+ * 4. Play Handmaid when exposed — protection prevents opponents acting on their knowledge
+ * 5. Play Prince on self only for high-value exposed cards (≥5, i.e. King+)
+ * 6. Play King to steal a known higher card
+ * 7. Default: avoid Princess; prefer lower-value cards
  */
 function chooseCardToPlay(player: PlayerState, state: GameState): string {
   const hand = [...player.hand];
 
-  // Countess rule: If player has Countess + (King or Prince), must play Countess
+  // Countess rule: must play Countess when holding King or Prince
   const hasCountess = hand.includes(COUNTESS);
   const hasKing = hand.includes(KING);
   const hasPrince = hand.includes(PRINCE);
@@ -130,25 +159,98 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
     return COUNTESS;
   }
 
-  // Basic strategy: avoid playing Princess (auto-lose)
-  const nonPrincessCards = hand.filter((c) => c !== PRINCESS);
-  if (nonPrincessCards.length > 0) {
-    // Prefer to play lower value cards first to avoid elimination in Baron comparisons
-    nonPrincessCards.sort((a, b) => {
-      const aValue = getCardValue(a, state.ruleset);
-      const bValue = getCardValue(b, state.ruleset);
-      return aValue - bValue;
-    });
-    return nonPrincessCards[0];
+  // Never deliberately play Princess (auto-lose)
+  const playableCards = hand.filter((c) => c !== PRINCESS);
+  if (playableCards.length === 0) {
+    return PRINCESS; // No choice
   }
 
-  // If only Princess left, we have to play it
-  return hand[0];
+  const opponents = getTargetableOpponents(state, player.id);
+  const isExposed = (player.exposedToPlayerIds?.length ?? 0) > 0;
+
+  // Priority 1: Play Guard if we KNOW an opponent's card — guaranteed elimination
+  if (playableCards.includes(GUARD) && opponents.length > 0) {
+    const possibleGuesses = getPossibleGuesses(state.ruleset);
+    const hasKnownTarget = opponents.some((p) => {
+      const known = player.knownCards?.[p.id];
+      return known !== undefined && possibleGuesses.includes(known);
+    });
+    if (hasKnownTarget) {
+      return GUARD;
+    }
+  }
+
+  // Priority 2: Play Baron if we know an opponent holds a LOWER card than ours
+  if (playableCards.includes(BARON) && opponents.length > 0) {
+    const myOtherCard = playableCards.find((c) => c !== BARON);
+    if (myOtherCard) {
+      const myValue = getCardValue(myOtherCard, state.ruleset);
+      const hasWeakerTarget = opponents.some((p) => {
+        const known = player.knownCards?.[p.id];
+        return known !== undefined && getCardValue(known, state.ruleset) < myValue;
+      });
+      if (hasWeakerTarget) {
+        return BARON;
+      }
+    }
+  }
+
+  // Priority 3: Play Handmaid when exposed — gains full-round protection, nullifying opponent knowledge.
+  // This is always better than self-Princing to discard the Handmaid.
+  if (playableCards.includes(HANDMAID) && isExposed) {
+    return HANDMAID;
+  }
+
+  // Priority 4: Play Prince on self when a HIGH-VALUE card is exposed (value ≥ 5).
+  // Only worthwhile for King-level cards that an opponent would specifically Guard-guess.
+  // Low-value cards (Guard, Priest, Handmaid, Baron) are not worth discarding to escape.
+  if (playableCards.includes(PRINCE) && isExposed) {
+    const cardToDiscard = playableCards.find((c) => c !== PRINCE);
+    const discardValue = cardToDiscard
+      ? getCardValue(cardToDiscard, state.ruleset)
+      : 0;
+    if (
+      cardToDiscard &&
+      cardToDiscard !== PRINCESS &&
+      cardToDiscard !== HANDMAID &&
+      discardValue >= 5
+    ) {
+      return PRINCE;
+    }
+  }
+
+  // Priority 5: Play King to steal a known card that is better than ours
+  if (playableCards.includes(KING) && opponents.length > 0) {
+    const myOtherCard = playableCards.find((c) => c !== KING);
+    if (myOtherCard) {
+      const myValue = getCardValue(myOtherCard, state.ruleset);
+      const hasBetterTarget = opponents.some((p) => {
+        const known = player.knownCards?.[p.id];
+        return known !== undefined && getCardValue(known, state.ruleset) > myValue;
+      });
+      if (hasBetterTarget) {
+        return KING;
+      }
+    }
+  }
+
+  // Default: play the lowest-value non-Princess card
+  playableCards.sort((a, b) => {
+    const aValue = getCardValue(a, state.ruleset);
+    const bValue = getCardValue(b, state.ruleset);
+    return aValue - bValue;
+  });
+  return playableCards[0];
 }
 
 /**
- * Choose a target player for targeted cards
- * Prioritizes players with the most tokens (they're closest to winning)
+ * Choose a target player for the given card, using card knowledge where available.
+ *
+ * - Guard: target the player whose card we know (for a certain kill)
+ * - Baron: target the player we know has a lower card than ours
+ * - Prince: target self when card is exposed; otherwise target highest-token player
+ * - King: target the player whose card we know is higher than ours
+ * - Others: target the player closest to winning (most tokens)
  */
 function chooseTarget(
   state: GameState,
@@ -162,28 +264,80 @@ function chooseTarget(
 
   const canTargetSelf = cardDef.effect.canTargetSelf || false;
   const validTargets = getValidTargets(state, playerId, canTargetSelf);
+  const player = state.players.find((p) => p.id === playerId)!;
+  const opponents = validTargets.filter((p) => p.id !== playerId);
 
-  // Filter out self for most cards unless it's Prince and self is only option
-  const otherTargets = validTargets.filter((p) => p.id !== playerId);
-
-  if (otherTargets.length > 0) {
-    // Prioritize targeting the player with the most tokens (closest to winning)
-    // Sort by tokens descending, then take the first one
-    const sortedByTokens = [...otherTargets].sort(
-      (a, b) => b.tokens - a.tokens,
-    );
-    return sortedByTokens[0].id;
+  // --- Guard: prefer the opponent whose card we know (certain elimination) ---
+  if (cardId === GUARD && opponents.length > 0) {
+    const possibleGuesses = getPossibleGuesses(state.ruleset);
+    const knownTarget = opponents.find((p) => {
+      const known = player.knownCards?.[p.id];
+      return known !== undefined && possibleGuesses.includes(known);
+    });
+    if (knownTarget) return knownTarget.id;
   }
 
-  // If Prince and no other targets, can target self
-  if (cardId === PRINCE && canTargetSelf) {
-    const self = validTargets.find((p) => p.id === playerId);
-    if (self) {
-      return self.id;
+  // --- Baron: prefer an opponent we know has a lower card than ours ---
+  if (cardId === BARON && opponents.length > 0) {
+    const myOtherCard = player.hand.find((c) => c !== BARON);
+    if (myOtherCard) {
+      const myValue = getCardValue(myOtherCard, state.ruleset);
+      const weakTarget = opponents
+        .filter((p) => {
+          const known = player.knownCards?.[p.id];
+          return known !== undefined && getCardValue(known, state.ruleset) < myValue;
+        })
+        .sort((a, b) => b.tokens - a.tokens)[0]; // Among weak targets, pick highest-token
+      if (weakTarget) return weakTarget.id;
     }
   }
 
-  // No valid targets - card will be played with no effect
+  // --- Prince: self-target only when a HIGH-VALUE card (≥5) has been exposed ---
+  if (cardId === PRINCE && canTargetSelf) {
+    const isExposed = (player.exposedToPlayerIds?.length ?? 0) > 0;
+    if (isExposed) {
+      const cardToDiscard = player.hand.find((c) => c !== PRINCE);
+      const discardValue = cardToDiscard
+        ? getCardValue(cardToDiscard, state.ruleset)
+        : 0;
+      if (
+        cardToDiscard &&
+        cardToDiscard !== PRINCESS &&
+        cardToDiscard !== HANDMAID &&
+        discardValue >= 5
+      ) {
+        return player.id;
+      }
+    }
+  }
+
+  // --- King: prefer an opponent whose card we know is better than ours ---
+  if (cardId === KING && opponents.length > 0) {
+    const myOtherCard = player.hand.find((c) => c !== KING);
+    if (myOtherCard) {
+      const myValue = getCardValue(myOtherCard, state.ruleset);
+      const richTarget = opponents
+        .filter((p) => {
+          const known = player.knownCards?.[p.id];
+          return known !== undefined && getCardValue(known, state.ruleset) > myValue;
+        })
+        .sort((a, b) => b.tokens - a.tokens)[0]; // Among better targets, pick highest-token
+      if (richTarget) return richTarget.id;
+    }
+  }
+
+  // --- Default: target the opponent with the most tokens (closest to winning) ---
+  if (opponents.length > 0) {
+    const sortedByTokens = [...opponents].sort((a, b) => b.tokens - a.tokens);
+    return sortedByTokens[0].id;
+  }
+
+  // Prince can target self as last resort
+  if (cardId === PRINCE && canTargetSelf) {
+    const self = validTargets.find((p) => p.id === playerId);
+    if (self) return self.id;
+  }
+
   return undefined;
 }
 
@@ -230,7 +384,7 @@ export function decideAIMove(
   if (cardDef?.effect.requiresTargetCardType && targetPlayerId) {
     const targetPlayer = state.players.find((p) => p.id === targetPlayerId);
     if (targetPlayer) {
-      targetCardGuess = chooseGuardGuess(state, targetPlayer);
+      targetCardGuess = chooseGuardGuess(state, targetPlayer, player);
     }
   }
 
@@ -244,7 +398,11 @@ export function decideAIMove(
 }
 
 /**
- * Decide which cards to return for Chancellor effect
+ * Decide which cards to return for Chancellor effect.
+ * Strategy: keep the card that is most useful given current knowledge.
+ * - If we know an opponent's card, prefer keeping Guard (to eliminate them) or
+ *   a card that beats them in a Baron comparison.
+ * - Otherwise keep the highest-value card for round-end comparison.
  */
 function decideChancellorReturn(
   state: GameState,
@@ -255,19 +413,45 @@ function decideChancellorReturn(
     return null;
   }
 
-  // Number of cards to return = hand size - 1 (keep exactly 1 card)
   const cardsToReturnCount = player.hand.length - 1;
+  const opponents = getTargetableOpponents(state, playerId);
 
-  // Strategy: keep the highest value card (for round-end comparison)
-  // Sort hand by value descending
-  const sortedHand = [...player.hand].sort((a, b) => {
-    const aValue = getCardValue(a, state.ruleset);
-    const bValue = getCardValue(b, state.ruleset);
-    return bValue - aValue;
-  });
+  // Check if we know any opponent's card
+  const knownOpponent = opponents.find(
+    (p) => player.knownCards?.[p.id] !== undefined,
+  );
 
-  // Keep the highest value card, return the rest (up to cardsToReturnCount)
-  const cardsToReturn = sortedHand.slice(1, 1 + cardsToReturnCount);
+  let cardToKeep: string;
+
+  if (knownOpponent) {
+    const knownCard = player.knownCards![knownOpponent.id]!;
+    const knownValue = getCardValue(knownCard, state.ruleset);
+    const possibleGuesses = getPossibleGuesses(state.ruleset);
+
+    // If opponent holds a guessable card, prefer keeping Guard for a certain kill
+    if (player.hand.includes(GUARD) && possibleGuesses.includes(knownCard)) {
+      cardToKeep = GUARD;
+    } else {
+      // Keep the card that beats the known opponent card in Baron, or highest otherwise
+      const beatingCard = player.hand
+        .filter((c) => c !== PRINCESS) // don't keep princess if alternatives exist
+        .find((c) => getCardValue(c, state.ruleset) > knownValue);
+      cardToKeep = beatingCard ?? player.hand.reduce((best, c) =>
+        getCardValue(c, state.ruleset) >= getCardValue(best, state.ruleset) ? c : best,
+      );
+    }
+  } else {
+    // No knowledge — keep the highest-value card (maximises round-end win chance)
+    cardToKeep = player.hand.reduce((best, c) =>
+      getCardValue(c, state.ruleset) >= getCardValue(best, state.ruleset) ? c : best,
+    );
+  }
+
+  // Return all cards except the one we want to keep
+  const remaining = [...player.hand];
+  const keepIndex = remaining.indexOf(cardToKeep);
+  remaining.splice(keepIndex, 1);
+  const cardsToReturn = remaining.slice(0, cardsToReturnCount);
 
   return {
     type: 'CHANCELLOR_RETURN',
@@ -288,6 +472,7 @@ function decideRevengeGuess(
     return null;
   }
 
+  const player = state.players.find((p) => p.id === playerId)!;
   const targetPlayer = state.players.find(
     (p) => p.id === state.revengeGuess!.targetId,
   );
@@ -295,8 +480,8 @@ function decideRevengeGuess(
     return null;
   }
 
-  // Use the same logic as Guard guess
-  const guess = chooseGuardGuess(state, targetPlayer);
+  // Use the same logic as Guard guess, including any knowledge we have
+  const guess = chooseGuardGuess(state, targetPlayer, player);
 
   return {
     type: 'REVENGE_GUESS',
