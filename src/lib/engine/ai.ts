@@ -142,9 +142,10 @@ function getTargetableOpponents(
  * 1. Mandatory Countess rule
  * 2. Play Guard when we know a target's card (guaranteed kill)
  * 3. Play Baron when we know a target has a lower card (guaranteed win)
- * 4. Play Prince on self when our card has been exposed to opponents
- * 5. Play King to steal a known higher card
- * 6. Default: avoid Princess; prefer lower-value cards
+ * 4. Play Handmaid when exposed — protection prevents opponents acting on their knowledge
+ * 5. Play Prince on self only for high-value exposed cards (≥5, i.e. King+)
+ * 6. Play King to steal a known higher card
+ * 7. Default: avoid Princess; prefer lower-value cards
  */
 function chooseCardToPlay(player: PlayerState, state: GameState): string {
   const hand = [...player.hand];
@@ -165,6 +166,7 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
   }
 
   const opponents = getTargetableOpponents(state, player.id);
+  const isExposed = (player.exposedToPlayerIds?.length ?? 0) > 0;
 
   // Priority 1: Play Guard if we KNOW an opponent's card — guaranteed elimination
   if (playableCards.includes(GUARD) && opponents.length > 0) {
@@ -193,17 +195,31 @@ function chooseCardToPlay(player: PlayerState, state: GameState): string {
     }
   }
 
-  // Priority 3: Play Prince on self when card is exposed — escape before being Guard-killed
-  if (playableCards.includes(PRINCE) && (player.exposedToPlayerIds?.length ?? 0) > 0) {
-    // The card that would be discarded is the one remaining after playing Prince
+  // Priority 3: Play Handmaid when exposed — gains full-round protection, nullifying opponent knowledge.
+  // This is always better than self-Princing to discard the Handmaid.
+  if (playableCards.includes(HANDMAID) && isExposed) {
+    return HANDMAID;
+  }
+
+  // Priority 4: Play Prince on self when a HIGH-VALUE card is exposed (value ≥ 5).
+  // Only worthwhile for King-level cards that an opponent would specifically Guard-guess.
+  // Low-value cards (Guard, Priest, Handmaid, Baron) are not worth discarding to escape.
+  if (playableCards.includes(PRINCE) && isExposed) {
     const cardToDiscard = playableCards.find((c) => c !== PRINCE);
-    // Only self-target if the card-to-be-discarded isn't Princess (discarding Princess = instant loss)
-    if (cardToDiscard && cardToDiscard !== PRINCESS) {
+    const discardValue = cardToDiscard
+      ? getCardValue(cardToDiscard, state.ruleset)
+      : 0;
+    if (
+      cardToDiscard &&
+      cardToDiscard !== PRINCESS &&
+      cardToDiscard !== HANDMAID &&
+      discardValue >= 5
+    ) {
       return PRINCE;
     }
   }
 
-  // Priority 4: Play King to steal a known card that is better than ours
+  // Priority 5: Play King to steal a known card that is better than ours
   if (playableCards.includes(KING) && opponents.length > 0) {
     const myOtherCard = playableCards.find((c) => c !== KING);
     if (myOtherCard) {
@@ -276,13 +292,20 @@ function chooseTarget(
     }
   }
 
-  // --- Prince: self-target when card has been exposed to opponents ---
+  // --- Prince: self-target only when a HIGH-VALUE card (≥5) has been exposed ---
   if (cardId === PRINCE && canTargetSelf) {
     const isExposed = (player.exposedToPlayerIds?.length ?? 0) > 0;
     if (isExposed) {
       const cardToDiscard = player.hand.find((c) => c !== PRINCE);
-      // Only target self if the discarded card won't be Princess (instant loss)
-      if (cardToDiscard && cardToDiscard !== PRINCESS) {
+      const discardValue = cardToDiscard
+        ? getCardValue(cardToDiscard, state.ruleset)
+        : 0;
+      if (
+        cardToDiscard &&
+        cardToDiscard !== PRINCESS &&
+        cardToDiscard !== HANDMAID &&
+        discardValue >= 5
+      ) {
         return player.id;
       }
     }

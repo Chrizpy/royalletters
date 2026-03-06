@@ -357,7 +357,7 @@ describe('AI Engine Tests', () => {
       expect(move?.targetCardGuess).toBe('princess');
     });
 
-    it('should play Prince on self when card has been exposed to an opponent', () => {
+    it('should play Prince on self when a high-value card (King) is exposed', () => {
       const config: GameConfig = {
         players: [
           { id: 'ai1', name: 'AI 1', isAI: true },
@@ -372,9 +372,9 @@ describe('AI Engine Tests', () => {
       const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
       const human = state.players.find((p) => p.id === 'p1')!;
 
-      // AI holds Prince + Baron; Baron is exposed (human Priested the AI).
-      // Should self-target with Prince to escape by discarding the known-Baron.
-      aiPlayer.hand = ['prince', 'baron'];
+      // AI holds Prince + King (value 6); King is exposed (human Priested the AI).
+      // King is high-value (≥5) so self-Princing to escape makes sense.
+      aiPlayer.hand = ['prince', 'king'];
       aiPlayer.exposedToPlayerIds = ['p1'];
       human.hand = ['guard'];
       state.deck = ['spy', 'priest', 'baron']; // ensure a card to draw
@@ -383,9 +383,67 @@ describe('AI Engine Tests', () => {
 
       const move = decideAIMove(game.getState(), 'ai1');
 
-      // Should play Prince targeting self to escape exposure
+      // Should play Prince targeting self to escape exposure of the high-value King
       expect(move?.cardId).toBe('prince');
       expect(move?.targetPlayerId).toBe('ai1');
+    });
+
+    it('should NOT self-target with Prince when the exposed card is low-value (Baron)', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Prince + Baron (value 3); Baron is exposed.
+      // Baron is low-value so self-Princing is not worth it.
+      aiPlayer.hand = ['prince', 'baron'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['guard'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Should NOT self-target — Baron is not worth escaping
+      expect(move?.targetPlayerId).not.toBe('ai1');
+    });
+
+    it('should play Handmaid (not self-Prince) when exposed and holding both cards', () => {
+      const config: GameConfig = {
+        players: [
+          { id: 'ai1', name: 'AI 1', isAI: true },
+          { id: 'p1', name: 'Human', isHost: true },
+        ],
+      };
+
+      game.init(config);
+      game.startRound();
+
+      const state = game.getState();
+      const aiPlayer = state.players.find((p) => p.id === 'ai1')!;
+      const human = state.players.find((p) => p.id === 'p1')!;
+
+      // AI holds Prince + Handmaid; Handmaid is exposed.
+      // Playing Handmaid is better than self-Princing to discard it.
+      aiPlayer.hand = ['prince', 'handmaid'];
+      aiPlayer.exposedToPlayerIds = ['p1'];
+      human.hand = ['guard'];
+      state.phase = 'WAITING_FOR_ACTION';
+      game.setState(state);
+
+      const move = decideAIMove(game.getState(), 'ai1');
+
+      // Should play Handmaid for protection — never self-Prince to discard Handmaid
+      expect(move?.cardId).toBe('handmaid');
     });
 
     it('should NOT self-target with Prince when the card to be discarded is Princess', () => {
