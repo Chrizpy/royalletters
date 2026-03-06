@@ -51,6 +51,8 @@ export function resetPlayersForRound(players: PlayerState[]): PlayerState[] {
     discardPile: [],
     status: 'PLAYING' as const,
     eliminationReason: undefined,
+    knownCards: undefined,
+    exposedToPlayerIds: undefined,
   }));
 }
 

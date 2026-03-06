@@ -45,6 +45,10 @@ export interface PlayerState {
   isHost: boolean;
   isAI?: boolean; // Whether this player is controlled by AI
   eliminationReason?: string; // Reason why the player was eliminated
+  /** Cards this player has seen via Priest: maps opponentId -> their current card ID */
+  knownCards?: Record<string, string>;
+  /** Player IDs who currently know this player's hand card (e.g. after being Priested) */
+  exposedToPlayerIds?: string[];
 }
 
 export type GamePhase =

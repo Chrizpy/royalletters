@@ -21,6 +21,16 @@ export function applyTradeHands(context: EffectContext): EffectResult {
   activePlayer.hand = targetPlayer.hand;
   targetPlayer.hand = temp;
 
+  // Both players now hold different cards — invalidate all prior knowledge about them
+  for (const player of state.players) {
+    if (player.knownCards) {
+      delete player.knownCards[activePlayer.id];
+      delete player.knownCards[targetPlayer.id];
+    }
+  }
+  activePlayer.exposedToPlayerIds = [];
+  targetPlayer.exposedToPlayerIds = [];
+
   addLog(
     `${activePlayer.name} and ${targetPlayer.name} traded hands`,
     state,
@@ -60,6 +70,14 @@ export function applyTradeWithBurnedCard(
   const playerCard = activePlayer.hand[0];
   activePlayer.hand[0] = burnedCard;
   state.burnedCard = playerCard;
+
+  // Player now has a new card — clear stale knowledge about them
+  for (const player of state.players) {
+    if (player.knownCards) {
+      delete player.knownCards[activePlayer.id];
+    }
+  }
+  activePlayer.exposedToPlayerIds = [];
 
   addLog(
     `${activePlayer.name} swapped their card with the burned card`,
